@@ -95,6 +95,18 @@ WattsUp vous rend service ? Vous pouvez soutenir son développement :
 
 ## Notes de version
 
+### 1.4.0 — 12 octobre 2026
+
+- **Contrats à saisons** : dans un contrat personnalisé, chaque règle peut ne valoir qu'en
+  hiver, en été ou certains mois, et la journée peut commencer à 6 h (nuit comptée avec la
+  veille). Nouveaux modèles « Saisons » et « Week-end + 1 jour ».
+- Offres du marché : les offres à saisons (Zen Estival, Enercoop 2 saisons, Alterna Heures
+  Super Creuses) et à jour choisi (Zen Week-End Plus, avec le jour le moins cher pour vous)
+  sont désormais comparées.
+- Comparaison des contrats en une seule carte « Comparez votre contrat » : contrat en cours,
+  offres simulées, anciens contrats (masqués par défaut) et offres du marché dans un même
+  classement ; une offre au même coût que la vôtre est classée en dessous.
+
 ### 1.3.0 — 12 octobre 2026
 
 - **Offres du marché** sur la page Contrats : les offres des fournisseurs (EDF dont les tarifs

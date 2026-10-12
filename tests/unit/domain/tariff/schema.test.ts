@@ -111,12 +111,43 @@ describe("parseContractInput", () => {
   });
 });
 
+describe("saisons et début de journée (T56)", () => {
+  const rule = (months?: number[]) => ({
+    label: "Toute l'année",
+    days: [1, 2, 3, 4, 5, 6, 7],
+    ranges: [{ from: "00:00", to: "24:00" }],
+    price: 0.2,
+    ...(months ? { months } : {}),
+  });
+
+  it("accepte des mois et une journée qui commence à 6 h", () => {
+    const contract = {
+      kind: "custom",
+      subscriptionEurYear: 100,
+      dayStartHour: 6,
+      rules: [rule([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12])],
+    };
+    expect(ok({ name: "Saisons", contract }).contract).toEqual(contract);
+  });
+
+  it("refuse une heure de début autre que 0 ou 6, et un mois non couvert", () => {
+    const base = { kind: "custom", subscriptionEurYear: 100, rules: [rule()] };
+    expect(parseContractInput({ name: "X", contract: { ...base, dayStartHour: 5 } }).success).toBe(
+      false,
+    );
+    const r = parseContractInput({ name: "X", contract: { ...base, rules: [rule([1, 2])] } });
+    expect(r.success).toBe(false);
+  });
+});
+
 describe("offres de référence", () => {
   it("chaque offre de référence est un contrat valide", () => {
     expect(CONTRACT_PRESETS.map((p) => p.contract.kind)).toEqual([
       "base",
       "hphc",
       "tempo",
+      "custom",
+      "custom",
       "custom",
     ]);
     for (const preset of CONTRACT_PRESETS) {

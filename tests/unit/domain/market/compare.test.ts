@@ -23,6 +23,8 @@ const catalog = [
   "edf/tempo.js",
   "edf/zenEstival.js",
   "edf/ejp.js",
+  "edf/zenWeekEndPlus.js",
+  "edf/zenWeekEnd.js",
   "total/chargheures.js",
 ]
   .flatMap(load)
@@ -80,14 +82,36 @@ describe("compareMarket", () => {
   const r = compareMarket(catalog, 9, current, WEEK, ctx, 7);
 
   it("classe les offres comparables, de la moins chère à la plus chère", () => {
-    expect(r.rows.map((row) => row.name)).toEqual([
-      "EDF - Tempo",
-      "EDF - Bleu Heures Creuses",
-      "EDF - Bleu",
-      "TotalEnergie - Charge'Heures",
-    ]);
+    expect(r.rows.map((row) => row.name)).toEqual(
+      expect.arrayContaining([
+        "EDF - Tempo",
+        "EDF - Bleu Heures Creuses",
+        "EDF - Bleu",
+        "TotalEnergie - Charge'Heures",
+        "EDF - Zen Estival",
+        "EDF - Zen Week-End",
+        "EDF - Zen Week-End Plus",
+      ]),
+    );
     const costs = r.rows.map((row) => row.annualCents);
     expect([...costs].sort((a, b) => a - b)).toEqual(costs);
+    expect(new Set(r.rows.map((row) => row.name)).size).toBe(r.rows.length);
+  });
+
+  it("jour choisi : le jour le moins cher pour ce foyer", () => {
+    // Trois fois plus de consommation le jeudi : c'est lui qu'il faut choisir.
+    const thursdayHeavy = WEEK.map((i) =>
+      i.granularity === "hour" &&
+      new Date(i.start).getUTCDay() === 4 &&
+      new Date(i.start).getUTCHours() > 2
+        ? { ...i, kwh: 3 }
+        : i,
+    );
+    const plus = compareMarket(catalog, 9, current, thursdayHeavy, ctx, 7).rows.find(
+      (row) => row.name === "EDF - Zen Week-End Plus",
+    );
+    expect(plus?.chosenDay).toBe(4);
+    expect(r.rows.find((row) => row.name === "EDF - Bleu")?.chosenDay).toBeNull();
   });
 
   it("écart annuel avec le contrat actuel", () => {
@@ -108,11 +132,18 @@ describe("compareMarket", () => {
   });
 
   it("compte les offres pas encore comparables et celles absentes à cette puissance", () => {
-    expect(r.pending).toEqual([{ name: "EDF - Zen Estival", reason: "prix selon la saison" }]);
+    expect(r.pending).toEqual([
+      { name: "EDF - Zen Week-End Option Flex", reason: "jours spéciaux (Zen Flex)" },
+    ]);
     expect(r.unavailable).toBe(0);
     const small = compareMarket(catalog, 3, current, WEEK, ctx, 7);
-    expect(small.rows.map((row) => row.name)).toEqual(["EDF - Bleu"]);
-    expect(small.unavailable).toBe(3); // Bleu HC, Tempo, Charge'Heures : pas de 3 kVA
+    expect(small.rows.map((row) => row.name).sort()).toEqual([
+      "EDF - Bleu",
+      "EDF - Zen Estival",
+      "EDF - Zen Week-End",
+    ]);
+    // Pas de 3 kVA : Bleu HC, Tempo, Charge'Heures, Zen Week-End HC, Plus et Plus HC.
+    expect(small.unavailable).toBe(6);
   });
 
   it("sans contrat actuel : pas d'écart", () => {

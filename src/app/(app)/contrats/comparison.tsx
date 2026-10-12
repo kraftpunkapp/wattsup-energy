@@ -1,7 +1,7 @@
 import { CoverageBadge } from "@/components/coverage-badge";
 import { EmptyState } from "@/components/empty-state";
 import { Notice } from "@/components/ui";
-import { isOldGrid } from "@/domain/market/offer";
+import { isOldGrid, marketContractName } from "@/domain/market/offer";
 import type { ContractWithPeriods } from "@/server/contracts";
 import type { MarketOffers } from "@/server/market/compare";
 import type { ContractComparison } from "@/server/queries/contracts";
@@ -149,7 +149,7 @@ export function comparedRows(
   const offers: ComparedRow[] =
     market.status === "ok"
       ? market.rows
-          .filter((r) => !names.has(r.name.slice(0, 60)))
+          .filter((r) => !names.has(marketContractName(r.name, r.chosenDay)))
           .map((r) => ({
             key: `market:${r.name}`,
             origin: "market",
@@ -168,8 +168,17 @@ export function comparedRows(
               gridDate: fmtDate(r.gridDate),
               oldGrid: isOldGrid(r.gridDate, today),
               priceUrl: r.priceUrl,
+              chosenDay: r.chosenDay,
             },
           }))
       : [];
-  return [...own, ...offers].sort((a, b) => a.annualCents - b.annualCents);
+  // Une offre au même coût que le contrat actuel (moins d'un euro d'écart) passe sous lui :
+  // placée au-dessus, elle paraîtrait plus intéressante.
+  const rank = (r: ComparedRow) =>
+    r.origin !== "current" &&
+    r.deltaAnnualCents !== null &&
+    Math.abs(r.deltaAnnualCents) < SAME_CENTS
+      ? r.annualCents - r.deltaAnnualCents + 0.5
+      : r.annualCents;
+  return [...own, ...offers].sort((a, b) => rank(a) - rank(b) || a.annualCents - b.annualCents);
 }

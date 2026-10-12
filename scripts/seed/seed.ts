@@ -105,7 +105,7 @@ export async function seedDemo({
     // Les 4 offres de référence. Le HP/HC est souscrit depuis le début des données, avec une
     // hausse de prix au 1er février 2026 ; les autres sont des offres à comparer.
     await tx.delete(contract).where(eq(contract.householdId, householdId));
-    for (const p of CONTRACT_PRESETS) {
+    for (const p of CONTRACT_PRESETS.slice(0, 4)) {
       const subscribed = p.contract.kind === "hphc";
       const [row] = await tx
         .insert(contract)

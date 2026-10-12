@@ -89,7 +89,8 @@ describe("offres du marché", () => {
       expect.arrayContaining(["EDF - Bleu", "EDF - Bleu Heures Creuses", "EDF - Tempo"]),
     );
     expect(r.rows.every((o) => o.deltaAnnualCents !== null && o.deltaAnnualCents < 0)).toBe(true);
-    expect(r.pending).toEqual([{ name: "EDF - Zen Estival", reason: "prix selon la saison" }]);
+    expect(r.pending).toEqual([]);
+    expect(r.rows.map((o) => o.name)).toContain("EDF - Zen Estival");
     expect(r.catalogDate).toEqual(new Date("2026-10-02T11:00:00Z"));
     // Gardé en mémoire : l'alerte lit l'économie sans recalculer.
     expect(knownMarketSaving(ctx.householdId)).toEqual({
@@ -106,7 +107,7 @@ describe("offres du marché", () => {
     await updateMeterPower(ctx, 3);
     const three = await getMarketOffers(await householdContextFor(ctx.userId), now);
     if (nine.status !== "ok" || three.status !== "ok") throw new Error("statut");
-    expect(three.rows.map((o) => o.name)).toEqual(["EDF - Bleu"]);
+    expect(three.rows.map((o) => o.name).sort()).toEqual(["EDF - Bleu", "EDF - Zen Estival"]);
     expect(three.unavailable).toBe(2);
   });
 

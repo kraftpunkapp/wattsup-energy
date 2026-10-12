@@ -3,6 +3,7 @@
 import { useState, useTransition, type ReactNode } from "react";
 import { Badge, button, Icon, Notice } from "@/components/ui";
 import { METER_POWERS } from "@/domain/market/compare";
+import { DAY_NAMES } from "@/domain/market/offer";
 import { addMarketOfferAction, saveMeterPowerAction } from "@/server/actions/market";
 
 // Comparaison des offres (T18, T55) : un seul classement pour le contrat en cours, les offres
@@ -29,7 +30,14 @@ export interface ComparedRow {
   assumedTempoDays: number;
   assumedOffPeak: boolean;
   /** Offre du marché : nom chez la source, grille, lien officiel. */
-  market: { name: string; gridDate: string; oldGrid: boolean; priceUrl: string | null } | null;
+  market: {
+    name: string;
+    gridDate: string;
+    oldGrid: boolean;
+    priceUrl: string | null;
+    /** Offre à jour choisi : le jour le moins cher pour le foyer (ISO). */
+    chosenDay: number | null;
+  } | null;
 }
 
 export type MarketState =
@@ -95,7 +103,7 @@ function PowerSelect({
   );
 }
 
-function AddButton({ name }: { name: string }) {
+function AddButton({ name, chosenDay }: { name: string; chosenDay: number | null }) {
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
   return (
@@ -105,7 +113,7 @@ function AddButton({ name }: { name: string }) {
         disabled={pending}
         onClick={() =>
           startTransition(async () => {
-            const res = await addMarketOfferAction(name);
+            const res = await addMarketOfferAction(name, chosenDay);
             setError(res.ok ? null : (res.errors[0] ?? "ajout impossible"));
           })
         }
@@ -189,8 +197,14 @@ function Line({ row, max }: { row: ComparedRow; max: number }) {
               <Icon name="external" size={12} />
             </a>
           )}
-          <AddButton name={row.market.name} />
+          <AddButton name={row.market.name} chosenDay={row.market.chosenDay} />
         </div>
+      )}
+      {row.market?.chosenDay && (
+        <span className="text-[11px] text-subtle text-pretty">
+          Jour choisi au prix du week-end : le {DAY_NAMES[row.market.chosenDay - 1]}, le moins cher
+          pour votre consommation.
+        </span>
       )}
       {(row.assumedOffPeak || row.approximate || row.assumedTempoDays > 0) && (
         <span className="text-[11px] text-pellet text-pretty">

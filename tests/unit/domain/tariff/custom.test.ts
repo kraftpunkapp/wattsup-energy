@@ -212,3 +212,111 @@ describe("validateCustomRules", () => {
     ).toThrow(/samedi à 00:00/);
   });
 });
+
+describe("saisons (T56)", () => {
+  // Hiver (novembre à mars) et été (avril à octobre), prix unique chacun.
+  const SUMMER_RULE = {
+    label: "Été",
+    days: [1, 2, 3, 4, 5, 6, 7],
+    ranges: ALL_DAY,
+    price: 0.1,
+    months: [4, 5, 6, 7, 8, 9, 10],
+  };
+  const WINTER_RULE = {
+    label: "Hiver",
+    days: [1, 2, 3, 4, 5, 6, 7],
+    ranges: ALL_DAY,
+    price: 0.3,
+    months: [11, 12, 1, 2, 3],
+  };
+  const seasons: CustomContract = {
+    kind: "custom",
+    subscriptionEurYear: 0,
+    rules: [
+      {
+        label: "Hiver",
+        days: [1, 2, 3, 4, 5, 6, 7],
+        ranges: ALL_DAY,
+        price: 0.3,
+        months: [11, 12, 1, 2, 3],
+      },
+      {
+        label: "Été",
+        days: [1, 2, 3, 4, 5, 6, 7],
+        ranges: ALL_DAY,
+        price: 0.1,
+        months: [4, 5, 6, 7, 8, 9, 10],
+      },
+    ],
+  };
+
+  it("chaque règle ne vaut que pour ses mois", () => {
+    // 31 octobre 2026 23 h et 1er novembre 0 h (heure d'hiver, UTC+1)
+    const r = priceIntervals(
+      hourly("2026-10-31T22:00:00Z", "2026-11-01T00:00:00Z"),
+      seasons,
+      ctx("2026-10-31", "2026-11-01"),
+    );
+    expect(r.bySlot["Été"]?.kwh).toBe(1);
+    expect(r.bySlot.Hiver?.kwh).toBe(1);
+  });
+
+  it("journée qui commence à 6 h : avant 6 h, la saison et le jour sont ceux de la veille", () => {
+    const shifted: CustomContract = { ...seasons, dayStartHour: 6 };
+    // 1er novembre, de 0 h à 8 h local : 6 h encore en octobre (été), 2 h en hiver.
+    const r = priceIntervals(
+      hourly("2026-10-31T23:00:00Z", "2026-11-01T07:00:00Z"),
+      shifted,
+      ctx("2026-11-01", "2026-11-02"),
+    );
+    expect(r.bySlot["Été"]?.kwh).toBe(6);
+    expect(r.bySlot.Hiver?.kwh).toBe(2);
+  });
+
+  it("journée qui commence à 6 h : la nuit du dimanche au lundi reste du week-end", () => {
+    const weekend: CustomContract = {
+      kind: "custom",
+      subscriptionEurYear: 0,
+      dayStartHour: 6,
+      rules: [
+        { label: "Week-end", days: WEEKEND, ranges: ALL_DAY, price: 0.1 },
+        { label: "Semaine", days: WEEKDAYS, ranges: ALL_DAY, price: 0.2 },
+      ],
+    };
+    // Lundi 12 octobre 2026, de 0 h à 8 h local (UTC+2).
+    const r = priceIntervals(
+      hourly("2026-10-11T22:00:00Z", "2026-10-12T06:00:00Z"),
+      weekend,
+      ctx("2026-10-12", "2026-10-13"),
+    );
+    expect(r.bySlot["Week-end"]?.kwh).toBe(6);
+    expect(r.bySlot.Semaine?.kwh).toBe(2);
+  });
+
+  it("intervalles journaliers : la saison du jour", () => {
+    const r = priceIntervals(
+      [
+        { granularity: "day", date: "2026-01-15", slot: null, kwh: 10 },
+        { granularity: "day", date: "2026-07-15", slot: null, kwh: 10 },
+      ],
+      seasons,
+      ctx("2026-01-15", "2026-01-16"),
+    );
+    expect(r.bySlot.Hiver?.kwh).toBe(10);
+    expect(r.bySlot["Été"]?.kwh).toBe(10);
+    expect(r.approximatedKwh).toBe(0);
+  });
+
+  it("validation : chaque mois doit être couvert, mois valides", () => {
+    expect(validateCustomRules(seasons.rules)).toEqual([]);
+    expect(validateCustomRules([{ ...WINTER_RULE, months: [11, 12, 1, 2] }, SUMMER_RULE])).toEqual([
+      "aucune règle ne couvre mars le lundi à 00:00",
+    ]);
+    expect(validateCustomRules([{ ...WINTER_RULE, months: [13] }, SUMMER_RULE])).toContain(
+      "mois invalide dans « Hiver » : 13",
+    );
+    expect(validateCustomRules([{ ...WINTER_RULE, months: [] }, SUMMER_RULE])).toContain(
+      "aucun mois dans « Hiver »",
+    );
+  });
+});

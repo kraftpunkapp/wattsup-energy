@@ -7,7 +7,7 @@ import {
   parseMeterPower,
   type MarketComparison,
 } from "@/domain/market/compare";
-import { fingerprint, toContract } from "@/domain/market/offer";
+import { fingerprint, marketContractName, toContract } from "@/domain/market/offer";
 import type { HouseholdContext } from "../context";
 import { householdContextFor } from "../context";
 import { ContractError, createContract, listContracts } from "../contracts";
@@ -108,16 +108,20 @@ export async function refreshMarketOffersForAll(): Promise<{ households: number 
  * « Ajouter à mes offres » : copie simulée de l'offre, à la puissance du foyer et avec ses
  * plages creuses, modifiable ensuite comme n'importe quel contrat. Refus métier en français.
  */
-export async function addMarketOffer(ctx: HouseholdContext, name: string) {
+export async function addMarketOffer(
+  ctx: HouseholdContext,
+  name: string,
+  chosenDay: number | null = null,
+) {
   const kva = parseMeterPower(ctx.settings.meterPowerKva);
   if (kva === null) throw new ContractError(["indiquez d'abord la puissance du compteur"]);
   const [row] = await db.select().from(marketOffer).where(eq(marketOffer.name, name));
   if (!row) throw new ContractError(["offre introuvable"]);
   const inputs = await comparisonInputs(ctx);
   const current = inputs.status === "ok" ? (inputs.current?.contract ?? null) : null;
-  const built = toContract(row.definition, kva, householdOffPeak(current));
+  const built = toContract(row.definition, kva, householdOffPeak(current), chosenDay ?? undefined);
   if (!built) throw new ContractError([`offre non proposée en ${kva} kVA`]);
-  const contractName = row.name.slice(0, 60);
+  const contractName = marketContractName(row.name, chosenDay);
   if ((await listContracts(ctx)).some((c) => c.name === contractName)) {
     throw new ContractError(["cette offre est déjà dans vos offres"]);
   }

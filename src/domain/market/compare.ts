@@ -1,6 +1,7 @@
 import { compareContracts } from "../tariff/compare";
 import type { Contract, PriceableInterval, PricingContext, TimeRange } from "../tariff/types";
 import {
+  CHOOSABLE_DAYS,
   DEFAULT_OFF_PEAK,
   describeOffer,
   REASON_LABELS,
@@ -48,6 +49,8 @@ export interface MarketRow {
   assumedTempoDays: number;
   priceUrl: string | null;
   subscriptionUrl: string | null;
+  /** Offre à jour choisi : le jour (ISO) le moins cher pour ce foyer ; null sinon. */
+  chosenDay: number | null;
 }
 
 export interface MarketComparison {
@@ -73,10 +76,12 @@ export function compareMarket(
   const pending: MarketComparison["pending"] = [];
   let unavailable = 0;
   const candidates: {
+    id: string;
     name: string;
     definition: SourceTariff;
     assumedOffPeak: boolean;
     contract: Contract;
+    chosenDay: number | null;
   }[] = [];
 
   for (const o of offers) {
@@ -86,19 +91,32 @@ export function compareMarket(
       continue;
     }
     if (info.support.status === "never") continue;
-    const built = toContract(o.definition, kva, offPeak);
-    if (!built) {
+    // Jour choisi par l'abonné : les cinq jours possibles sont essayés, le moins cher reste.
+    const days: (number | null)[] = info.support.chosenDay ? [...CHOOSABLE_DAYS] : [null];
+    const built = days.flatMap((day) => {
+      const c = toContract(o.definition, kva, offPeak, day ?? undefined);
+      return c ? [{ day, c }] : [];
+    });
+    if (built.length === 0) {
       unavailable += 1;
       continue;
     }
-    candidates.push({ ...o, assumedOffPeak: built.assumedOffPeak, contract: built.contract });
+    for (const { day, c } of built) {
+      candidates.push({
+        ...o,
+        id: day === null ? o.name : `${o.name}\u0000${day}`,
+        assumedOffPeak: c.assumedOffPeak,
+        contract: c.contract,
+        chosenDay: day,
+      });
+    }
   }
 
   const compared = compareContracts(
     [
       ...(current ? [{ id: CURRENT, name: CURRENT, isCurrent: true, contract: current }] : []),
       ...candidates.map((c) => ({
-        id: c.name,
+        id: c.id,
         name: c.name,
         isCurrent: false,
         contract: c.contract,
@@ -108,10 +126,13 @@ export function compareMarket(
     ctx,
     periodDays,
   );
-  const byName = new Map(candidates.map((c) => [c.name, c]));
+  const byId = new Map(candidates.map((c) => [c.id, c]));
+  const seen = new Set<string>();
+  // Classement du moins cher au plus cher : la première variante d'une offre est sa meilleure.
   const rows: MarketRow[] = compared.flatMap((r) => {
-    const c = byName.get(r.id);
-    if (!c) return [];
+    const c = byId.get(r.id);
+    if (!c || seen.has(c.name)) return [];
+    seen.add(c.name);
     const info = describeOffer(c.definition);
     return [
       {
@@ -129,6 +150,7 @@ export function compareMarket(
         assumedTempoDays: r.assumedTempoDays,
         priceUrl: c.definition.price_url || null,
         subscriptionUrl: c.definition.subscription_url || null,
+        chosenDay: c.chosenDay,
       },
     ];
   });

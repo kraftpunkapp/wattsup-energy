@@ -85,7 +85,7 @@ describe("conversion", () => {
       regulated: true,
       gridDate: "2026-08-01",
       powers: [3, 6, 9, 12, 15, 18, 24, 30, 36],
-      support: { status: "compared", kind: "base", householdOffPeak: false },
+      support: { status: "compared", kind: "base", householdOffPeak: false, chosenDay: false },
     });
     expect(toContract(t, 9, null)?.contract).toEqual({
       kind: "base",
@@ -102,6 +102,7 @@ describe("conversion", () => {
       status: "compared",
       kind: "hphc",
       householdOffPeak: true,
+      chosenDay: false,
     });
     expect(toContract(t, 9, HOUSE_HC)).toEqual({
       contract: {
@@ -199,20 +200,63 @@ describe("conversion", () => {
   it.each([
     ["EDF - EJP", { status: "never", reason: "closed" }],
     ["EDF - Zen Week-End Option Flex", { status: "pending", reason: "special-days" }],
-    ["EDF - Zen Week-End Plus", { status: "pending", reason: "chosen-day" }],
-    ["EDF - Zen Estival", { status: "pending", reason: "seasons" }],
-    ["Enercoop - Offre Flexibilité 2 Saisons", { status: "pending", reason: "seasons" }],
     ["Sobry - SoCap", { status: "pending", reason: "spot" }],
   ])("%s : pas encore comparée, avec sa raison", (name, support) => {
     expect(describeOffer(get(name)).support).toEqual(support);
     expect(toContract(get(name), 9, null)).toBeNull();
   });
 
+  it("Zen Estival : saisons, heures super creuses prioritaires, journée de 6 h à 6 h", () => {
+    const t = get("EDF - Zen Estival");
+    expect(describeOffer(t).support).toMatchObject({ status: "compared", kind: "custom" });
+    const c = toContract(t, 9, null)?.contract as CustomContract;
+    expect(c.dayStartHour).toBe(6);
+    const WINTER = [11, 12, 1, 2, 3];
+    const SUMMER = [4, 5, 6, 7, 8, 9, 10];
+    expect(c.rules.map((r) => [r.label, r.price, r.months])).toEqual([
+      ["Hiver heures super creuses", 0.1992, WINTER],
+      ["Hiver HC", 0.2131, WINTER],
+      ["Hiver HP", 0.2722, WINTER],
+      ["Été heures super creuses", 0.0991, SUMMER],
+      ["Été HC", 0.1405, SUMMER],
+      ["Été HP", 0.1588, SUMMER],
+    ]);
+    // Plage d'été « 22:00 → 00:00 » jamais atteinte chez la source : ignorée.
+    expect(c.rules[4]?.ranges).toEqual([{ from: "00:00", to: "07:00" }]);
+  });
+
+  it("Enercoop 2 saisons : week-end entier en heures creuses, semaine selon la saison", () => {
+    const c = toContract(get("Enercoop - Offre Flexibilité 2 Saisons"), 9, null)
+      ?.contract as CustomContract;
+    expect(c.dayStartHour).toBe(6);
+    expect(c.rules.map((r) => [r.label, r.days, r.price])).toEqual([
+      ["Hiver week-end", [6, 7], 0.22356],
+      ["Hiver HC", [1, 2, 3, 4, 5], 0.22356],
+      ["Hiver HP", [1, 2, 3, 4, 5], 0.31601],
+      ["Été week-end", [6, 7], 0.13831],
+      ["Été HC", [1, 2, 3, 4, 5], 0.13831],
+      ["Été HP", [1, 2, 3, 4, 5], 0.19567],
+    ]);
+  });
+
+  it("Zen Week-End Plus : le jour choisi s'ajoute au week-end", () => {
+    const t = get("EDF - Zen Week-End Plus");
+    expect(describeOffer(t).support).toMatchObject({ status: "compared", chosenDay: true });
+    expect(toContract(t, 9, null)).toBeNull(); // jour requis
+    expect(toContract(t, 9, null, 6)).toBeNull(); // samedi : déjà du week-end
+    const c = toContract(t, 9, null, 3)?.contract as CustomContract;
+    expect(c.rules.map((r) => [r.label, r.days])).toEqual([
+      ["Week-end et mercredi", [3, 6, 7]],
+      ["Semaine", [1, 2, 4, 5]],
+    ]);
+  });
+
   it("toutes les offres des fixtures se lisent ; les comparées passent la validation", () => {
     for (const t of tariffs.values()) {
       const info = describeOffer(t);
       if (info.support.status !== "compared") continue;
-      for (const kva of info.powers) expect(toContract(t, kva, HOUSE_HC)).not.toBeNull();
+      const day = info.support.chosenDay ? 1 : undefined;
+      for (const kva of info.powers) expect(toContract(t, kva, HOUSE_HC, day)).not.toBeNull();
     }
     const compared = [...tariffs.values()].filter(
       (t) => describeOffer(t).support.status === "compared",
@@ -223,6 +267,11 @@ describe("conversion", () => {
   it("une règle inconnue est signalée, sans erreur", () => {
     const t = { ...get("EDF - Bleu"), dayRule: { type: "lunaire" } };
     expect(describeOffer(t).support).toEqual({ status: "pending", reason: "unknown" });
+    const season = {
+      ...get("EDF - Zen Estival"),
+      dayRule: { type: "season", seasons: {}, previousDayBefore: 5 },
+    };
+    expect(describeOffer(season).support).toEqual({ status: "pending", reason: "unknown" });
   });
 });
 

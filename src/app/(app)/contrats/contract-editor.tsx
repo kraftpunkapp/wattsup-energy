@@ -2,6 +2,13 @@
 
 import { useState } from "react";
 import { CONTRACT_PRESETS, type ContractInput } from "@/domain/tariff/schema";
+import {
+  MONTH_SHORT,
+  monthsPreset,
+  SUMMER_MONTHS,
+  WINTER_MONTHS,
+  type MonthsPreset,
+} from "@/domain/tariff/seasons";
 import type { Contract, CustomRule, TempoColor, TimeRange } from "@/domain/tariff/types";
 import { formatDuration } from "@/lib/format";
 import { KIND_LABELS } from "./labels";
@@ -108,6 +115,82 @@ function RangesField({
   );
 }
 
+const MONTH_CHOICES: { id: MonthsPreset; label: string }[] = [
+  { id: "all", label: "Toujours" },
+  { id: "winter", label: "Hiver" },
+  { id: "summer", label: "Été" },
+  { id: "custom", label: "Mois…" },
+];
+
+/** Mois d'une règle (T56) : toute l'année, hiver (nov. – mars), été (avr. – oct.) ou au choix. */
+function MonthsField({
+  months,
+  onChange,
+}: {
+  months: number[] | undefined;
+  onChange: (m: number[] | undefined) => void;
+}) {
+  const preset = monthsPreset(months);
+  const [choosing, setChoosing] = useState(preset === "custom");
+  const active = choosing ? "custom" : preset;
+  const pick = (id: MonthsPreset) => {
+    setChoosing(id === "custom");
+    if (id === "all") onChange(undefined);
+    else if (id === "winter") onChange([...WINTER_MONTHS]);
+    else if (id === "summer") onChange([...SUMMER_MONTHS]);
+    else onChange(months ?? [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]);
+  };
+  return (
+    <div className="flex flex-col gap-1.5">
+      <span className="text-xs text-muted">Période</span>
+      <div
+        role="radiogroup"
+        aria-label="Période"
+        className="flex gap-1 rounded-[10px] bg-chip p-[3px]"
+      >
+        {MONTH_CHOICES.map((c) => (
+          <button
+            key={c.id}
+            type="button"
+            role="radio"
+            aria-checked={active === c.id}
+            onClick={() => pick(c.id)}
+            className={`flex-1 rounded-[8px] px-1.5 py-1.5 text-xs font-medium ${
+              active === c.id ? "bg-surface shadow-[0_1px_2px_rgba(0,0,0,0.08)]" : ""
+            }`}
+          >
+            {c.label}
+          </button>
+        ))}
+      </div>
+      {active === "custom" && (
+        <div className="grid grid-cols-6 gap-1" role="group" aria-label="Mois">
+          {MONTH_SHORT.map((name, i) => {
+            const month = i + 1;
+            const on = months?.includes(month) ?? true;
+            return (
+              <button
+                key={month}
+                type="button"
+                aria-pressed={on}
+                onClick={() => {
+                  const list = months ?? [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
+                  onChange(
+                    on ? list.filter((m) => m !== month) : [...list, month].sort((a, b) => a - b),
+                  );
+                }}
+                className={`h-8 rounded-[8px] text-[11px] font-medium ${on ? "bg-ink text-bg" : "bg-chip"}`}
+              >
+                {name}
+              </button>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function RuleEditor({
   rule,
   onChange,
@@ -157,6 +240,14 @@ function RuleEditor({
           );
         })}
       </div>
+      <MonthsField
+        months={rule.months}
+        onChange={(months) => {
+          const next = { ...rule, months };
+          if (months === undefined) delete next.months;
+          onChange(next);
+        }}
+      />
       <RangesField ranges={rule.ranges} onChange={(ranges) => onChange({ ...rule, ranges })} />
       <DecimalField
         label="Prix"
@@ -290,8 +381,27 @@ export function GridFields({
           <div className="flex flex-col gap-3">
             <span className="text-xs text-muted">
               Règles appliquées dans l&apos;ordre : la première qui couvre un moment fixe son prix.
-              Chaque minute de la semaine doit être couverte.
+              Chaque minute de la semaine doit être couverte, tous les mois de l&apos;année.
             </span>
+            <label className="flex items-start gap-2 text-[13px]">
+              <input
+                type="checkbox"
+                checked={contract.dayStartHour === 6}
+                onChange={(e) => {
+                  const next = { ...contract, dayStartHour: 6 as const };
+                  if (!e.target.checked) delete (next as { dayStartHour?: 6 }).dayStartHour;
+                  onChange(next);
+                }}
+                className="mt-0.5 size-4 accent-[var(--color-grid)]"
+              />
+              <span className="flex flex-col gap-0.5">
+                La journée commence à 6 h
+                <span className="text-[11px] text-subtle text-pretty">
+                  Avant 6 h, le jour et la saison sont ceux de la veille : la nuit du dimanche au
+                  lundi compte encore pour le week-end.
+                </span>
+              </span>
+            </label>
             {contract.rules.map((rule, i) => (
               <RuleEditor
                 key={i}

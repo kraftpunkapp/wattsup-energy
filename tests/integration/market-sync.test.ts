@@ -21,6 +21,7 @@ const SHA_B = "b".repeat(40);
 const BLEU = "scripts/tarifs/edf/bleu.js";
 const TEMPO = "scripts/tarifs/edf/tempo.js";
 const ESTIVAL = "scripts/tarifs/edf/zenEstival.js";
+const SOCAP = "scripts/tarifs/sobry/socap.js";
 const manifest = (paths: string[]) =>
   `export const TARIF_SCRIPTS = [\n${paths.map((p) => `  "${p}",`).join("\n")}\n];`;
 
@@ -62,14 +63,14 @@ describe("synchronisation du catalogue", () => {
   const t0 = new Date("2026-10-12T02:00:00Z");
 
   it("premier import : toutes les offres, rien de « nouveau »", async () => {
-    const { source } = fakeSource({ sha: SHA_A, files: files([BLEU, TEMPO, ESTIVAL]) });
+    const { source } = fakeSource({ sha: SHA_A, files: files([BLEU, TEMPO, SOCAP]) });
     const r = await syncMarket(source, { now: t0 });
     expect(r).toMatchObject({ status: "imported", offers: 4, compared: 3, added: [] });
     expect(await names()).toEqual([
       "EDF - Bleu",
       "EDF - Bleu Heures Creuses",
       "EDF - Tempo",
-      "EDF - Zen Estival",
+      "Sobry - SoCap",
     ]);
     const [state] = await db.select().from(marketSync);
     expect(state).toMatchObject({ sourceCommit: SHA_A, status: "ok", error: null });
@@ -165,7 +166,7 @@ describe("synchronisation du catalogue", () => {
 
 describe("lecture pour l'administration", () => {
   it("réservée à l'administrateur ; statut recalculé à la lecture", async () => {
-    const { source } = fakeSource({ sha: SHA_A, files: files([TEMPO, ESTIVAL]) });
+    const { source } = fakeSource({ sha: SHA_A, files: files([TEMPO, SOCAP]) });
     await syncMarket(source);
     const member = await createTestHousehold("market-member");
     await expect(getMarketCatalog(member)).rejects.toThrow(ForbiddenError);
@@ -176,7 +177,7 @@ describe("lecture pour l'administration", () => {
     expect(catalog.state?.sourceCommit).toBe(SHA_A);
     expect(catalog.offers.map((o) => [o.name, o.support.status])).toEqual([
       ["EDF - Tempo", "compared"],
-      ["EDF - Zen Estival", "pending"],
+      ["Sobry - SoCap", "pending"],
     ]);
     expect(catalog.offers[0]).toMatchObject({ provider: "EDF", regulated: true });
     expect(catalog.offers[0]?.priceUrl).toMatch(/^https:\/\/particulier\.edf\.fr\//);

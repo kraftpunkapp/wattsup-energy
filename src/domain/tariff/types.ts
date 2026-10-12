@@ -38,6 +38,8 @@ export interface CustomRule {
   days: number[];
   ranges: TimeRange[];
   price: number;
+  /** Mois (1 = janvier … 12) où la règle s'applique (T56, saisons) ; absent : toute l'année. */
+  months?: number[];
 }
 
 /** Contrat sur mesure : la première règle qui couvre une minute s'applique. */
@@ -45,6 +47,12 @@ export interface CustomContract {
   kind: "custom";
   subscriptionEurYear: number;
   rules: CustomRule[];
+  /**
+   * Heure où commence la journée pour les jours et les mois des règles (T56) : avec 6, une
+   * heure avant 6 h compte pour la veille (nuit du dimanche au lundi en week-end, saison de
+   * la veille). Absent ou 0 : minuit.
+   */
+  dayStartHour?: 0 | 6;
 }
 
 export type Contract = BaseContract | HphcContract | TempoContract | CustomContract;

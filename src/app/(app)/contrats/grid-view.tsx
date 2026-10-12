@@ -1,4 +1,5 @@
 import { StatTile, tiles } from "@/components/ui";
+import { monthsLabel } from "@/domain/tariff/seasons";
 import type { Contract, TempoColor, TimeRange } from "@/domain/tariff/types";
 
 // Lecture d'une grille de prix : chiffres en Instrument Sans tabulaire (lisibles en petit
@@ -141,11 +142,22 @@ export function GridView({ contract }: { contract: Contract }) {
       );
     case "custom":
       return (
-        <div className={tiles}>
-          {contract.rules.map((r) => (
-            <StatTile key={r.label} label={r.label} value={fmtPrice(r.price)} unit="€/kWh" />
-          ))}
-          <SubscriptionTile eurYear={contract.subscriptionEurYear} />
+        <div className="flex flex-col gap-2">
+          <div className={tiles}>
+            {contract.rules.map((r) => (
+              <StatTile
+                key={r.label}
+                label={r.label}
+                value={fmtPrice(r.price)}
+                unit="€/kWh"
+                sub={monthsLabel(r.months) ?? undefined}
+              />
+            ))}
+            <SubscriptionTile eurYear={contract.subscriptionEurYear} />
+          </div>
+          {contract.dayStartHour === 6 && (
+            <p className="text-[11px] text-subtle">Journée de 6 h à 6 h</p>
+          )}
         </div>
       );
   }

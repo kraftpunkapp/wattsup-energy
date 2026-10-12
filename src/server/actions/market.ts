@@ -23,13 +23,18 @@ export async function saveMeterPowerAction(kva: unknown): Promise<MarketActionRe
 }
 
 const offerName = z.string().min(1).max(80);
+const chosenDay = z.number().int().min(1).max(5).nullable();
 
-export async function addMarketOfferAction(name: unknown): Promise<MarketActionResult> {
+export async function addMarketOfferAction(
+  name: unknown,
+  day: unknown = null,
+): Promise<MarketActionResult> {
   const p = offerName.safeParse(name);
-  if (!p.success) return { ok: false, errors: ["offre introuvable"] };
+  const d = chosenDay.safeParse(day);
+  if (!p.success || !d.success) return { ok: false, errors: ["offre introuvable"] };
   const ctx = await getHouseholdContext();
   try {
-    await addMarketOffer(ctx, p.data);
+    await addMarketOffer(ctx, p.data, d.data);
   } catch (err) {
     if (err instanceof ContractError) return { ok: false, errors: err.messages };
     throw err;

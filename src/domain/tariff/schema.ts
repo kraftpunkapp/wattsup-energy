@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { toSegments } from "./base-hphc";
 import { validateCustomRules } from "./custom";
+import { SUMMER_MONTHS, WINTER_MONTHS } from "./seasons";
 import type { Contract } from "./types";
 
 // Validation des contrats saisis dans l'éditeur (T17). Prix TTC en €/kWh, abonnement
@@ -43,6 +44,7 @@ const tempo = z.object({
 const custom = z.object({
   kind: z.literal("custom"),
   subscriptionEurYear: subscription,
+  dayStartHour: z.union([z.literal(0), z.literal(6)]).optional(),
   rules: z
     .array(
       z.object({
@@ -50,6 +52,7 @@ const custom = z.object({
         days: z.array(z.number().int()),
         ranges: z.array(range).min(1),
         price,
+        months: z.array(z.number().int()).max(12).optional(),
       }),
     )
     .superRefine((rules, ctx) => {
@@ -83,6 +86,8 @@ export function parseContractInput(input: unknown): ParseContractResult {
 }
 
 const ALL_DAY = [{ from: "00:00", to: "24:00" }];
+const WEEK = [1, 2, 3, 4, 5, 6, 7];
+const NIGHT = [{ from: "22:00", to: "06:00" }];
 
 /**
  * Offres de référence pour démarrer la saisie : grilles TTC indicatives (puissance
@@ -123,6 +128,33 @@ export const CONTRACT_PRESETS: readonly ContractInput[] = [
       rules: [
         { label: "Week-end", days: [6, 7], ranges: ALL_DAY, price: 0.1876 },
         { label: "Semaine", days: [1, 2, 3, 4, 5], ranges: ALL_DAY, price: 0.2489 },
+      ],
+    },
+  },
+  {
+    // T56 : un jour choisi par l'abonné (ici le mercredi) au prix du week-end.
+    name: "Week-end + 1 jour",
+    contract: {
+      kind: "custom",
+      subscriptionEurYear: 238.56,
+      rules: [
+        { label: "Week-end et jour choisi", days: [3, 6, 7], ranges: ALL_DAY, price: 0.1691 },
+        { label: "Autres jours", days: [1, 2, 4, 5], ranges: ALL_DAY, price: 0.2259 },
+      ],
+    },
+  },
+  {
+    // T56 : prix d'hiver (novembre à mars) et d'été (avril à octobre), heures creuses la nuit.
+    name: "Saisons",
+    contract: {
+      kind: "custom",
+      subscriptionEurYear: 238.56,
+      dayStartHour: 6,
+      rules: [
+        { label: "Hiver HC", days: WEEK, ranges: NIGHT, price: 0.2131, months: WINTER_MONTHS },
+        { label: "Hiver HP", days: WEEK, ranges: ALL_DAY, price: 0.2722, months: WINTER_MONTHS },
+        { label: "Été HC", days: WEEK, ranges: NIGHT, price: 0.1405, months: SUMMER_MONTHS },
+        { label: "Été HP", days: WEEK, ranges: ALL_DAY, price: 0.1588, months: SUMMER_MONTHS },
       ],
     },
   },

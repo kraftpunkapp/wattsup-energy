@@ -58,7 +58,7 @@ describe("getContractComparison", () => {
     if (r.status !== "ok") throw new Error(r.status);
     expect(r).toMatchObject({ from: "2026-09-03", to: "2026-10-03", periodDays: 30, kwh: 720 });
     expect(r.coverage).toBe(1);
-    expect(r.rows).toHaveLength(4);
+    expect(r.rows).toHaveLength(CONTRACT_PRESETS.length);
     const base = r.rows.find((c) => c.contract.kind === "base");
     const expected = priceIntervals(
       rows.map((x) => ({ granularity: "hour" as const, start: x.start, kwh: x.kwh })),

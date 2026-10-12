@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { toSegments } from "../tariff/base-hphc";
 import { parseContractInput } from "../tariff/schema";
-import type { Contract, CustomRule, TimeRange } from "../tariff/types";
+import type { Contract, CustomContract, CustomRule, TimeRange } from "../tariff/types";
 import { literalAfter, type Literal } from "./literal";
 
 // Offres du marché (SPEC §7.12) : définitions de la source comparateur-abonnements-
@@ -59,11 +59,9 @@ export function parseSourceTariff(
 }
 
 /** Raison pour laquelle une offre n'est pas (encore) comparée. */
-export type PendingReason = "seasons" | "chosen-day" | "special-days" | "spot" | "unknown";
+export type PendingReason = "special-days" | "spot" | "unknown";
 
 export const REASON_LABELS: Record<PendingReason | "closed", string> = {
-  seasons: "prix selon la saison",
-  "chosen-day": "jour choisi par l'abonné",
   "special-days": "jours spéciaux (Zen Flex)",
   spot: "prix spot",
   unknown: "format non reconnu",
@@ -71,7 +69,13 @@ export const REASON_LABELS: Record<PendingReason | "closed", string> = {
 };
 
 export type OfferSupport =
-  | { status: "compared"; kind: Contract["kind"]; householdOffPeak: boolean }
+  | {
+      status: "compared";
+      kind: Contract["kind"];
+      householdOffPeak: boolean;
+      /** L'abonné choisit un jour de semaine au prix du week-end (Zen Week-End Plus). */
+      chosenDay: boolean;
+    }
   | { status: "pending"; reason: PendingReason }
   | { status: "never"; reason: "closed" };
 
@@ -99,10 +103,16 @@ export function describeOffer(t: SourceTariff): OfferInfo {
     .map(Number)
     .sort((a, b) => a - b);
   const first = powers[0] as number;
-  const built = build(t, first, null);
+  const chosenDay = hasChosenDay(t);
+  const built = build(t, first, null, chosenDay ? CHOOSABLE_DAYS[0] : undefined);
   const support: OfferSupport =
     "contract" in built
-      ? { status: "compared", kind: built.contract.kind, householdOffPeak: built.householdOffPeak }
+      ? {
+          status: "compared",
+          kind: built.contract.kind,
+          householdOffPeak: built.householdOffPeak,
+          chosenDay,
+        }
       : built.reason === "closed"
         ? { status: "never", reason: "closed" }
         : { status: "pending", reason: built.reason };
@@ -126,17 +136,32 @@ export interface MarketContract {
 /** Plages creuses supposées quand l'offre laisse le choix et que le foyer n'en a pas. */
 export const DEFAULT_OFF_PEAK: TimeRange[] = [{ from: "22:00", to: "06:00" }];
 
+/** Jours (ISO, du lundi au vendredi) qu'un abonné peut choisir au prix du week-end. */
+export const CHOOSABLE_DAYS = [1, 2, 3, 4, 5] as const;
+export const DAY_NAMES = ["lundi", "mardi", "mercredi", "jeudi", "vendredi", "samedi", "dimanche"];
+
+/** Nom de l'offre une fois ajoutée aux offres du foyer (jour choisi précisé). */
+export function marketContractName(name: string, chosenDay: number | null): string {
+  return (chosenDay ? `${name} (${DAY_NAMES[chosenDay - 1]})` : name).slice(0, 60);
+}
+
+const hasChosenDay = (t: SourceTariff) =>
+  isObject(t.dayRule) && t.dayRule.type === "weekly" && t.dayRule.userDaySetting !== undefined;
+
 /**
  * Contrat de l'offre pour la puissance `kva`, avec les plages creuses du foyer pour une
- * offre à plages libres. null si la puissance n'est pas publiée ou l'offre pas comparable.
+ * offre à plages libres et, pour une offre à jour choisi, ce jour (`chosenDay`, ISO, requis).
+ * null si la puissance n'est pas publiée ou l'offre pas comparable.
  */
 export function toContract(
   t: SourceTariff,
   kva: number,
   householdOffPeak: TimeRange[] | null,
+  chosenDay?: number,
 ): MarketContract | null {
   if (!(String(kva) in t.subscriptions)) return null;
-  const built = build(t, kva, householdOffPeak);
+  if (hasChosenDay(t) && !CHOOSABLE_DAYS.some((d) => d === chosenDay)) return null;
+  const built = build(t, kva, householdOffPeak, chosenDay);
   return "contract" in built ? built : null;
 }
 
@@ -146,6 +171,30 @@ const ALL_DAY: TimeRange[] = [{ from: "00:00", to: "24:00" }];
 const WEEK = [1, 2, 3, 4, 5, 6, 7];
 const TEMPO_TYPES = ["bleu", "blanc", "rouge"] as const;
 const TYPE_LABELS: Record<string, string> = { weekend: "Week-end", hsc: "Heures super creuses" };
+
+/** Saison d'après ses mois (« Hiver » si elle contient janvier, « Été » si juillet). */
+const seasonLabel = (key: string, months: number[]) =>
+  months.includes(7) ? "Été" : months.includes(1) ? "Hiver" : key;
+
+/** Créneau d'après le nom du type de la source (hscEte, hpHiver, eteSC…). */
+const slotLabel = (type: string): string | null =>
+  /^hsc|sc$/i.test(type)
+    ? "heures super creuses"
+    : /^hp/i.test(type)
+      ? "heures pleines"
+      : /^hc/i.test(type)
+        ? "heures creuses"
+        : null;
+
+const isoDay = (d: number) => (d === 0 ? 7 : d);
+const dayList = (v: unknown): number[] | null =>
+  Array.isArray(v) && v.length > 0 && v.every((d) => Number.isInteger(d) && d >= 0 && d <= 6)
+    ? [...new Set((v as number[]).map(isoDay))].sort()
+    : null;
+const monthList = (v: unknown): number[] | null =>
+  Array.isArray(v) && v.length > 0 && v.every((m) => Number.isInteger(m) && m >= 1 && m <= 12)
+    ? (v as number[])
+    : null;
 
 const eur = (cents: number) => Math.round(cents * 1e4) / 1e6;
 const hour = (h: number) => `${String(h).padStart(2, "0")}:00`;
@@ -166,17 +215,30 @@ const sameSegments = (a: TimeRange[], b: TimeRange[]) => {
   return norm(a) === norm(b);
 };
 
-const rangesSchema = z
-  .array(
-    z.object({ from: z.string().regex(/^\d{2}:\d{2}$/), to: z.string().regex(/^\d{2}:\d{2}$/) }),
-  )
-  .min(1);
+const rangeList = z.array(
+  z.object({ from: z.string().regex(/^\d{2}:\d{2}$/), to: z.string().regex(/^\d{2}:\d{2}$/) }),
+);
+const rangesSchema = rangeList.min(1);
 
-function build(t: SourceTariff, kva: number, household: TimeRange[] | null): Built {
+/**
+ * Plages d'un type de jour (`hcRanges.byDayType`), liste vide comprise. Une plage qui finit à
+ * « 00:00 » sans commencer à minuit n'est jamais atteinte par le calculateur de la source :
+ * elle est ignorée, comme chez elle.
+ */
+const byDayTypeRanges = (v: unknown): TimeRange[] | null => {
+  const r = rangeList.safeParse(v);
+  return r.success ? r.data.filter((x) => !(x.to === "00:00" && x.from !== "00:00")) : null;
+};
+
+function build(
+  t: SourceTariff,
+  kva: number,
+  household: TimeRange[] | null,
+  chosenDay?: number,
+): Built {
   const rule = t.dayRule;
   if (!isObject(rule) || typeof rule.type !== "string") return { reason: "unknown" };
   if (rule.type === "spot") return { reason: "spot" };
-  if (rule.type === "season") return { reason: "seasons" };
   if (!t.dayTypes) return { reason: "unknown" };
 
   const spec = (type: unknown): DayTypeSpec | undefined =>
@@ -238,28 +300,49 @@ function build(t: SourceTariff, kva: number, household: TimeRange[] | null): Bui
           price: eur(s.price),
         });
       }
-      const rest = withOffPeak(main, WEEK, "Heures pleines", "Heures creuses", "Autres heures");
+      const rest = withOffPeak(main, WEEK, offPeak, {
+        hp: "Heures pleines",
+        hc: "Heures creuses",
+        single: "Autres heures",
+      });
       if (!rest) return { reason: "unknown" };
       contract = { kind: "custom", subscriptionEurYear, rules: [...rules, ...rest] };
     }
   } else if (rule.type === "weekly") {
-    if (rule.userDaySetting !== undefined) return { reason: "chosen-day" };
     const days = rule.days;
     if (!isObject(days) || Object.keys(days).length !== 1) return { reason: "unknown" };
     const [type, list] = Object.entries(days)[0] as [string, unknown];
-    if (!Array.isArray(list) || list.some((d) => !Number.isInteger(d) || d < 0 || d > 6)) {
+    const listed = dayList(list);
+    if (!listed) return { reason: "unknown" };
+    // Jour choisi (Zen Week-End Plus) : un jour de semaine de plus au prix du week-end.
+    const choosing = rule.userDaySetting !== undefined;
+    if (choosing && (chosenDay === undefined || listed.includes(chosenDay))) {
       return { reason: "unknown" };
     }
-    const special = [...new Set((list as number[]).map((d) => (d === 0 ? 7 : d)))].sort();
+    const special = choosing ? [...listed, chosenDay as number].sort() : listed;
     const others = WEEK.filter((d) => !special.includes(d));
     const specialSpec = spec(type);
     const defaultSpec = spec(rule.default);
     if (!specialSpec || !defaultSpec) return { reason: "unknown" };
-    const label = TYPE_LABELS[type] ?? type;
-    const a = withOffPeak(specialSpec, special, `${label} HP`, `${label} HC`, label);
-    const b = withOffPeak(defaultSpec, others, "Semaine HP", "Semaine HC", "Semaine");
+    const label = choosing
+      ? `${TYPE_LABELS[type] ?? type} et ${DAY_NAMES[(chosenDay as number) - 1]}`
+      : (TYPE_LABELS[type] ?? type);
+    const a = withOffPeak(specialSpec, special, offPeak, {
+      hp: `${label} HP`,
+      hc: `${label} HC`,
+      single: label,
+    });
+    const b = withOffPeak(defaultSpec, others, offPeak, {
+      hp: "Semaine HP",
+      hc: "Semaine HC",
+      single: "Semaine",
+    });
     if (!a || !b) return { reason: "unknown" };
     contract = { kind: "custom", subscriptionEurYear, rules: [...a, ...b] };
+  } else if (rule.type === "season") {
+    const built = seasonRules(rule);
+    if ("reason" in built) return built;
+    contract = { kind: "custom", subscriptionEurYear, ...built };
   } else if (rule.type === "calendar") {
     if (rule.calendar === "ejp-edf") return { reason: "closed" };
     if (rule.calendar === "zenflex-sobriete") return { reason: "special-days" };
@@ -284,23 +367,131 @@ function build(t: SourceTariff, kva: number, household: TimeRange[] | null): Bui
   if (!checked.success) return { reason: "unknown" };
   return { contract: checked.data.contract, householdOffPeak, assumedOffPeak };
 
-  /** Règles d'un type de jour sur `days` : prix unique, ou heures creuses puis pleines. */
+  /**
+   * Règles d'un type de jour sur `days` (et `months`) : prix unique, ou heures creuses puis
+   * pleines. Sans plage creuse (liste vide), tout est au prix des heures pleines.
+   */
   function withOffPeak(
     s: DayTypeSpec,
     days: number[],
-    hpLabel: string,
-    hcLabel: string,
-    singleLabel: string,
+    ranges: () => TimeRange[] | null,
+    labels: { hp: string; hc: string; single: string },
+    months?: number[],
   ): CustomRule[] | null {
+    const m = months ? { months } : {};
     if (days.length === 0) return [];
-    if ("price" in s) return [{ label: singleLabel, days, ranges: ALL_DAY, price: eur(s.price) }];
-    if (s.HP === s.HC) return [{ label: singleLabel, days, ranges: ALL_DAY, price: eur(s.HP) }];
-    const ranges = offPeak();
-    if (!ranges) return null;
-    return [
-      { label: hcLabel, days, ranges, price: eur(s.HC) },
-      { label: hpLabel, days, ranges: ALL_DAY, price: eur(s.HP) },
+    const single = (price: number) => [
+      { label: labels.single, days, ranges: ALL_DAY, price: eur(price), ...m },
     ];
+    if ("price" in s) return single(s.price);
+    if (s.HP === s.HC) return single(s.HP);
+    const hc = ranges();
+    if (!hc) return null;
+    if (hc.length === 0) return single(s.HP);
+    // Heures creuses toute la journée (week-end Enercoop) : un seul prix.
+    if (toSegments(hc).reduce((a, [from, to]) => a + to - from, 0) >= 1440) return single(s.HC);
+    return [
+      { label: labels.hc, days, ranges: hc, price: eur(s.HC), ...m },
+      { label: labels.hp, days, ranges: ALL_DAY, price: eur(s.HP), ...m },
+    ];
+  }
+
+  /**
+   * Tarif à saisons (Zen Estival, Enercoop Flexibilité 2 saisons, Alterna HSC) : pour chaque
+   * saison, ses fenêtres horaires propres, son week-end éventuel, puis ses autres heures,
+   * restreints à ses mois. « Avant 6 h, c'est la veille » devient `dayStartHour: 6`.
+   */
+  function seasonRules(
+    r: Record<string, unknown>,
+  ): Pick<CustomContract, "rules" | "dayStartHour"> | { reason: PendingReason } {
+    if (r.calendarOverride !== undefined) return { reason: "special-days" };
+    if (!isObject(r.seasons)) return { reason: "unknown" };
+    const shift = r.previousDayBefore;
+    if (shift !== undefined && shift !== 6) return { reason: "unknown" };
+    const subTypes = r.hourSubTypes;
+    if (subTypes !== undefined && !isObject(subTypes)) return { reason: "unknown" };
+    const weekend = r.weekendDays === undefined ? null : dayList(r.weekendDays);
+    if (r.weekendDays !== undefined && !weekend) return { reason: "unknown" };
+    const hc = t.hcRanges;
+    const rangesOf = (type: string) => () =>
+      isObject(hc) && isObject(hc.byDayType) ? byDayTypeRanges(hc.byDayType[type]) : offPeak();
+
+    const rules: CustomRule[] = [];
+    const push = (more: CustomRule[] | null) => {
+      if (!more) return false;
+      for (const rule of more) {
+        let label = rule.label;
+        for (let n = 2; rules.some((x) => x.label === label); n++) label = `${rule.label} ${n}`;
+        rules.push({ ...rule, label });
+      }
+      return true;
+    };
+
+    for (const [type, value] of Object.entries(r.seasons)) {
+      const months = isObject(value) ? monthList(value.months) : null;
+      const main = spec(type);
+      if (!months || !main || !isObject(value)) return { reason: "unknown" };
+      const season = seasonLabel(type, months);
+
+      // Fenêtres horaires de la saison, regroupées par type (un prix chacun).
+      const windows = subTypes?.[type];
+      if (windows !== undefined) {
+        if (!Array.isArray(windows)) return { reason: "unknown" };
+        const byType = new Map<string, TimeRange[]>();
+        for (const w of windows as unknown[]) {
+          if (!isObject(w) || typeof w.dayType !== "string") return { reason: "unknown" };
+          const { fromHour, toHour } = w;
+          if (typeof fromHour !== "number" || typeof toHour !== "number") {
+            return { reason: "unknown" };
+          }
+          const list = byType.get(w.dayType) ?? [];
+          list.push({ from: hour(fromHour), to: hour(toHour) });
+          byType.set(w.dayType, list);
+        }
+        for (const [subType, ranges] of byType) {
+          const s = spec(subType);
+          if (!s || !("price" in s)) return { reason: "unknown" };
+          const slot = slotLabel(subType) ?? `${ranges[0]?.from.slice(0, 2)} h`;
+          push([{ label: `${season} ${slot}`, days: WEEK, ranges, price: eur(s.price), months }]);
+        }
+      }
+
+      // Week-end de la saison, puis les autres jours.
+      let days = WEEK;
+      if (value.weekendType !== undefined) {
+        const w = spec(value.weekendType);
+        if (!weekend || !w || typeof value.weekendType !== "string") return { reason: "unknown" };
+        const label = `${season} week-end`;
+        const ok = push(
+          withOffPeak(
+            w,
+            weekend,
+            rangesOf(value.weekendType),
+            { hp: `${label} HP`, hc: `${label} HC`, single: label },
+            months,
+          ),
+        );
+        if (!ok) return { reason: "unknown" };
+        days = WEEK.filter((d) => !weekend.includes(d));
+      }
+      const hint = "price" in main ? slotLabel(type) : null;
+      const label = hint ? `${season} ${hint}` : season;
+      const ok = push(
+        withOffPeak(
+          main,
+          days,
+          rangesOf(type),
+          {
+            hp: `${label} HP`,
+            hc: `${label} HC`,
+            single: label,
+          },
+          months,
+        ),
+      );
+      if (!ok) return { reason: "unknown" };
+    }
+    return { rules, ...(shift === 6 ? { dayStartHour: 6 as const } : {}) };
   }
 }
 
