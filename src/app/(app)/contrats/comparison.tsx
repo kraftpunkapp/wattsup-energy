@@ -30,7 +30,14 @@ export function ComparisonEmpty({ comparison }: { comparison: Exclude<ContractCo
   );
 }
 
-export function ComparisonBanner({ comparison }: { comparison: Ok }) {
+export function ComparisonBanner({
+  comparison,
+  market,
+}: {
+  comparison: Ok;
+  /** Offre du marché moins chère que toutes les offres du foyer (SPEC §7.12) ; null sinon. */
+  market: { name: string; annualCents: number; deltaAnnualCents: number | null } | null;
+}) {
   const best = comparison.rows[0];
   const current = comparison.rows.find((r) => r.isCurrent);
   if (!best) return null;
@@ -59,6 +66,21 @@ export function ComparisonBanner({ comparison }: { comparison: Ok }) {
           <>Votre contrat actuel est déjà le moins cher des offres comparées</>
         )}
       </p>
+      {market && (
+        <p className="text-sm text-pretty">
+          Meilleure offre du marché : {market.name},{" "}
+          {market.deltaAnnualCents !== null && market.deltaAnnualCents < 0 ? (
+            <>
+              <span className="font-semibold text-panel-positive tabular-nums">
+                −{eur(-market.deltaAnnualCents)}/an
+              </span>{" "}
+              par rapport à votre contrat actuel
+            </>
+          ) : (
+            <span className="font-semibold tabular-nums">{eur(market.annualCents)}/an</span>
+          )}
+        </p>
+      )}
       <span className="text-xs text-panel-muted tabular-nums">
         {fmtDate(comparison.from)} – {fmtDate(comparison.to)} ·{" "}
         {Math.round(comparison.kwh).toLocaleString("fr-FR")} kWh soutirés

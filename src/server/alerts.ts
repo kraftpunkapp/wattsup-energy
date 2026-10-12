@@ -29,6 +29,7 @@ import { householdContextFor, type HouseholdContext } from "./context";
 import { listContracts } from "./contracts";
 import { listFuelEvents } from "./fuel";
 import { getLastPushAt } from "./ingest/status";
+import { knownMarketSaving } from "./market/compare";
 import { mailConfigured, sendMail } from "./mail";
 import { gridIntervals } from "./queries/overview";
 import { tempoColorsFor } from "./tempo/sync";
@@ -161,6 +162,7 @@ export async function alertFacts(ctx: HouseholdContext, now = new Date()): Promi
     ha: lastPush ? { lastPushMs: lastPush.getTime(), granularity: ctx.granularity } : null,
     solar,
     budget,
+    market: knownMarketSaving(ctx.householdId),
   };
 }
 

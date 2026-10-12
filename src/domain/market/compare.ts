@@ -1,0 +1,141 @@
+import { compareContracts } from "../tariff/compare";
+import type { Contract, PriceableInterval, PricingContext, TimeRange } from "../tariff/types";
+import {
+  DEFAULT_OFF_PEAK,
+  describeOffer,
+  REASON_LABELS,
+  toContract,
+  type SourceTariff,
+} from "./offer";
+
+// Comparaison des offres du marché sur la consommation du foyer (SPEC §7.12) : même moteur,
+// même période et même référence (le contrat actuel) que la comparaison des contrats du
+// foyer. Pur : le serveur fournit le catalogue, la consommation et les couleurs Tempo.
+
+/** Puissances souscrites proposées (kVA). */
+export const METER_POWERS = [3, 6, 9, 12, 15, 18, 24, 30, 36] as const;
+export type MeterPower = (typeof METER_POWERS)[number];
+
+export function parseMeterPower(value: unknown): MeterPower | null {
+  const n = typeof value === "string" ? Number(value) : value;
+  return METER_POWERS.find((p) => p === n) ?? null;
+}
+
+/**
+ * Plages creuses du compteur, déduites du contrat actuel : celles d'un contrat HP/HC, celles
+ * de Tempo (22 h – 6 h) ; null sinon (une offre à plages libres les suppose alors).
+ */
+export function householdOffPeak(current: Contract | null): TimeRange[] | null {
+  if (current?.kind === "hphc") return current.hcRanges;
+  if (current?.kind === "tempo") return DEFAULT_OFF_PEAK;
+  return null;
+}
+
+export interface MarketRow {
+  name: string;
+  provider: string;
+  offer: string;
+  regulated: boolean;
+  gridDate: string;
+  kind: Contract["kind"];
+  contract: Contract;
+  annualCents: number;
+  /** Écart annuel avec le contrat actuel (négatif = économie) ; null sans contrat actuel. */
+  deltaAnnualCents: number | null;
+  /** Heures creuses libres sans plages connues du foyer : 22 h – 6 h supposées. */
+  assumedOffPeak: boolean;
+  approximate: boolean;
+  assumedTempoDays: number;
+  priceUrl: string | null;
+  subscriptionUrl: string | null;
+}
+
+export interface MarketComparison {
+  rows: MarketRow[];
+  currentAnnualCents: number | null;
+  /** Offres pas encore comparables, avec leur raison (les offres fermées n'y figurent pas). */
+  pending: { name: string; reason: string }[];
+  /** Offres comparables mais non proposées à cette puissance. */
+  unavailable: number;
+}
+
+const CURRENT = "\u0000contrat-actuel";
+
+export function compareMarket(
+  offers: readonly { name: string; definition: SourceTariff }[],
+  kva: number,
+  current: Contract | null,
+  intervals: readonly PriceableInterval[],
+  ctx: PricingContext,
+  periodDays: number,
+): MarketComparison {
+  const offPeak = householdOffPeak(current);
+  const pending: MarketComparison["pending"] = [];
+  let unavailable = 0;
+  const candidates: {
+    name: string;
+    definition: SourceTariff;
+    assumedOffPeak: boolean;
+    contract: Contract;
+  }[] = [];
+
+  for (const o of offers) {
+    const info = describeOffer(o.definition);
+    if (info.support.status === "pending") {
+      pending.push({ name: o.name, reason: REASON_LABELS[info.support.reason] });
+      continue;
+    }
+    if (info.support.status === "never") continue;
+    const built = toContract(o.definition, kva, offPeak);
+    if (!built) {
+      unavailable += 1;
+      continue;
+    }
+    candidates.push({ ...o, assumedOffPeak: built.assumedOffPeak, contract: built.contract });
+  }
+
+  const compared = compareContracts(
+    [
+      ...(current ? [{ id: CURRENT, name: CURRENT, isCurrent: true, contract: current }] : []),
+      ...candidates.map((c) => ({
+        id: c.name,
+        name: c.name,
+        isCurrent: false,
+        contract: c.contract,
+      })),
+    ],
+    intervals,
+    ctx,
+    periodDays,
+  );
+  const byName = new Map(candidates.map((c) => [c.name, c]));
+  const rows: MarketRow[] = compared.flatMap((r) => {
+    const c = byName.get(r.id);
+    if (!c) return [];
+    const info = describeOffer(c.definition);
+    return [
+      {
+        name: c.name,
+        provider: info.provider,
+        offer: info.offer,
+        regulated: info.regulated,
+        gridDate: info.gridDate,
+        kind: c.contract.kind,
+        contract: c.contract,
+        annualCents: r.annualCents,
+        deltaAnnualCents: r.deltaAnnualCents,
+        assumedOffPeak: c.assumedOffPeak,
+        approximate: r.approximate,
+        assumedTempoDays: r.assumedTempoDays,
+        priceUrl: c.definition.price_url || null,
+        subscriptionUrl: c.definition.subscription_url || null,
+      },
+    ];
+  });
+  return {
+    rows,
+    currentAnnualCents: compared.find((r) => r.isCurrent)?.annualCents ?? null,
+    pending: pending.sort((a, b) => a.name.localeCompare(b.name, "fr")),
+    unavailable,
+  };
+}

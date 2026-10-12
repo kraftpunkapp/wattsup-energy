@@ -10,7 +10,14 @@ import {
 
 const H = 3_600_000;
 const NOW = Date.parse("2026-10-20T12:00:00Z");
-const none: AlertFacts = { now: NOW, fuels: [], ha: null, solar: null, budget: null };
+const none: AlertFacts = {
+  now: NOW,
+  fuels: [],
+  ha: null,
+  solar: null,
+  budget: null,
+  market: null,
+};
 const run = (f: Partial<AlertFacts>, s = DEFAULT_ALERT_SETTINGS) =>
   evaluateAlerts({ ...none, ...f }, s);
 
@@ -174,5 +181,32 @@ describe("alertes par email", () => {
     expect(
       alertsToSend(alerts, DEFAULT_ALERT_SETTINGS, [{ key: "ha_silent", level: 1 }], "push"),
     ).toHaveLength(1);
+  });
+});
+
+describe("offre du marché moins chère", () => {
+  it("au-delà du seuil (50 €/an par défaut), une alerte par offre", () => {
+    expect(run({ market: { name: "EDF - Tempo", savingCents: 4_999 } })).toEqual([]);
+    const [alert] = run({ market: { name: "EDF - Tempo", savingCents: 6_000 } });
+    expect(alert).toMatchObject({
+      key: "market_offer:EDF - Tempo",
+      kind: "market_offer",
+      level: 1,
+      href: "/contrats",
+      nav: "contracts",
+    });
+    expect(alert?.text).toContain("60 €");
+    expect(run({ market: { name: "EDF - Tempo", savingCents: 10_000 } })[0]?.level).toBe(2);
+  });
+
+  it("désactivable, seuil réglable", () => {
+    const facts = { ...none, market: { name: "X - Y", savingCents: 6_000 } };
+    const off = parseAlertSettings({ marketOffer: { enabled: false, email: false, euros: 50 } });
+    expect(evaluateAlerts(facts, off)).toEqual([]);
+    const high = parseAlertSettings({ marketOffer: { enabled: true, email: false, euros: 100 } });
+    expect(evaluateAlerts(facts, high)).toEqual([]);
+    expect(parseAlertSettings({ marketOffer: { enabled: true, email: false, euros: 5 } })).toEqual(
+      DEFAULT_ALERT_SETTINGS,
+    );
   });
 });

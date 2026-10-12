@@ -5,11 +5,18 @@ import { monthLabel } from "./overview";
 import type { NavId } from "./profile";
 
 // Alertes (SPEC §9, Vue d'ensemble « À surveiller ») : stock de combustible bas, Home
-// Assistant silencieux, production solaire en baisse, dépense du mois en hausse. Calculées à
+// Assistant silencieux, production solaire en baisse, dépense du mois en hausse, offre du
+// marché nettement moins chère que le contrat actuel (SPEC §7.12). Calculées à
 // partir de faits réunis par le serveur (seulement pour les modules du profil). Chaque alerte a
 // un niveau (1, 2 = plus grave) : une alerte masquée revient si elle s'aggrave. Pur.
 
-export const ALERT_KINDS = ["fuel_stock", "ha_silent", "solar_yield", "budget"] as const;
+export const ALERT_KINDS = [
+  "fuel_stock",
+  "ha_silent",
+  "solar_yield",
+  "budget",
+  "market_offer",
+] as const;
 export type AlertKind = (typeof ALERT_KINDS)[number];
 
 /** Chaque alerte : affichée ou non, seuil, et envoi par email (décoché par défaut). */
@@ -18,6 +25,7 @@ export interface AlertSettings {
   haSilent: { enabled: boolean; email: boolean; hours: number };
   solarYield: { enabled: boolean; email: boolean; percent: number };
   budget: { enabled: boolean; email: boolean; percent: number };
+  marketOffer: { enabled: boolean; email: boolean; euros: number };
 }
 
 export const DEFAULT_ALERT_SETTINGS: AlertSettings = {
@@ -25,6 +33,7 @@ export const DEFAULT_ALERT_SETTINGS: AlertSettings = {
   haSilent: { enabled: true, email: false, hours: 6 },
   solarYield: { enabled: true, email: false, percent: 15 },
   budget: { enabled: true, email: false, percent: 15 },
+  marketOffer: { enabled: true, email: false, euros: 50 },
 };
 
 /** Réglage de chaque type d'alerte. */
@@ -33,6 +42,7 @@ export const SETTINGS_OF: Record<AlertKind, keyof AlertSettings> = {
   ha_silent: "haSilent",
   solar_yield: "solarYield",
   budget: "budget",
+  market_offer: "marketOffer",
 };
 
 /** Bornes des seuils réglables (Réglages › Alertes). */
@@ -41,6 +51,7 @@ export const ALERT_LIMITS = {
   haSilent: { key: "hours", min: 2, max: 72 },
   solarYield: { key: "percent", min: 5, max: 50 },
   budget: { key: "percent", min: 5, max: 100 },
+  marketOffer: { key: "euros", min: 10, max: 500 },
 } as const;
 
 /**
@@ -86,6 +97,8 @@ export interface AlertFacts {
     cents: number;
     previousCents: number | null;
   } | null;
+  /** Offre du marché la moins chère et son économie annuelle sur le contrat actuel. */
+  market: { name: string; savingCents: number } | null;
 }
 
 export interface Alert {
@@ -185,6 +198,22 @@ function budgetAlert(b: NonNullable<AlertFacts["budget"]>, s: AlertSettings): Al
   };
 }
 
+function marketAlert(m: NonNullable<AlertFacts["market"]>, s: AlertSettings): Alert | null {
+  const threshold = s.marketOffer.euros * 100;
+  if (!s.marketOffer.enabled || m.savingCents < threshold) return null;
+  return {
+    // Une alerte par offre : une autre offre plus avantageuse est signalée à son tour.
+    key: `market_offer:${m.name}`,
+    kind: "market_offer",
+    level: m.savingCents >= 2 * threshold ? 2 : 1,
+    title: "Une offre moins chère que votre contrat",
+    text: `${m.name} : environ ${formatEurFromCents(m.savingCents, 0)} d'économie par an sur votre consommation des 12 derniers mois. À vérifier sur le site du fournisseur.`,
+    href: "/contrats",
+    action: "Comparer les offres",
+    nav: "contracts",
+  };
+}
+
 /** Alertes en cours, les plus graves d'abord (puis dans l'ordre des types). */
 export function evaluateAlerts(facts: AlertFacts, settings: AlertSettings): Alert[] {
   const alerts = [
@@ -192,6 +221,7 @@ export function evaluateAlerts(facts: AlertFacts, settings: AlertSettings): Aler
     facts.ha ? haAlert(facts.ha, facts.now, settings) : null,
     facts.solar ? solarAlert(facts.solar.deviations, settings) : null,
     facts.budget ? budgetAlert(facts.budget, settings) : null,
+    facts.market ? marketAlert(facts.market, settings) : null,
   ].filter((a): a is Alert => a !== null);
   return alerts.sort(
     (a, b) => b.level - a.level || ALERT_KINDS.indexOf(a.kind) - ALERT_KINDS.indexOf(b.kind),

@@ -28,7 +28,7 @@ appareils, combien de sacs de granulés commander, quand les panneaux seront rem
 - **Vue d'ensemble** : coût du mois et projection de l'année, origine de la consommation
   (réseau, solaire, batterie), talon de consommation, heures conseillées pour consommer.
 - **Contrats** : Base, Heures creuses, Tempo ; historique des prix et comparaison des offres
-  heure par heure, sur votre propre consommation.
+  heure par heure, sur votre propre consommation, y compris celles des fournisseurs du marché.
 - **Chauffage** : granulés et bois (stock, achats, sacs versés), coût par saison corrigé de
   la météo, prévision de réapprovisionnement.
 - **Rentabilité** : retour sur investissement des panneaux solaires et de la batterie,
@@ -77,6 +77,10 @@ OVHcloud, dans le cadre du RGPD.
 - Seuls les emails (envoyés via Brevo) et les notifications push (services de votre
   navigateur : Google, Apple ou Mozilla) passent par des prestataires techniques, uniquement
   pour vous être remis.
+- Les offres du marché proviennent des données ouvertes de
+  [comparateur-abonnements-electricite.fr](https://comparateur-abonnements-electricite.fr) :
+  WattsUp télécharge leur catalogue et fait le calcul chez lui, sans rien envoyer de votre
+  consommation.
 
 ## Code source
 
@@ -90,6 +94,19 @@ WattsUp vous rend service ? Vous pouvez soutenir son développement :
 <a href="https://www.buymeacoffee.com/kraftpunk"><img src="https://img.buymeacoffee.com/button-api/?text=Buy%20me%20a%20coffee&emoji=%E2%98%95&slug=kraftpunk&button_colour=FFDD00&font_colour=000000&font_family=Inter&outline_colour=000000&coffee_colour=ffffff" alt="Buy me a coffee" height="48"></a>
 
 ## Notes de version
+
+### 1.3.0 — 12 octobre 2026
+
+- **Offres du marché** sur la page Contrats : les offres des fournisseurs (EDF dont les tarifs
+  réglementés, TotalEnergies, Engie, Mint, Alpiq, Enercoop, La Bellenergie, Alterna…) sont
+  rejouées sur votre consommation réelle, avec l'écart par rapport à votre contrat. Indiquez la
+  puissance de votre compteur, consultez la grille officielle, ajoutez une offre à vos offres en
+  un clic. Catalogue issu de
+  [comparateur-abonnements-electricite.fr](https://comparateur-abonnements-electricite.fr),
+  vérifié chaque jour ; à confirmer sur le site du fournisseur avant toute décision.
+- Nouvelle alerte quand une offre du marché vous ferait économiser au moins 50 € par an
+  (seuil réglable).
+- Comparaison des contrats « sur mesure » plus rapide.
 
 ### 1.2.0 — 9 octobre 2026
 

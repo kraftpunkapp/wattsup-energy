@@ -65,17 +65,25 @@ export function customPricer(contract: CustomContract): Pricer {
   if (errors.length > 0) throw new Error(`contrat invalide : ${errors.join(" ; ")}`);
   const table = buildTable(contract.rules);
 
+  // Une année horaire ne compte que 168 heures de semaine distinctes : parts mémorisées.
+  const memo = new Map<number, Share[]>();
+
   /** Parts par règle sur [start, start + length) minutes de la semaine. */
   const shares = (start: number, length: number): Share[] => {
+    const memoKey = start * 2048 + length;
+    const known = memo.get(memoKey);
+    if (known) return known;
     const counts = new Map<number, number>();
     for (let i = 0; i < length; i++) {
       const rule = table[(start + i) % WEEK_MIN] as number;
       counts.set(rule, (counts.get(rule) ?? 0) + 1);
     }
-    return [...counts].map(([index, count]) => {
+    const result = [...counts].map(([index, count]) => {
       const rule = contract.rules[index] as CustomRule;
       return { key: rule.label, price: rule.price, fraction: count / length };
     });
+    memo.set(memoKey, result);
+    return result;
   };
 
   return {

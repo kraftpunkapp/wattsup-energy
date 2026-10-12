@@ -43,6 +43,8 @@ export interface HouseholdSettings {
   alerts?: unknown;
   /** Vue d'ensemble (T50) : `{ hidden: [...] }`, blocs masqués ; absent, tout est affiché. */
   overview?: unknown;
+  /** Puissance souscrite du compteur en kVA (T55, offres du marché) ; absente tant que non saisie. */
+  meterPowerKva?: number;
 }
 
 /** Commune du foyer pour la météo ; coordonnées arrondies à 0,01° (SPEC §7.9). */

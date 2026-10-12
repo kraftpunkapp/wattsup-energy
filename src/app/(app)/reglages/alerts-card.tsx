@@ -39,6 +39,14 @@ const ROWS: { name: Name; label: string; before: string; unit: string; after: st
     unit: "%",
     after: "au-dessus des mêmes jours de l'an dernier (à partir du 7 du mois).",
   },
+  {
+    name: "marketOffer",
+    label: "Offre du marché moins chère",
+    before: "Économie d'au moins",
+    unit: "€/an",
+    after:
+      "par rapport à votre contrat actuel, sur vos 12 derniers mois (puissance du compteur renseignée).",
+  },
 ];
 
 const inputClass =

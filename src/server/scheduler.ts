@@ -2,6 +2,7 @@ import { localParts } from "@/lib/time";
 import { emailAlertsForAll } from "./alerts";
 import { pruneIngestLog } from "./ingest/persist";
 import { mailConfigured } from "./mail";
+import { refreshMarketOffersForAll } from "./market/compare";
 import { GitHubOfferSource } from "./market/source";
 import { marketSyncEnabled, syncMarket } from "./market/sync";
 import { pushAlertsForAll, pushConfigured } from "./push";
@@ -60,6 +61,14 @@ const JOBS: Job[] = [
       if (r.status === "unchanged") return `catalogue inchangé (${r.commit.slice(0, 7)})`;
       return `${r.offers} offres, ${r.compared} comparées (+${r.added.length} −${r.removed.length} ~${r.updated.length})`;
     },
+  },
+  {
+    // Offres du marché de chaque foyer (puissance renseignée) : l'alerte « offre plus
+    // avantageuse » part sans attendre une visite de la page Contrats.
+    name: "offres des foyers",
+    at: ["04:30"],
+    enabled: () => true,
+    run: async () => `${(await refreshMarketOffersForAll()).households} foyer(s)`,
   },
   {
     // Alertes par email et en push : toutes les heures (une alerte n'est envoyée qu'une fois

@@ -228,6 +228,7 @@ async function SettingsSection({
               "haSilent",
               ...(p.solar ? (["solarYield"] as const) : []),
               "budget",
+              "marketOffer",
             ]}
           />
         </div>
