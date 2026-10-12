@@ -1,7 +1,11 @@
 import { CoverageBadge } from "@/components/coverage-badge";
 import { EmptyState } from "@/components/empty-state";
-import { Badge, Notice } from "@/components/ui";
+import { Notice } from "@/components/ui";
+import { isOldGrid } from "@/domain/market/offer";
+import type { ContractWithPeriods } from "@/server/contracts";
+import type { MarketOffers } from "@/server/market/compare";
 import type { ContractComparison } from "@/server/queries/contracts";
+import type { ComparedRow, RowOrigin } from "./comparison-card";
 import { KIND_LABELS } from "./labels";
 
 const eur = (cents: number) => `${Math.round(cents / 100).toLocaleString("fr-FR")} €`;
@@ -30,57 +34,51 @@ export function ComparisonEmpty({ comparison }: { comparison: Exclude<ContractCo
   );
 }
 
+/** Écart sous lequel deux offres coûtent la même chose (un euro par an). */
+const SAME_CENTS = 100;
+
+/**
+ * Bandeau du haut : l'offre la moins chère du classement (offres simulées, à venir et du
+ * marché ; les anciens contrats n'en sont pas), comparée au contrat actuel.
+ */
 export function ComparisonBanner({
   comparison,
-  market,
+  rows,
 }: {
   comparison: Ok;
-  /** Offre du marché moins chère que toutes les offres du foyer (SPEC §7.12) ; null sinon. */
-  market: { name: string; annualCents: number; deltaAnnualCents: number | null } | null;
+  rows: readonly ComparedRow[];
 }) {
-  const best = comparison.rows[0];
-  const current = comparison.rows.find((r) => r.isCurrent);
-  if (!best) return null;
+  const current = rows.find((r) => r.origin === "current");
+  const best = rows.find((r) => r.origin !== "current" && r.origin !== "past");
+  if (!best && !current) return null;
   const partial = comparison.periodDays < 365;
-  const saving = current && best.id !== current.id ? current.annualCents - best.annualCents : 0;
+  const saving = current && best?.deltaAnnualCents != null ? -best.deltaAnnualCents : 0;
+  const title = (r: ComparedRow) => (r.provider ? `${r.provider} - ${r.name}` : r.name);
 
   return (
     <section className="flex flex-col gap-1.5 rounded-card border border-panel-edge bg-panel p-5 text-panel-ink">
       <span className="text-[13px] text-panel-muted">
-        Contrat le plus économique sur{" "}
+        Offre la plus économique sur{" "}
         {partial ? `${comparison.periodDays} jours de données` : "12 mois réels"}
       </span>
       <p className="text-[22px] leading-snug font-semibold tracking-tight text-pretty">
-        {!current ? (
+        {!current && best ? (
           <>
-            {best.name} :{" "}
+            {title(best)} :{" "}
             <span className="text-panel-positive tabular-nums">{eur(best.annualCents)}/an</span>
           </>
-        ) : saving > 0 ? (
+        ) : best && saving >= SAME_CENTS ? (
           <>
-            {best.name} :{" "}
+            {title(best)} :{" "}
             <span className="text-panel-positive tabular-nums">−{eur(saving)}/an</span> par rapport
             à votre contrat actuel
           </>
+        ) : best && saving > -SAME_CENTS ? (
+          <>Votre contrat actuel est au même prix que la meilleure offre comparée</>
         ) : (
           <>Votre contrat actuel est déjà le moins cher des offres comparées</>
         )}
       </p>
-      {market && (
-        <p className="text-sm text-pretty">
-          Meilleure offre du marché : {market.name},{" "}
-          {market.deltaAnnualCents !== null && market.deltaAnnualCents < 0 ? (
-            <>
-              <span className="font-semibold text-panel-positive tabular-nums">
-                −{eur(-market.deltaAnnualCents)}/an
-              </span>{" "}
-              par rapport à votre contrat actuel
-            </>
-          ) : (
-            <span className="font-semibold tabular-nums">{eur(market.annualCents)}/an</span>
-          )}
-        </p>
-      )}
       <span className="text-xs text-panel-muted tabular-nums">
         {fmtDate(comparison.from)} – {fmtDate(comparison.to)} ·{" "}
         {Math.round(comparison.kwh).toLocaleString("fr-FR")} kWh soutirés
@@ -91,80 +89,87 @@ export function ComparisonBanner({
   );
 }
 
-export function ComparisonList({ comparison }: { comparison: Ok }) {
-  const max = Math.max(...comparison.rows.map((r) => r.annualCents), 1);
-  const best = comparison.rows[0];
-  return (
-    <section className="flex flex-col gap-3 rounded-card border border-border bg-surface p-5">
-      <div className="flex items-baseline justify-between gap-2">
-        <h2 className="text-[15px] font-semibold">Coût annuel simulé</h2>
-        <CoverageBadge ratio={comparison.coverage} granularity={comparison.granularity} />
-      </div>
-      {comparison.real && (
-        <div className="flex items-center justify-between gap-2 rounded-[10px] bg-bg px-3 py-2.5">
-          <span className="flex flex-col">
-            <span className="text-[13px] font-medium">Réellement payé</span>
-            <span className="text-[11px] text-subtle">
-              contrats et prix en vigueur chaque jour
-              {comparison.real.unknownContractDays > 0 &&
-                ` · ${comparison.real.unknownContractDays} j sans contrat, estimés au tarif actuel`}
-            </span>
-          </span>
-          <span className="text-[15px] font-semibold whitespace-nowrap tabular-nums">
-            {eur(comparison.real.annualCents)}/an
-          </span>
-        </div>
-      )}
-      <ul className="flex flex-col gap-3">
-        {comparison.rows.map((r) => {
-          const delta = r.deltaAnnualCents;
-          return (
-            <li key={r.id} className="flex flex-col gap-1.5">
-              <div className="flex items-center justify-between gap-2">
-                <span className="flex min-w-0 flex-wrap items-center gap-2">
-                  <span className="text-sm font-semibold">{r.name}</span>
-                  <Badge>{KIND_LABELS[r.contract.kind]}</Badge>
-                  {r.isCurrent && <Badge tone="active">En cours</Badge>}
-                </span>
-                <span className="flex flex-none flex-col items-end">
-                  <span className="text-[15px] font-semibold whitespace-nowrap tabular-nums">
-                    {eur(r.annualCents)}/an
-                  </span>
-                  <span
-                    className={`text-[11px] font-medium tabular-nums ${
-                      delta === null || delta === 0
-                        ? "text-subtle"
-                        : delta < 0
-                          ? "text-positive"
-                          : "text-negative"
-                    }`}
-                  >
-                    {r.isCurrent
-                      ? "référence"
-                      : delta === null
-                        ? ""
-                        : `${delta < 0 ? "−" : "+"}${eur(Math.abs(delta))}`}
-                  </span>
-                </span>
-              </div>
-              <div className="h-1.5 rounded-full bg-track">
-                <div
-                  className={`h-1.5 rounded-full ${r.id === best?.id ? "bg-battery" : r.isCurrent ? "bg-grid" : "bg-dash"}`}
-                  style={{ width: `${(r.annualCents / max) * 100}%` }}
-                />
-              </div>
-              {(r.approximate || r.assumedTempoDays > 0) && (
-                <span className="text-[11px] text-pellet">
-                  {r.approximate &&
-                    "Simulation approximative : passez en envoi horaire pour plus de précision. "}
-                  {r.assumedTempoDays > 0 &&
-                    `${r.assumedTempoDays} jour${r.assumedTempoDays > 1 ? "s" : ""} de couleur inconnue, supposé${r.assumedTempoDays > 1 ? "s" : ""} bleu${r.assumedTempoDays > 1 ? "s" : ""}.`}
-                </span>
-              )}
-            </li>
-          );
-        })}
-      </ul>
-    </section>
-  );
+/** Coût réellement payé et pastille de couverture, pour la carte de comparaison. */
+export function comparisonExtras(comparison: Ok) {
+  return {
+    paid: comparison.real
+      ? {
+          annualCents: comparison.real.annualCents,
+          unknownContractDays: comparison.real.unknownContractDays,
+          partial: comparison.periodDays < 365,
+        }
+      : null,
+    coverage: <CoverageBadge ratio={comparison.coverage} granularity={comparison.granularity} />,
+  };
+}
+
+/**
+ * Classement unique : offres du foyer (origine déduite du contrat : en cours, simulée, à venir,
+ * ancienne) et offres du marché qui ne sont pas déjà dans ses offres, de la moins chère à la
+ * plus chère.
+ */
+export function comparedRows(
+  comparison: Ok,
+  contracts: readonly ContractWithPeriods[],
+  market: MarketOffers,
+  today: string,
+): ComparedRow[] {
+  const byId = new Map(contracts.map((c) => [c.id, c]));
+  const own: ComparedRow[] = comparison.rows.map((r) => {
+    const c = byId.get(r.id);
+    const origin: RowOrigin = r.isCurrent
+      ? "current"
+      : c?.status !== "subscribed"
+        ? "simulated"
+        : (c.startDate ?? "") > today
+          ? "upcoming"
+          : "past";
+    return {
+      key: r.id,
+      origin,
+      name: r.name,
+      provider: null,
+      originDetail:
+        origin === "past" && c?.endDate
+          ? `jusqu'au ${fmtDate(c.endDate)}`
+          : origin === "upcoming" && c?.startDate
+            ? `à partir du ${fmtDate(c.startDate)}`
+            : null,
+      kind: KIND_LABELS[r.contract.kind],
+      regulated: false,
+      annualCents: r.annualCents,
+      deltaAnnualCents: r.deltaAnnualCents,
+      approximate: r.approximate,
+      assumedTempoDays: r.assumedTempoDays,
+      assumedOffPeak: false,
+      market: null,
+    };
+  });
+  const names = new Set(contracts.map((c) => c.name));
+  const offers: ComparedRow[] =
+    market.status === "ok"
+      ? market.rows
+          .filter((r) => !names.has(r.name.slice(0, 60)))
+          .map((r) => ({
+            key: `market:${r.name}`,
+            origin: "market",
+            name: r.offer,
+            provider: r.provider,
+            originDetail: null,
+            kind: KIND_LABELS[r.kind],
+            regulated: r.regulated,
+            annualCents: r.annualCents,
+            deltaAnnualCents: r.deltaAnnualCents,
+            approximate: r.approximate,
+            assumedTempoDays: r.assumedTempoDays,
+            assumedOffPeak: r.assumedOffPeak,
+            market: {
+              name: r.name,
+              gridDate: fmtDate(r.gridDate),
+              oldGrid: isOldGrid(r.gridDate, today),
+              priceUrl: r.priceUrl,
+            },
+          }))
+      : [];
+  return [...own, ...offers].sort((a, b) => a.annualCents - b.annualCents);
 }

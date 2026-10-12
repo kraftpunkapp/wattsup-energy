@@ -16,6 +16,7 @@ export function CoverageBadge({
   const complete = ratio >= 0.95;
   return (
     <span
+      className="whitespace-nowrap"
       title={
         complete
           ? `${formatPercent(ratio)} des ${unit} de la période ont été reçues.`
