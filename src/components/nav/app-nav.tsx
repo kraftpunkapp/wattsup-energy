@@ -64,6 +64,7 @@ const usersIcon = (
 
 const ADMIN_LINKS: { href: string; label: string; icon: React.ReactNode }[] = [
   { href: "/admin/utilisateurs", label: "Utilisateurs", icon: usersIcon },
+  { href: "/admin/offres", label: "Offres du marché", icon: <Icon name="tag" size={18} /> },
   { href: "/admin/parametres", label: "Paramètres", icon: <Icon name="sliders" size={18} /> },
 ];
 

@@ -2,6 +2,8 @@ import { localParts } from "@/lib/time";
 import { emailAlertsForAll } from "./alerts";
 import { pruneIngestLog } from "./ingest/persist";
 import { mailConfigured } from "./mail";
+import { GitHubOfferSource } from "./market/source";
+import { marketSyncEnabled, syncMarket } from "./market/sync";
 import { pushAlertsForAll, pushConfigured } from "./push";
 import { CommunityTempoSource } from "./tempo/community";
 import { loadTempoSeed, syncTempo, tempoSyncEnabled } from "./tempo/sync";
@@ -45,6 +47,18 @@ const JOBS: Job[] = [
       await loadTempoSeed();
       const { days, failed } = await syncTempo(new CommunityTempoSource());
       return `${days} jours${failed.length ? `, saisons en échec : ${failed.join(", ")}` : ""}`;
+    },
+  },
+  {
+    // Catalogue des offres du marché : une requête si la source n'a pas changé.
+    name: "offres",
+    at: ["04:00"],
+    enabled: marketSyncEnabled,
+    run: async () => {
+      const r = await syncMarket(new GitHubOfferSource());
+      if (r.status === "error") throw new Error(r.error);
+      if (r.status === "unchanged") return `catalogue inchangé (${r.commit.slice(0, 7)})`;
+      return `${r.offers} offres, ${r.compared} comparées (+${r.added.length} −${r.removed.length} ~${r.updated.length})`;
     },
   },
   {

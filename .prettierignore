@@ -6,3 +6,4 @@ LICENSE
 .next-e2e/
 test-results/
 playwright-report/
+tests/fixtures/market/

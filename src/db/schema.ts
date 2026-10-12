@@ -18,6 +18,7 @@ import {
   uuid,
 } from "drizzle-orm/pg-core";
 import type { EnergyProfile } from "../domain/profile";
+import type { SourceTariff } from "../domain/market/offer";
 import type { Contract } from "../domain/tariff/types";
 import { user } from "./auth-schema";
 
@@ -452,4 +453,51 @@ export const ideaVote = pgTable(
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [primaryKey({ columns: [t.ideaId, t.userId] }), index("idea_vote_user_idx").on(t.userId)],
+);
+
+/**
+ * Offres du marché (SPEC §7.12) : catalogue global de la source comparateur-abonnements-
+ * electricite.fr, remplacé à chaque import. La définition est gardée telle que lue
+ * (validée par parseSourceTariff) et convertie en contrat à la lecture, pour qu'une
+ * nouvelle prise en charge (saisons, prix spot…) n'exige pas de réimport.
+ */
+export const marketOffer = pgTable("market_offer", {
+  /** Nom de l'offre chez la source (« EDF - Tempo »), identifiant d'un import à l'autre. */
+  name: text("name").primaryKey(),
+  sourcePath: text("source_path").notNull(),
+  definition: jsonb("definition").$type<SourceTariff>().notNull(),
+  /** Premier import où l'offre est apparue (conservé d'un import à l'autre). */
+  firstSeenAt: timestamp("first_seen_at", { withTimezone: true }).notNull().defaultNow(),
+  importedAt: timestamp("imported_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+/** État de la synchronisation du catalogue (une seule ligne, id = 1). */
+export const marketSync = pgTable("market_sync", {
+  id: integer("id").primaryKey().default(1),
+  /** Commit de la source du dernier import réussi. */
+  sourceCommit: text("source_commit"),
+  sourceCommittedAt: timestamp("source_committed_at", { withTimezone: true }),
+  checkedAt: timestamp("checked_at", { withTimezone: true }),
+  importedAt: timestamp("imported_at", { withTimezone: true }),
+  status: text("status", { enum: ["ok", "error"] }),
+  /** Dernière erreur (vérification ou import) ; null après un succès. */
+  error: text("error"),
+});
+
+/** Historique des imports du catalogue (les 20 derniers sont gardés). */
+export const marketImport = pgTable(
+  "market_import",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    at: timestamp("at", { withTimezone: true }).notNull().defaultNow(),
+    sourceCommit: text("source_commit").notNull(),
+    offers: integer("offers").notNull(),
+    compared: integer("compared").notNull(),
+    added: jsonb("added").$type<string[]>().notNull(),
+    removed: jsonb("removed").$type<string[]>().notNull(),
+    updated: jsonb("updated").$type<string[]>().notNull(),
+    /** Fichiers ou définitions illisibles, avec la raison. */
+    unreadable: jsonb("unreadable").$type<string[]>().notNull(),
+  },
+  (t) => [index("market_import_at_idx").on(t.at)],
 );

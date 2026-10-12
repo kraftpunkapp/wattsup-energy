@@ -7,6 +7,8 @@ import { parseSignupSettings, type SignupMode } from "@/domain/signup";
 import { AdminError, deleteUserAsAdmin, ForbiddenError, setUserDisabled } from "../admin";
 import { getHouseholdContext } from "../context";
 import { updateContactTexts, updateSignupPolicy } from "../instance";
+import { GitHubOfferSource } from "../market/source";
+import { marketSyncEnabled, syncMarket, type MarketSyncResult } from "../market/sync";
 
 export type AdminActionResult = { ok: true } | { ok: false; errors: string[] };
 
@@ -82,4 +84,21 @@ export async function saveContactTextsAction(raw: {
   // L'intitulé apparaît dans le menu de toutes les pages.
   revalidatePath("/", "layout");
   return { ok: true };
+}
+
+/** Importe le catalogue des offres du marché tout de suite (administrateur seulement). */
+export async function refreshMarketAction(): Promise<
+  { ok: true; result: MarketSyncResult } | { ok: false; errors: string[] }
+> {
+  const ctx = await getHouseholdContext();
+  if (!ctx.isAdmin) return { ok: false, errors: [new ForbiddenError().message] };
+  if (!marketSyncEnabled()) {
+    return {
+      ok: false,
+      errors: ["synchronisation désactivée sur cette instance (MARKET_SYNC=off)"],
+    };
+  }
+  const result = await syncMarket(new GitHubOfferSource(), { force: true });
+  revalidatePath("/admin/offres");
+  return { ok: true, result };
 }

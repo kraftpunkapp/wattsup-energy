@@ -1,6 +1,6 @@
-// GET JSON vers les API publiques (Open-Meteo, Tempo) : timeout, nouvel essai sur erreur
-// réseau ou 5xx avec backoff (0,5 s, 1 s…), jamais sur 4xx. fetch et la temporisation
-// sont injectables pour les tests.
+// GET vers les API publiques (Open-Meteo, Tempo, catalogue d'offres) : timeout, nouvel
+// essai sur erreur réseau ou 5xx avec backoff (0,5 s, 1 s…), jamais sur 4xx. fetch et la
+// temporisation sont injectables pour les tests.
 
 export type FetchFn = (url: string, init?: RequestInit) => Promise<Response>;
 
@@ -12,7 +12,9 @@ export interface HttpOptions {
 }
 
 export interface HttpClient {
-  getJson(url: string): Promise<unknown>;
+  getJson(url: string, headers?: Record<string, string>): Promise<unknown>;
+  /** Texte de la réponse, refusé au-delà de `maxBytes` octets. */
+  getText(url: string, maxBytes: number): Promise<string>;
 }
 
 export function httpClient(options: HttpOptions = {}): HttpClient {
@@ -21,24 +23,36 @@ export function httpClient(options: HttpOptions = {}): HttpClient {
   const timeoutMs = options.timeoutMs ?? 10_000;
   const retries = options.retries ?? 3;
 
-  return {
-    async getJson(url) {
-      let lastError: unknown;
-      for (let attempt = 0; attempt < retries; attempt++) {
-        if (attempt > 0) await sleep(500 * 2 ** (attempt - 1));
-        try {
-          const res = await fetchFn(url, {
-            signal: AbortSignal.timeout(timeoutMs),
-            headers: { accept: "application/json" },
-          });
-          if (res.ok) return await res.json();
-          lastError = new Error(`HTTP ${res.status} sur ${new URL(url).host}`);
-          if (res.status < 500) break; // une erreur 4xx ne se corrige pas en réessayant
-        } catch (err) {
-          lastError = err;
-        }
+  async function get<T>(
+    url: string,
+    headers: Record<string, string>,
+    read: (res: Response) => Promise<T>,
+  ): Promise<T> {
+    let lastError: unknown;
+    for (let attempt = 0; attempt < retries; attempt++) {
+      if (attempt > 0) await sleep(500 * 2 ** (attempt - 1));
+      try {
+        const res = await fetchFn(url, { signal: AbortSignal.timeout(timeoutMs), headers });
+        if (res.ok) return await read(res);
+        lastError = new Error(`HTTP ${res.status} sur ${new URL(url).host}`);
+        if (res.status < 500) break; // une erreur 4xx ne se corrige pas en réessayant
+      } catch (err) {
+        lastError = err;
       }
-      throw lastError instanceof Error ? lastError : new Error(String(lastError));
-    },
+    }
+    throw lastError instanceof Error ? lastError : new Error(String(lastError));
+  }
+
+  return {
+    getJson: (url, headers = {}) =>
+      get(url, { accept: "application/json", ...headers }, (res) => res.json()),
+    getText: (url, maxBytes) =>
+      get(url, {}, async (res) => {
+        const text = await res.text();
+        if (Buffer.byteLength(text) > maxBytes) {
+          throw new Error(`réponse trop volumineuse sur ${new URL(url).host}`);
+        }
+        return text;
+      }),
   };
 }
