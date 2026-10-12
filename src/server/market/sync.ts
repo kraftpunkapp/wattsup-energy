@@ -87,7 +87,9 @@ async function run(source: OfferSource, force: boolean, now: Date): Promise<Mark
   try {
     const commit = await source.latestCommit();
     const [state] = await db.select().from(marketSync);
-    if (!force && state?.sourceCommit === commit.sha) {
+    // Commit inchangé : rien à relire, sauf si le calendrier Zen Flex n'a jamais été importé
+    // (instance mise à jour après le dernier import du catalogue).
+    if (!force && state?.sourceCommit === commit.sha && (await db.$count(sobrietyDay)) > 0) {
       await saveState({ checkedAt: now, status: "ok", error: null });
       return { status: "unchanged", commit: commit.sha };
     }

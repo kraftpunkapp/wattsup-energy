@@ -168,6 +168,15 @@ describe("synchronisation du catalogue", () => {
 });
 
 describe("jours de sobriété Zen Flex (T57)", () => {
+  it("commit inchangé mais calendrier jamais importé : le catalogue est relu", async () => {
+    const { source } = fakeSource({ sha: SHA_A, files: files([BLEU]) });
+    await syncMarket(source);
+    await db.delete(sobrietyDay);
+    expect(await syncMarket(source)).toMatchObject({ status: "imported" });
+    expect(await db.$count(sobrietyDay)).toBeGreaterThan(100);
+    expect(await syncMarket(source)).toMatchObject({ status: "unchanged" });
+  });
+
   it("importés avec le catalogue ; un calendrier illisible garde le précédent", async () => {
     const { source, state } = fakeSource({ sha: SHA_A, files: files([BLEU]) });
     await syncMarket(source);
