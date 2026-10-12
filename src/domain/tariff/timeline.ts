@@ -167,7 +167,10 @@ export interface TimelineResult extends PricedResult {
 export function priceTimeline(
   intervals: readonly PriceableInterval[],
   segments: readonly Segment[],
-  ctx: Pick<PricingContext, "timezone" | "tempoColor" | "sobrietyDay">,
+  ctx: Pick<
+    PricingContext,
+    "timezone" | "tempoColor" | "sobrietyDay" | "spotPrice" | "spotFallback"
+  >,
 ): TimelineResult {
   const dayOf = (i: PriceableInterval) =>
     i.granularity === "hour" ? localParts(i.start, ctx.timezone).date : i.date;
@@ -187,6 +190,7 @@ export function priceTimeline(
     bySlot: {},
     approximatedKwh: 0,
     assumedTempoDays: 0,
+    assumedSpotHours: 0,
     unknownContractDays: 0,
     unpricedKwh: 0,
   };
@@ -204,6 +208,8 @@ export function priceTimeline(
       period: { from: segment.from, to: segment.to },
       tempoColor: ctx.tempoColor,
       sobrietyDay: ctx.sobrietyDay,
+      spotPrice: ctx.spotPrice,
+      spotFallback: ctx.spotFallback,
     });
     result.totalCents += r.totalCents;
     result.energyCents += r.energyCents;
@@ -211,6 +217,7 @@ export function priceTimeline(
     result.kwh += r.kwh;
     result.approximatedKwh += r.approximatedKwh;
     result.assumedTempoDays += r.assumedTempoDays;
+    result.assumedSpotHours += r.assumedSpotHours;
     for (const [month, m] of Object.entries(r.byMonth)) {
       const acc: MonthBreakdown = result.byMonth[month] ?? {
         energyCents: 0,

@@ -80,7 +80,8 @@ OVHcloud, dans le cadre du RGPD.
 - Les offres du marché proviennent des données ouvertes de
   [comparateur-abonnements-electricite.fr](https://comparateur-abonnements-electricite.fr) :
   WattsUp télécharge leur catalogue et fait le calcul chez lui, sans rien envoyer de votre
-  consommation.
+  consommation. Les prix spot viennent d'[energy-charts.info](https://www.energy-charts.info)
+  (Bundesnetzagentur | SMARD.de, CC BY 4.0).
 
 ## Code source
 
@@ -94,6 +95,16 @@ WattsUp vous rend service ? Vous pouvez soutenir son développement :
 <a href="https://www.buymeacoffee.com/kraftpunk"><img src="https://img.buymeacoffee.com/button-api/?text=Buy%20me%20a%20coffee&emoji=%E2%98%95&slug=kraftpunk&button_colour=FFDD00&font_colour=000000&font_family=Inter&outline_colour=000000&coffee_colour=ffffff" alt="Buy me a coffee" height="48"></a>
 
 ## Notes de version
+
+### 1.6.0 — 13 octobre 2026
+
+- **Contrats au prix spot** : chaque heure au prix du marché de gros EPEX France (récupéré
+  chaque jour sur energy-charts.info, données Bundesnetzagentur | SMARD.de sous licence
+  CC BY 4.0), avec acheminement, accise, plafond éventuel et frais du fournisseur. Nouveau
+  modèle « Prix spot ».
+- Les offres Sobry au prix spot rejoignent la comparaison des offres du marché (pour les
+  foyers en envoi horaire).
+- Le bouton « Ajouter un contrat » est désormais juste sous votre contrat en cours.
 
 ### 1.5.0 — 12 octobre 2026
 

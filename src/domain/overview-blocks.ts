@@ -53,7 +53,7 @@ export function applicableBlocks(f: {
   solar: boolean;
   granularity: "hourly" | "daily";
   /** Type du contrat en cours ; null sans contrat. */
-  contractKind: "base" | "hphc" | "tempo" | "custom" | null;
+  contractKind: "base" | "hphc" | "tempo" | "custom" | "spot" | null;
   contracts: number;
 }): OverviewBlock[] {
   const offPeak = f.contractKind === "hphc" || f.contractKind === "tempo";

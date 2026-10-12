@@ -55,6 +55,7 @@ export async function getMarketOffers(
     kwh.toFixed(3),
     inputs.colors.size,
     inputs.sobriety.size,
+    inputs.spotHours,
     current ? fingerprint(current) : "",
   ].join("|");
   const cached = memo.get(ctx.householdId);

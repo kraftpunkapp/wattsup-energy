@@ -133,7 +133,9 @@ export async function getRoi(ctx: HouseholdContext, now = new Date()): Promise<R
   const yieldFrom = `${addDays(today, -400).slice(0, 7)}-01`;
   const from = [...equipmentList.map((e) => e.installedOn), yieldFrom].sort()[0] ?? yieldFrom;
   const slots = await energySlots(ctx, from, end);
-  const { calendars } = await pricingDays(ctx.householdId, addDays(from, -1), end);
+  const { calendars } = await pricingDays(ctx.householdId, addDays(from, -1), end, {
+    timezone: ctx.timezone,
+  });
   const options = {
     contract,
     timezone: tz,

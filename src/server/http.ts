@@ -1,5 +1,6 @@
-// GET vers les API publiques (Open-Meteo, Tempo, catalogue d'offres) : timeout, nouvel
-// essai sur erreur réseau ou 5xx avec backoff (0,5 s, 1 s…), jamais sur 4xx. fetch et la
+// GET vers les API publiques (Open-Meteo, Tempo, catalogue d'offres, prix spot) : timeout,
+// nouvel essai sur erreur réseau ou 5xx avec backoff (0,5 s, 1 s…), sur 429 après 5 s puis
+// 10 s, jamais sur les autres 4xx. fetch et la
 // temporisation sont injectables pour les tests.
 
 export type FetchFn = (url: string, init?: RequestInit) => Promise<Response>;
@@ -35,7 +36,12 @@ export function httpClient(options: HttpOptions = {}): HttpClient {
         const res = await fetchFn(url, { signal: AbortSignal.timeout(timeoutMs), headers });
         if (res.ok) return await read(res);
         lastError = new Error(`HTTP ${res.status} sur ${new URL(url).host}`);
-        if (res.status < 500) break; // une erreur 4xx ne se corrige pas en réessayant
+        // Trop de requêtes : on attend plus longtemps avant de réessayer (5 s, 10 s…).
+        if (res.status === 429) {
+          if (attempt < retries - 1) await sleep(5000 * (attempt + 1));
+          continue;
+        }
+        if (res.status < 500) break; // une autre erreur 4xx ne se corrige pas en réessayant
       } catch (err) {
         lastError = err;
       }

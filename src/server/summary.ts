@@ -39,7 +39,9 @@ export async function getSummary(ctx: HouseholdContext, now = new Date()): Promi
     listContracts(ctx),
     gridIntervals(ctx, today, tomorrow),
   ]);
-  const { calendars } = await pricingDays(ctx.householdId, addDays(today, -1), tomorrow);
+  const { calendars } = await pricingDays(ctx.householdId, addDays(today, -1), tomorrow, {
+    timezone: ctx.timezone,
+  });
   const timeline = buildTimeline(contracts, today, tomorrow, today);
   const todayCents = timeline.some((s) => s.contract)
     ? priceTimeline(intervals, timeline, {

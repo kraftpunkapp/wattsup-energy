@@ -129,7 +129,9 @@ async function budgetFacts(ctx: HouseholdContext, today: string): Promise<AlertF
     gridIntervals(ctx, shift(from), shift(to)),
   ]);
   if (current.length === 0) return null;
-  const { calendars } = await pricingDays(ctx.householdId, addDays(shift(from), -1), to);
+  const { calendars } = await pricingDays(ctx.householdId, addDays(shift(from), -1), to, {
+    timezone: ctx.timezone,
+  });
   const pricing = { timezone: ctx.timezone, ...calendars };
   const cost = (list: typeof current, a: string, b: string) => {
     const timeline = buildTimeline(contracts, a, b, today);

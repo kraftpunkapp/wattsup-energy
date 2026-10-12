@@ -431,7 +431,9 @@ export async function getOverview(
       : new Map<string, Record<string, number>>(),
     ctx.granularity === "hourly" ? nightHours(ctx, previousYearFrom, yearTo) : null,
   ]);
-  const { calendars } = await pricingDays(ctx.householdId, addDays(previousYearFrom, -1), yearTo);
+  const { calendars } = await pricingDays(ctx.householdId, addDays(previousYearFrom, -1), yearTo, {
+    timezone: ctx.timezone,
+  });
   const pricing = { timezone: tz, ...calendars };
   const price = (list: PriceableInterval[], from: string, to: string): TimelineResult =>
     priceTimeline(list, buildTimeline(contracts, from, to, today), pricing);

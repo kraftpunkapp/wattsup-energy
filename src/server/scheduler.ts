@@ -4,6 +4,8 @@ import { pruneIngestLog } from "./ingest/persist";
 import { mailConfigured } from "./mail";
 import { refreshMarketOffersForAll } from "./market/compare";
 import { GitHubOfferSource } from "./market/source";
+import { EnergyChartsSource } from "./spot/source";
+import { spotSyncEnabled, syncSpot } from "./spot/sync";
 import { marketSyncEnabled, syncMarket } from "./market/sync";
 import { pushAlertsForAll, pushConfigured } from "./push";
 import { CommunityTempoSource } from "./tempo/community";
@@ -60,6 +62,16 @@ const JOBS: Job[] = [
       if (r.status === "error") throw new Error(r.error);
       if (r.status === "unchanged") return `catalogue inchangé (${r.commit.slice(0, 7)})`;
       return `${r.offers} offres, ${r.compared} comparées (+${r.added.length} −${r.removed.length} ~${r.updated.length})`;
+    },
+  },
+  {
+    // Prix spot du lendemain, publiés vers 13 h (T58).
+    name: "prix spot",
+    at: ["13:30", "18:00"],
+    enabled: spotSyncEnabled,
+    run: async () => {
+      const { hours, failed } = await syncSpot(new EnergyChartsSource());
+      return `${hours} heures${failed.length ? `, mois en échec : ${failed.join(", ")}` : ""}`;
     },
   },
   {

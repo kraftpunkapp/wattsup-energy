@@ -60,7 +60,31 @@ export interface CustomContract {
   dayStartHour?: 0 | 6;
 }
 
-export type Contract = BaseContract | HphcContract | TempoContract | CustomContract;
+/**
+ * Composantes d'un prix indexé sur le marché spot (T58), HT en €/kWh : prix du kWh d'une
+ * heure = (min(spot + acheminement + accise, plafond) + frais) × (1 + TVA). Hiver : de
+ * novembre à mars (saisons de l'acheminement).
+ */
+export interface SpotFormula {
+  /** Acheminement variable (TURPE), par saison. */
+  network: { winter: number; summer: number };
+  excise: number;
+  /** Plafond du prix spot + acheminement + accise, par saison ; null : sans plafond. */
+  cap: { winter: number; summer: number } | null;
+  /** Frais du fournisseur ajoutés après le plafond (marge, garanties, prime). */
+  fees: number;
+  /** Taux de TVA (0,2 pour 20 %). */
+  vat: number;
+}
+
+/** Contrat au prix spot EPEX France (T58) : chaque heure à son prix de marché. */
+export interface SpotContract {
+  kind: "spot";
+  subscriptionEurYear: number;
+  formula: SpotFormula;
+}
+
+export type Contract = BaseContract | HphcContract | TempoContract | CustomContract | SpotContract;
 
 export type PriceableInterval =
   | { granularity: "hour"; start: Date; kwh: number }
@@ -74,6 +98,10 @@ export interface PricingContext {
   tempoColor?: (day: string) => TempoColor | undefined;
   /** Jour de sobriété EDF Zen Flex (AAAA-MM-JJ) ; absent : aucun (T57). */
   sobrietyDay?: (day: string) => boolean;
+  /** Prix spot EPEX France de l'heure qui commence à `start`, en €/MWh (T58). */
+  spotPrice?: (start: Date) => number | undefined;
+  /** Prix spot moyen de la période (€/MWh), pour une heure sans prix connu. */
+  spotFallback?: number;
 }
 
 export interface MonthBreakdown {
@@ -99,4 +127,6 @@ export interface PricedResult {
   approximatedKwh: number;
   /** Jours Tempo de couleur inconnue, facturés en bleu. */
   assumedTempoDays: number;
+  /** Heures sans prix spot connu, facturées au prix spot moyen de la période (T58). */
+  assumedSpotHours: number;
 }

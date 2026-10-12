@@ -1,6 +1,7 @@
 import { daysInYear, eachDay, localParts } from "@/lib/time";
 import { basePricer, hphcPricer } from "./base-hphc";
 import { customPricer } from "./custom";
+import { spotPricer } from "./spot";
 import { tempoPricer } from "./tempo";
 import type { Pricer } from "./pricer";
 import type {
@@ -24,6 +25,8 @@ function pricerFor(contract: Contract, ctx: PricingContext): Pricer {
       return tempoPricer(contract, ctx);
     case "custom":
       return customPricer(contract, ctx);
+    case "spot":
+      return spotPricer(contract, ctx);
   }
 }
 
@@ -116,5 +119,6 @@ export function priceIntervals(
     bySlot,
     approximatedKwh,
     assumedTempoDays: pricer.assumedDays?.() ?? 0,
+    assumedSpotHours: pricer.assumedHours?.() ?? 0,
   };
 }

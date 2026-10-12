@@ -25,6 +25,7 @@ const catalog = [
   "edf/ejp.js",
   "edf/zenWeekEndPlus.js",
   "edf/zenWeekEnd.js",
+  "sobry/socap.js",
   "total/chargheures.js",
 ]
   .flatMap(load)
@@ -132,7 +133,6 @@ describe("compareMarket", () => {
   });
 
   it("compte les offres pas encore comparables et celles absentes à cette puissance", () => {
-    expect(r.pending).toEqual([]);
     expect(r.unavailable).toBe(0);
     const small = compareMarket(catalog, 3, current, WEEK, ctx, 7);
     expect(small.rows.map((row) => row.name).sort()).toEqual([
@@ -142,6 +142,33 @@ describe("compareMarket", () => {
     ]);
     // Pas de 3 kVA : Bleu HC, Tempo, Charge'Heures, Zen Week-End HC, Plus, Plus HC et Flex.
     expect(small.unavailable).toBe(7);
+  });
+
+  it("prix spot : comparée avec des prix connus, sinon en attente", () => {
+    expect(r.pending).toEqual([
+      { name: "Sobry - SoCap", reason: "prix spot pas encore disponibles" },
+    ]);
+    const withSpot = compareMarket(
+      catalog,
+      9,
+      current,
+      WEEK,
+      { ...ctx, spotPrice: () => 80, spotFallback: 80 },
+      7,
+    );
+    expect(withSpot.rows.map((row) => row.name)).toContain("Sobry - SoCap");
+    const daily = compareMarket(
+      catalog,
+      9,
+      current,
+      [{ granularity: "day", date: "2026-10-05", slot: null, kwh: 24 }],
+      { ...ctx, spotPrice: () => 80, spotFallback: 80 },
+      1,
+    );
+    expect(daily.pending).toContainEqual({
+      name: "Sobry - SoCap",
+      reason: "prix spot : envoi horaire nécessaire",
+    });
   });
 
   it("sans contrat actuel : pas d'écart", () => {

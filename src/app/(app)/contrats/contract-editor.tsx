@@ -9,7 +9,13 @@ import {
   WINTER_MONTHS,
   type MonthsPreset,
 } from "@/domain/tariff/seasons";
-import type { Contract, CustomRule, TempoColor, TimeRange } from "@/domain/tariff/types";
+import type {
+  Contract,
+  CustomRule,
+  SpotContract,
+  TempoColor,
+  TimeRange,
+} from "@/domain/tariff/types";
 import { formatDuration } from "@/lib/format";
 import { KIND_LABELS } from "./labels";
 
@@ -272,6 +278,88 @@ function RuleEditor({
   );
 }
 
+/** Composantes d'un prix spot (T58), HT en €/kWh ; TVA saisie en %. */
+function SpotFields({
+  contract,
+  onChange,
+}: {
+  contract: SpotContract;
+  onChange: (c: Contract) => void;
+}) {
+  const f = contract.formula;
+  const set = (patch: Partial<SpotContract["formula"]>) =>
+    onChange({ ...contract, formula: { ...f, ...patch } });
+  return (
+    <div className="flex flex-col gap-3">
+      <span className="text-xs text-muted text-pretty">
+        Prix de chaque heure : prix du marché EPEX France + acheminement + accise (plafonnés si
+        l&apos;offre le prévoit), puis frais du fournisseur, TVA comprise. Montants hors taxes, en
+        €/kWh, tels que sur la grille du fournisseur. Données horaires nécessaires.
+      </span>
+      <div className="grid grid-cols-2 gap-3">
+        <DecimalField
+          label="Acheminement hiver"
+          value={f.network.winter}
+          unit="€/kWh HT"
+          onChange={(winter) => set({ network: { ...f.network, winter } })}
+        />
+        <DecimalField
+          label="Acheminement été"
+          value={f.network.summer}
+          unit="€/kWh HT"
+          onChange={(summer) => set({ network: { ...f.network, summer } })}
+        />
+      </div>
+      <span className="-mt-1 text-[11px] text-subtle">Hiver : de novembre à mars.</span>
+      <div className="grid grid-cols-2 gap-3">
+        <DecimalField
+          label="Accise"
+          value={f.excise}
+          unit="€/kWh HT"
+          onChange={(excise) => set({ excise })}
+        />
+        <DecimalField
+          label="Frais du fournisseur"
+          value={f.fees}
+          unit="€/kWh HT"
+          onChange={(fees) => set({ fees })}
+        />
+      </div>
+      <label className="flex items-center gap-2 text-[13px]">
+        <input
+          type="checkbox"
+          checked={f.cap !== null}
+          onChange={(e) => set({ cap: e.target.checked ? { winter: 0.25, summer: 0.15 } : null })}
+          className="size-4 accent-[var(--color-grid)]"
+        />
+        Prix plafonné (spot + acheminement + accise)
+      </label>
+      {f.cap && (
+        <div className="grid grid-cols-2 gap-3">
+          <DecimalField
+            label="Plafond hiver"
+            value={f.cap.winter}
+            unit="€/kWh HT"
+            onChange={(winter) => set({ cap: { summer: f.cap?.summer ?? winter, winter } })}
+          />
+          <DecimalField
+            label="Plafond été"
+            value={f.cap.summer}
+            unit="€/kWh HT"
+            onChange={(summer) => set({ cap: { winter: f.cap?.winter ?? summer, summer } })}
+          />
+        </div>
+      )}
+      <DecimalField
+        label="TVA"
+        value={Math.round(f.vat * 1000) / 10}
+        unit="%"
+        onChange={(pct) => set({ vat: pct / 100 })}
+      />
+    </div>
+  );
+}
+
 /** Champs d'une grille de prix ; le type n'est modifiable qu'à la création d'un contrat. */
 export function GridFields({
   contract,
@@ -295,7 +383,7 @@ export function GridFields({
       {!kindLocked && (
         <div className="flex flex-col gap-1.5">
           <span className="text-xs text-muted">Type</span>
-          <div role="radiogroup" className="flex gap-1 rounded-[10px] bg-chip p-[3px]">
+          <div role="radiogroup" className="flex flex-wrap gap-1 rounded-[10px] bg-chip p-[3px]">
             {(Object.keys(KIND_LABELS) as Contract["kind"][]).map((kind) => (
               <button
                 key={kind}
@@ -389,6 +477,8 @@ export function GridFields({
             ))}
           </div>
         )}
+
+        {contract.kind === "spot" && <SpotFields contract={contract} onChange={onChange} />}
 
         {contract.kind === "custom" && (
           <div className="flex flex-col gap-3">

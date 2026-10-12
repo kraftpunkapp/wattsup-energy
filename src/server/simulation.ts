@@ -93,7 +93,9 @@ export async function runSimulation(
     currentKwc,
     battery: req.battery && { ...req.battery, efficiency: BATTERY_EFFICIENCY },
   });
-  const { calendars } = await pricingDays(ctx.householdId, addDays(from, -1), today);
+  const { calendars } = await pricingDays(ctx.householdId, addDays(from, -1), today, {
+    timezone: ctx.timezone,
+  });
   const savings = simulationSavings(hours, result.hours, {
     contract: latestGrid(current),
     timezone: tz,

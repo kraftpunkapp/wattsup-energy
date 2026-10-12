@@ -176,6 +176,13 @@
       "when": 1791817439491,
       "tag": "0024_sobriety-days",
       "breakpoints": true
+    },
+    {
+      "idx": 25,
+      "version": "7",
+      "when": 1791833693097,
+      "tag": "0025_spot-prices",
+      "breakpoints": true
     }
   ]
 }

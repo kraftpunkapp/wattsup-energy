@@ -152,7 +152,9 @@ export async function getHeating(
     );
   };
 
-  const { calendars } = await pricingDays(ctx.householdId, addDays(previousSeason.from, -1), to);
+  const { calendars } = await pricingDays(ctx.householdId, addDays(previousSeason.from, -1), to, {
+    timezone: ctx.timezone,
+  });
   const pricing = { timezone: tz, ...calendars };
   const figures = async (from: string, until: string) => {
     // Chaque saison est chiffrée au prix de ses 12 derniers mois d'achats (SPEC §7.4).

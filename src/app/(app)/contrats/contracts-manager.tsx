@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState, useTransition } from "react";
+import { Fragment, useState, useTransition } from "react";
 import { CONTRACT_PRESETS, type ContractInput } from "@/domain/tariff/schema";
 import { lapsedContract, periodAt } from "@/domain/tariff/timeline";
 import type { Contract } from "@/domain/tariff/types";
@@ -508,34 +508,10 @@ export function ContractsManager({
     { title: "Offres à comparer", items: contracts.filter((c) => c.status === "simulated") },
   ].filter((g) => g.items.length > 0);
 
-  return (
-    <div className="flex flex-col gap-5">
-      {contracts.length === 0 && editing?.mode !== "presets" && (
-        <p className="rounded-card border border-dashed border-dash bg-surface p-5 text-sm text-muted">
-          Ajoutez votre contrat actuel (avec sa date de début) pour commencer, puis les offres à
-          comparer.
-        </p>
-      )}
-      {lapsed && <LapsedNotice item={lapsed} pending={pending} onAct={act} />}
-      <Errors errors={errors} />
-      {groups.map((g) => (
-        <section key={g.title} className="flex flex-col gap-2">
-          <GroupTitle>{g.title}</GroupTitle>
-          <ul className="flex flex-col gap-3">
-            {g.items.map((item) => (
-              <ContractCard
-                key={item.id}
-                item={item}
-                today={today}
-                onEdit={setEditing}
-                onAct={act}
-                pending={pending}
-              />
-            ))}
-          </ul>
-        </section>
-      ))}
-
+  // « Ajouter un contrat » sous le contrat en cours (en tête sans contrat en cours), pour
+  // ne pas le chercher sous toutes les offres à comparer.
+  const adder = (
+    <>
       {editing?.mode === "presets" ? (
         <section className="flex flex-col gap-3 rounded-card border border-border bg-surface p-5">
           <h2 className="text-[15px] font-semibold">Partir d&apos;une offre de référence</h2>
@@ -573,6 +549,41 @@ export function ContractsManager({
           + Ajouter un contrat
         </button>
       )}
+    </>
+  );
+  const hasCurrent = groups[0]?.title === "Contrat en cours";
+
+  return (
+    <div className="flex flex-col gap-5">
+      {contracts.length === 0 && editing?.mode !== "presets" && (
+        <p className="rounded-card border border-dashed border-dash bg-surface p-5 text-sm text-muted">
+          Ajoutez votre contrat actuel (avec sa date de début) pour commencer, puis les offres à
+          comparer.
+        </p>
+      )}
+      {lapsed && <LapsedNotice item={lapsed} pending={pending} onAct={act} />}
+      <Errors errors={errors} />
+      {!hasCurrent && adder}
+      {groups.map((g, i) => (
+        <Fragment key={g.title}>
+          <section className="flex flex-col gap-2">
+            <GroupTitle>{g.title}</GroupTitle>
+            <ul className="flex flex-col gap-3">
+              {g.items.map((item) => (
+                <ContractCard
+                  key={item.id}
+                  item={item}
+                  today={today}
+                  onEdit={setEditing}
+                  onAct={act}
+                  pending={pending}
+                />
+              ))}
+            </ul>
+          </section>
+          {i === 0 && hasCurrent && adder}
+        </Fragment>
+      ))}
     </div>
   );
 }

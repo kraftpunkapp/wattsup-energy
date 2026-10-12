@@ -141,6 +141,7 @@ export function comparedRows(
       deltaAnnualCents: r.deltaAnnualCents,
       approximate: r.approximate,
       assumedTempoDays: r.assumedTempoDays,
+      assumedSpotHours: r.assumedSpotHours,
       assumedOffPeak: false,
       market: null,
     };
@@ -162,6 +163,7 @@ export function comparedRows(
             deltaAnnualCents: r.deltaAnnualCents,
             approximate: r.approximate,
             assumedTempoDays: r.assumedTempoDays,
+            assumedSpotHours: r.assumedSpotHours,
             assumedOffPeak: r.assumedOffPeak,
             market: {
               name: r.name,

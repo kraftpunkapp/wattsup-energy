@@ -55,6 +55,8 @@ export type ComparisonInputs =
       intervals: PriceableInterval[];
       colors: Map<string, TempoColor>;
       sobriety: Set<string>;
+      /** Heures de prix spot connues sur la période (T58). */
+      spotHours: number;
       pricing: PricingContext;
       contracts: ContractWithPeriods[];
       /** Grille actuelle du contrat en cours ; null sans contrat en cours. */
@@ -100,10 +102,11 @@ async function loadInputs(ctx: HouseholdContext, now: Date): Promise<ComparisonI
   );
 
   // La veille de la période est incluse : ses heures de 0 h à 6 h sont du jour Tempo précédent.
-  const { colors, sobriety, calendars } = await pricingDays(
+  const { colors, sobriety, spotHours, calendars } = await pricingDays(
     ctx.householdId,
     addDays(from, -1),
     today,
+    { timezone: ctx.timezone, spot: true },
   );
   const contracts = await listContracts(ctx);
   const current = currentContract(contracts, today);
@@ -115,6 +118,7 @@ async function loadInputs(ctx: HouseholdContext, now: Date): Promise<ComparisonI
     intervals,
     colors,
     sobriety,
+    spotHours,
     pricing: { timezone: tz, period: { from, to: today }, ...calendars },
     contracts,
     current: current ? { id: current.id, contract: latestGrid(current) } : null,

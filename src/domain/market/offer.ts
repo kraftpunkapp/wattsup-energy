@@ -27,6 +27,17 @@ const dayTypeSpec = z.union([
 ]);
 type DayTypeSpec = z.infer<typeof dayTypeSpec>;
 
+const seasonal = z.object({ hiver: z.number().min(0).max(100), ete: z.number().min(0).max(100) });
+const spotFormulaSchema = z.object({
+  turpe: seasonal,
+  accise: z.number().min(0).max(100),
+  cap: seasonal.optional(),
+  conformite: z.number().min(0).max(100).default(0),
+  marge: z.number().min(0).max(100).default(0),
+  prime: z.number().min(0).max(100).default(0),
+  tva: z.number().min(1).max(1.3),
+});
+
 const tariffSchema = z.looseObject({
   name: z.string().trim().min(3).max(80),
   offer_type: z.string().max(20),
@@ -37,6 +48,7 @@ const tariffSchema = z.looseObject({
   dayTypes: z.record(z.string().max(40), dayTypeSpec).optional(),
   priceOverrides: z.record(z.string(), z.record(z.string(), dayTypeSpec)).optional(),
   dayRule: z.unknown().optional(),
+  spotFormula: z.unknown().optional(),
   hcRanges: z.unknown().optional(),
 });
 
@@ -59,10 +71,11 @@ export function parseSourceTariff(
 }
 
 /** Raison pour laquelle une offre n'est pas (encore) comparée. */
-export type PendingReason = "spot" | "unknown";
+export type PendingReason = "hourly-data" | "no-spot-prices" | "unknown";
 
 export const REASON_LABELS: Record<PendingReason | "closed", string> = {
-  spot: "prix spot",
+  "hourly-data": "prix spot : envoi horaire nécessaire",
+  "no-spot-prices": "prix spot pas encore disponibles",
   unknown: "format non reconnu",
   closed: "offre fermée aux nouveaux abonnés",
 };
@@ -237,7 +250,27 @@ function build(
 ): Built {
   const rule = t.dayRule;
   if (!isObject(rule) || typeof rule.type !== "string") return { reason: "unknown" };
-  if (rule.type === "spot") return { reason: "spot" };
+  if (rule.type === "spot") {
+    // Prix spot (Sobry, T58) : composantes en centimes HT de la source, TVA en multiplicateur.
+    const f = t.spotFormula;
+    const sp = spotFormulaSchema.safeParse(f);
+    if (!sp.success || String(kva) in t.subscriptions === false) return { reason: "unknown" };
+    const v = sp.data;
+    const contract: Contract = {
+      kind: "spot",
+      subscriptionEurYear: Math.round((t.subscriptions[String(kva)] as number) * 1200) / 100,
+      formula: {
+        network: { winter: eur(v.turpe.hiver), summer: eur(v.turpe.ete) },
+        excise: eur(v.accise),
+        cap: v.cap ? { winter: eur(v.cap.hiver), summer: eur(v.cap.ete) } : null,
+        fees: eur(v.conformite + v.marge + v.prime),
+        vat: Math.round((v.tva - 1) * 1e4) / 1e4,
+      },
+    };
+    const checked = parseContractInput({ name: t.name.slice(0, 60), contract });
+    if (!checked.success) return { reason: "unknown" };
+    return { contract: checked.data.contract, householdOffPeak: false, assumedOffPeak: false };
+  }
   if (!t.dayTypes) return { reason: "unknown" };
 
   const spec = (type: unknown): DayTypeSpec | undefined =>

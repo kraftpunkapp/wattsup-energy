@@ -1,4 +1,4 @@
-import { MARKET_SOURCE_URL } from "@/lib/links";
+import { MARKET_SOURCE_URL, SPOT_SOURCE_URL } from "@/lib/links";
 
 // Mentions des offres du marché (SPEC §7.12), partout où elles s'affichent : avertissement
 // et source des données, avec la date du catalogue.
@@ -30,6 +30,25 @@ export function MarketSourceNote({ catalogDate }: { catalogDate: Date | null }) 
         </a>{" "}
         (données ouvertes, GPL-3.0){catalogDate ? `, catalogue du ${longDate(catalogDate)}` : ""}.
       </p>
+      <SpotSourceNote />
     </div>
+  );
+}
+
+/** Mention des prix spot (CC BY 4.0), sous les offres et les contrats au prix spot. */
+export function SpotSourceNote() {
+  return (
+    <p>
+      Prix spot :{" "}
+      <a
+        href={SPOT_SOURCE_URL}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="underline hover:text-ink"
+      >
+        energy-charts.info
+      </a>
+      , données Bundesnetzagentur | SMARD.de (CC BY 4.0).
+    </p>
   );
 }

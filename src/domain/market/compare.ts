@@ -47,6 +47,7 @@ export interface MarketRow {
   assumedOffPeak: boolean;
   approximate: boolean;
   assumedTempoDays: number;
+  assumedSpotHours: number;
   priceUrl: string | null;
   subscriptionUrl: string | null;
   /** Offre à jour choisi : le jour (ISO) le moins cher pour ce foyer ; null sinon. */
@@ -84,8 +85,20 @@ export function compareMarket(
     chosenDay: number | null;
   }[] = [];
 
+  // Offres au prix spot : seulement avec des données horaires et des prix spot connus.
+  const daily = intervals.some((i) => i.granularity === "day");
+  const spotReason = daily
+    ? "hourly-data"
+    : ctx.spotFallback === undefined
+      ? "no-spot-prices"
+      : null;
+
   for (const o of offers) {
     const info = describeOffer(o.definition);
+    if (spotReason && info.support.status === "compared" && info.support.kind === "spot") {
+      pending.push({ name: o.name, reason: REASON_LABELS[spotReason] });
+      continue;
+    }
     if (info.support.status === "pending") {
       pending.push({ name: o.name, reason: REASON_LABELS[info.support.reason] });
       continue;
@@ -148,6 +161,7 @@ export function compareMarket(
         assumedOffPeak: c.assumedOffPeak,
         approximate: r.approximate,
         assumedTempoDays: r.assumedTempoDays,
+        assumedSpotHours: r.assumedSpotHours,
         priceUrl: c.definition.price_url || null,
         subscriptionUrl: c.definition.subscription_url || null,
         chosenDay: c.chosenDay,

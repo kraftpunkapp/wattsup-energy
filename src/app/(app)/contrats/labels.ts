@@ -6,4 +6,5 @@ export const KIND_LABELS: Record<Contract["kind"], string> = {
   hphc: "HP/HC",
   tempo: "Tempo",
   custom: "Sur mesure",
+  spot: "Prix spot",
 };

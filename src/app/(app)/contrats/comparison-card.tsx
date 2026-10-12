@@ -28,6 +28,8 @@ export interface ComparedRow {
   deltaAnnualCents: number | null;
   approximate: boolean;
   assumedTempoDays: number;
+  /** Heures sans prix spot connu, estimées au prix moyen. */
+  assumedSpotHours: number;
   assumedOffPeak: boolean;
   /** Offre du marché : nom chez la source, grille, lien officiel. */
   market: {
@@ -206,14 +208,19 @@ function Line({ row, max }: { row: ComparedRow; max: number }) {
           pour votre consommation.
         </span>
       )}
-      {(row.assumedOffPeak || row.approximate || row.assumedTempoDays > 0) && (
+      {(row.assumedOffPeak ||
+        row.approximate ||
+        row.assumedTempoDays > 0 ||
+        row.assumedSpotHours > 0) && (
         <span className="text-[11px] text-pellet text-pretty">
           {row.assumedOffPeak &&
             "Heures creuses supposées de 22 h à 6 h (celles de votre compteur sont inconnues). "}
           {row.approximate &&
             "Simulation approximative : passez en envoi horaire pour plus de précision. "}
           {row.assumedTempoDays > 0 &&
-            `${plural(row.assumedTempoDays, "jour", "jours")} de couleur inconnue, supposé${row.assumedTempoDays > 1 ? "s" : ""} bleu${row.assumedTempoDays > 1 ? "s" : ""}.`}
+            `${plural(row.assumedTempoDays, "jour", "jours")} de couleur inconnue, supposé${row.assumedTempoDays > 1 ? "s" : ""} bleu${row.assumedTempoDays > 1 ? "s" : ""}. `}
+          {row.assumedSpotHours > 0 &&
+            `${plural(row.assumedSpotHours, "heure", "heures")} sans prix spot connu, estimée${row.assumedSpotHours > 1 ? "s" : ""} au prix moyen.`}
         </span>
       )}
     </li>

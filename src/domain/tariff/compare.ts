@@ -20,6 +20,8 @@ export interface ComparedContract extends ContractToCompare {
   /** Écart annuel avec le contrat actuel (négatif = économie), null sans contrat actuel. */
   deltaAnnualCents: number | null;
   assumedTempoDays: number;
+  /** Heures sans prix spot connu, estimées au prix moyen (T58). */
+  assumedSpotHours: number;
   /** Ventilation HP/HC supposée (données journalières et heures creuses différentes). */
   approximate: boolean;
 }
@@ -56,6 +58,7 @@ export function compareContracts(
       totalCents: r.totalCents,
       annualCents: Math.round((r.totalCents * 365) / periodDays),
       assumedTempoDays: r.assumedTempoDays,
+      assumedSpotHours: r.assumedSpotHours,
       approximate: r.approximatedKwh > 0 || (daily && differentOffPeak),
     };
   });

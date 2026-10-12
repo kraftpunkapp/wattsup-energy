@@ -1,3 +1,4 @@
+import { SpotSourceNote } from "@/components/market-source-note";
 import { StatTile, tiles } from "@/components/ui";
 import { monthsLabel } from "@/domain/tariff/seasons";
 import type { Contract, TempoColor, TimeRange } from "@/domain/tariff/types";
@@ -164,6 +165,22 @@ export function GridView({ contract }: { contract: Contract }) {
           )}
         </div>
       );
+    case "spot":
+      return (
+        <div className="flex flex-col gap-2">
+          <p className="text-xs text-muted text-pretty">
+            Prix du marché EPEX France heure par heure, plus acheminement, accise et frais du
+            fournisseur ({fmtPrice(contract.formula.fees)} €/kWh HT), TVA comprise
+            {contract.formula.cap ? ", avec plafond saisonnier" : ""}.
+          </p>
+          <div className="text-[11px] text-subtle">
+            <SpotSourceNote />
+          </div>
+          <div className={tiles}>
+            <SubscriptionTile eurYear={contract.subscriptionEurYear} />
+          </div>
+        </div>
+      );
   }
 }
 
@@ -179,5 +196,7 @@ export function gridSummary(c: Contract): string {
       return `Bleu HP ${fmtPrice(c.prices.bleu.hp)} · Rouge HP ${fmtPrice(c.prices.rouge.hp)} €/kWh · ${sub}`;
     case "custom":
       return `${c.rules.map((r) => `${r.label} ${fmtPrice(r.price)}`).join(" · ")} · ${sub}`;
+    case "spot":
+      return `prix spot + frais ${fmtPrice(c.formula.fees)} €/kWh HT · ${sub}`;
   }
 }

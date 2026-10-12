@@ -1,12 +1,14 @@
-import { and, eq, gte, lte } from "drizzle-orm";
+import { and, eq, gte, lt, lte } from "drizzle-orm";
 import { db } from "@/db";
-import { sobrietyDay, sobrietyOverride } from "@/db/schema";
+import { contract, sobrietyDay, sobrietyOverride, spotPrice } from "@/db/schema";
 import type { PricingContext, TempoColor } from "@/domain/tariff/types";
+import { addDays, zonedInstant } from "@/lib/time";
 import { tempoColorsFor } from "./tempo/sync";
 
-// Calendriers qui modulent les prix (SPEC §7.8, §7.12) : couleurs Tempo et jours de sobriété
-// EDF Zen Flex (T57). Chaque calendrier global peut être corrigé par le foyer ; tous les
-// calculs de coût passent par ici pour en tenir compte de la même façon.
+// Données qui modulent les prix (SPEC §7.8, §7.12) : couleurs Tempo, jours de sobriété EDF
+// Zen Flex (T57) et prix spot EPEX France (T58). Les calendriers globaux peuvent être corrigés
+// par le foyer ; tous les calculs de coût passent par ici pour en tenir compte de la même
+// façon.
 
 /** Jours de sobriété de [from, to] : calendrier importé, puis corrections du foyer. */
 export async function sobrietyDaysFor(
@@ -45,24 +47,63 @@ function sobrietyOverrides(householdId: string, from: string, to: string) {
 export interface PricingDays {
   colors: Map<string, TempoColor>;
   sobriety: Set<string>;
+  /** Prix spot chargés (heures de la période) ; vide si le foyer n'en a pas besoin. */
+  spotHours: number;
   /** À fusionner dans un contexte de calcul (`PricingContext`). */
-  calendars: Pick<PricingContext, "tempoColor" | "sobrietyDay">;
+  calendars: Pick<PricingContext, "tempoColor" | "sobrietyDay" | "spotPrice" | "spotFallback">;
 }
 
-/** Couleurs Tempo et jours de sobriété du foyer sur [from, to], prêts pour le moteur. */
+/** Prix spot des jours locaux [from, to] (€/MWh par heure UTC, clé : instant en ms). */
+async function spotPricesFor(from: string, to: string, timezone: string) {
+  const rows = await db
+    .select({ start: spotPrice.start, eurMwh: spotPrice.eurMwh })
+    .from(spotPrice)
+    .where(
+      and(
+        gte(spotPrice.start, zonedInstant(from, 0, timezone)),
+        lt(spotPrice.start, zonedInstant(addDays(to, 1), 0, timezone)),
+      ),
+    );
+  return new Map(rows.map((r) => [r.start.getTime(), r.eurMwh]));
+}
+
+const hasSpotContract = async (householdId: string) =>
+  (await db.$count(
+    contract,
+    and(eq(contract.householdId, householdId), eq(contract.kind, "spot")),
+  )) > 0;
+
+/**
+ * Couleurs Tempo, jours de sobriété et prix spot du foyer sur [from, to], prêts pour le
+ * moteur. Les prix spot ne sont lus que si le foyer a un contrat spot, ou si `spot` est
+ * demandé (comparaison avec les offres du marché).
+ */
 export async function pricingDays(
   householdId: string,
   from: string,
   to: string,
+  options: { spot?: boolean; timezone?: string } = {},
 ): Promise<PricingDays> {
-  const [colors, sobriety] = await Promise.all([
+  const timezone = options.timezone ?? "Europe/Paris";
+  const [colors, sobriety, spot] = await Promise.all([
     tempoColorsFor(householdId, from, to),
     sobrietyDaysFor(householdId, from, to),
+    (options.spot ?? (await hasSpotContract(householdId)))
+      ? spotPricesFor(from, to, timezone)
+      : new Map<number, number>(),
   ]);
+  const values = [...spot.values()];
   return {
     colors,
     sobriety,
-    calendars: { tempoColor: (d) => colors.get(d), sobrietyDay: (d) => sobriety.has(d) },
+    spotHours: spot.size,
+    calendars: {
+      tempoColor: (d) => colors.get(d),
+      sobrietyDay: (d) => sobriety.has(d),
+      spotPrice: (start) => spot.get(start.getTime()),
+      spotFallback:
+        values.length > 0 ? values.reduce((a, b) => a + b, 0) / values.length : undefined,
+    },
   };
 }
 

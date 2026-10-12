@@ -198,13 +198,13 @@ describe("conversion", () => {
     expect(r.energyCents).toBe(Math.round((4 * 0.1335 + 4 * 0.1576 + 16 * 0.2302) * 100));
   });
 
-  it.each([
-    ["EDF - EJP", { status: "never", reason: "closed" }],
-    ["Sobry - SoCap", { status: "pending", reason: "spot" }],
-  ])("%s : pas encore comparée, avec sa raison", (name, support) => {
-    expect(describeOffer(get(name)).support).toEqual(support);
-    expect(toContract(get(name), 9, null)).toBeNull();
-  });
+  it.each([["EDF - EJP", { status: "never", reason: "closed" }]])(
+    "%s : pas encore comparée, avec sa raison",
+    (name, support) => {
+      expect(describeOffer(get(name)).support).toEqual(support);
+      expect(toContract(get(name), 9, null)).toBeNull();
+    },
+  );
 
   it("Zen Estival : saisons, heures super creuses prioritaires, journée de 6 h à 6 h", () => {
     const t = get("EDF - Zen Estival");
@@ -237,6 +237,22 @@ describe("conversion", () => {
       ["Été HC", [1, 2, 3, 4, 5], 0.13831],
       ["Été HP", [1, 2, 3, 4, 5], 0.19567],
     ]);
+  });
+
+  it("Sobry SoCap : prix spot, composantes HT converties en €/kWh", () => {
+    const t = get("Sobry - SoCap");
+    expect(describeOffer(t).support).toMatchObject({ status: "compared", kind: "spot" });
+    expect(toContract(t, 9, null)?.contract).toEqual({
+      kind: "spot",
+      subscriptionEurYear: 331.53,
+      formula: {
+        network: { winter: 0.0632, summer: 0.0149 },
+        excise: 0.03085,
+        cap: { winter: 0.25, summer: 0.1417 },
+        fees: 0.025,
+        vat: 0.2,
+      },
+    });
   });
 
   it("Zen Week-End Option Flex : prix propres aux jours de sobriété", () => {

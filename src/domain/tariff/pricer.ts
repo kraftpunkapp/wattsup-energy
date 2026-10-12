@@ -16,4 +16,6 @@ export interface Pricer {
   day(date: string, slot: Slot | null): { shares: Share[]; approximated: boolean };
   /** Nombre de jours dont un paramètre a dû être supposé (couleur Tempo inconnue). */
   assumedDays?(): number;
+  /** Nombre d'heures dont le prix a dû être supposé (prix spot inconnu). */
+  assumedHours?(): number;
 }

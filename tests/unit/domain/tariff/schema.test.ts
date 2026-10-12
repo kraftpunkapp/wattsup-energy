@@ -148,6 +148,7 @@ describe("offres de référence", () => {
       "tempo",
       "custom",
       "custom",
+      "spot",
       "custom",
     ]);
     for (const preset of CONTRACT_PRESETS) {

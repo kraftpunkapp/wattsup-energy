@@ -220,6 +220,16 @@ export const tempoOverride = pgTable(
 );
 
 /**
+ * Prix spot EPEX France du lendemain (T58), globaux (donnée publique energy-charts.info,
+ * CC BY 4.0, Bundesnetzagentur | SMARD.de) : moyenne de chaque heure UTC, en €/MWh.
+ */
+export const spotPrice = pgTable("spot_price", {
+  start: timestamp("start", { withTimezone: true }).primaryKey(),
+  eurMwh: doublePrecision("eur_mwh").notNull(),
+  fetchedAt: timestamp("fetched_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+/**
  * Jours de sobriété EDF Zen Flex (T57), globaux (donnée publique) : importés avec le
  * catalogue des offres du marché, remplacés à chaque import réussi.
  */
@@ -331,7 +341,7 @@ export const contract = pgTable(
     id: uuid("id").primaryKey().defaultRandom(),
     householdId: householdRef(),
     name: text("name").notNull(),
-    kind: text("kind", { enum: ["base", "hphc", "tempo", "custom"] }).notNull(),
+    kind: text("kind", { enum: ["base", "hphc", "tempo", "custom", "spot"] }).notNull(),
     status: text("status", { enum: ["subscribed", "simulated"] })
       .notNull()
       .default("simulated"),

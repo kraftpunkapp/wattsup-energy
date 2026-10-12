@@ -61,7 +61,21 @@ const custom = z.object({
     }),
 });
 
-const contractSchema = z.discriminatedUnion("kind", [base, hphc, tempo, custom]);
+const component = z.number().min(-1).max(5);
+const seasonal = z.object({ winter: component, summer: component });
+const spot = z.object({
+  kind: z.literal("spot"),
+  subscriptionEurYear: subscription,
+  formula: z.object({
+    network: seasonal,
+    excise: component,
+    cap: seasonal.nullable(),
+    fees: component,
+    vat: z.number().min(0).max(0.3),
+  }),
+});
+
+const contractSchema = z.discriminatedUnion("kind", [base, hphc, tempo, custom, spot]);
 
 const inputSchema = z.object({
   name: z.string().trim().min(1, "nom requis").max(60),
@@ -142,6 +156,21 @@ export const CONTRACT_PRESETS: readonly ContractInput[] = [
         { label: "Week-end et jour choisi", days: [3, 6, 7], ranges: ALL_DAY, price: 0.1691 },
         { label: "Autres jours", days: [1, 2, 4, 5], ranges: ALL_DAY, price: 0.2259 },
       ],
+    },
+  },
+  {
+    // T58 : prix indexé sur le marché spot (grille Sobry SoCap, 9 kVA), composantes HT.
+    name: "Prix spot",
+    contract: {
+      kind: "spot",
+      subscriptionEurYear: 331.53,
+      formula: {
+        network: { winter: 0.0632, summer: 0.0149 },
+        excise: 0.03085,
+        cap: { winter: 0.25, summer: 0.1417 },
+        fees: 0.025,
+        vat: 0.2,
+      },
     },
   },
   {
