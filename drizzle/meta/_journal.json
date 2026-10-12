@@ -169,6 +169,13 @@
       "when": 1791811112710,
       "tag": "0023_market-offers",
       "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "7",
+      "when": 1791817439491,
+      "tag": "0024_sobriety-days",
+      "breakpoints": true
     }
   ]
 }

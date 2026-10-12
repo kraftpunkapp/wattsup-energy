@@ -220,6 +220,26 @@ export const tempoOverride = pgTable(
 );
 
 /**
+ * Jours de sobriété EDF Zen Flex (T57), globaux (donnée publique) : importés avec le
+ * catalogue des offres du marché, remplacés à chaque import réussi.
+ */
+export const sobrietyDay = pgTable("sobriety_day", {
+  date: date("date").primaryKey(),
+  importedAt: timestamp("imported_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+/** Jour de sobriété corrigé à la main par le foyer (true : sobriété ; false : jour normal). */
+export const sobrietyOverride = pgTable(
+  "sobriety_override",
+  {
+    householdId: householdRef(),
+    date: date("date").notNull(),
+    sobriety: boolean("sobriety").notNull(),
+  },
+  (t) => [primaryKey({ columns: [t.householdId, t.date] })],
+);
+
+/**
  * Combustibles (T24) : achats, relevés de stock et consommations saisis. Les quantités
  * sont stockées dans l'unité saisie (une palette est convertie en sacs à l'enregistrement)
  * et ramenées à l'unité de base à la lecture (src/domain/heating/fuel.ts).

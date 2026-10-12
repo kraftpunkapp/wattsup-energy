@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { parseContractInput } from "@/domain/tariff/schema";
+import { setManualSobriety } from "../calendars";
 import { getHouseholdContext } from "../context";
 import {
   addPricePeriod,
@@ -116,6 +117,19 @@ export async function setTempoColorAction(date: unknown, color: unknown): Promis
     return { ok: false };
   const ctx = await getHouseholdContext();
   await setManualTempoColor(ctx.householdId, date, color);
+  revalidatePath("/contrats");
+  return { ok: true };
+}
+
+/** Correction d'un jour du calendrier Zen Flex (null : retire la correction). */
+export async function setSobrietyAction(
+  date: unknown,
+  sobriety: unknown,
+): Promise<{ ok: boolean }> {
+  if (typeof date !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(date)) return { ok: false };
+  if (sobriety !== null && typeof sobriety !== "boolean") return { ok: false };
+  const ctx = await getHouseholdContext();
+  await setManualSobriety(ctx.householdId, date, sobriety);
   revalidatePath("/contrats");
   return { ok: true };
 }

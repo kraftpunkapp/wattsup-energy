@@ -21,7 +21,7 @@ import { listCategories } from "../categories";
 import type { HouseholdContext } from "../context";
 import { listContracts } from "../contracts";
 import { listFuelEvents } from "../fuel";
-import { tempoColorsFor } from "../tempo/sync";
+import { pricingDays } from "../calendars";
 
 // Vue Chauffage (T26) : coût de la saison (postes chauffage au moteur, énergie seule, et
 // combustibles au prix moyen pondéré), consommations comparées à la saison précédente sur
@@ -152,8 +152,8 @@ export async function getHeating(
     );
   };
 
-  const colors = await tempoColorsFor(ctx.householdId, addDays(previousSeason.from, -1), to);
-  const pricing = { timezone: tz, tempoColor: (d: string) => colors.get(d) };
+  const { calendars } = await pricingDays(ctx.householdId, addDays(previousSeason.from, -1), to);
+  const pricing = { timezone: tz, ...calendars };
   const figures = async (from: string, until: string) => {
     // Chaque saison est chiffrée au prix de ses 12 derniers mois d'achats (SPEC §7.4).
     const priceAt = zonedInstant(until, 0, tz);

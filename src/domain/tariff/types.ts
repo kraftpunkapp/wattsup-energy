@@ -40,6 +40,11 @@ export interface CustomRule {
   price: number;
   /** Mois (1 = janvier … 12) où la règle s'applique (T56, saisons) ; absent : toute l'année. */
   months?: number[];
+  /**
+   * Règle des seuls jours de sobriété EDF Zen Flex (T57) : prioritaire ces jours-là,
+   * ignorée les autres jours (qui doivent être couverts par les autres règles).
+   */
+  onlySobrietyDays?: true;
 }
 
 /** Contrat sur mesure : la première règle qui couvre une minute s'applique. */
@@ -67,6 +72,8 @@ export interface PricingContext {
   period: { from: string; to: string };
   /** Couleur d'un jour Tempo (AAAA-MM-JJ) ; undefined si inconnue. Requis pour Tempo. */
   tempoColor?: (day: string) => TempoColor | undefined;
+  /** Jour de sobriété EDF Zen Flex (AAAA-MM-JJ) ; absent : aucun (T57). */
+  sobrietyDay?: (day: string) => boolean;
 }
 
 export interface MonthBreakdown {

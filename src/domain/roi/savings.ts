@@ -20,6 +20,8 @@ export interface SavingsOptions {
   contract: Contract | null;
   timezone: string;
   tempoColor?: (day: string) => TempoColor | undefined;
+  /** Jours de sobriété Zen Flex (T57). */
+  sobrietyDay?: (day: string) => boolean;
   exportEnabled: boolean;
   exportPriceEurKwh: number;
   batteryGridCharging: boolean;
@@ -63,6 +65,7 @@ function valued(slots: readonly EnergySlot[], kwh: (s: EnergySlot) => number, o:
     // L'abonnement n'est pas une économie : seule l'énergie compte.
     period: { from: "2000-01-01", to: "2000-01-01" },
     tempoColor: o.tempoColor,
+    sobrietyDay: o.sobrietyDay,
   });
   return {
     cents: r.energyCents,

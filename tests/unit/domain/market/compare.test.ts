@@ -132,9 +132,7 @@ describe("compareMarket", () => {
   });
 
   it("compte les offres pas encore comparables et celles absentes à cette puissance", () => {
-    expect(r.pending).toEqual([
-      { name: "EDF - Zen Week-End Option Flex", reason: "jours spéciaux (Zen Flex)" },
-    ]);
+    expect(r.pending).toEqual([]);
     expect(r.unavailable).toBe(0);
     const small = compareMarket(catalog, 3, current, WEEK, ctx, 7);
     expect(small.rows.map((row) => row.name).sort()).toEqual([
@@ -142,8 +140,8 @@ describe("compareMarket", () => {
       "EDF - Zen Estival",
       "EDF - Zen Week-End",
     ]);
-    // Pas de 3 kVA : Bleu HC, Tempo, Charge'Heures, Zen Week-End HC, Plus et Plus HC.
-    expect(small.unavailable).toBe(6);
+    // Pas de 3 kVA : Bleu HC, Tempo, Charge'Heures, Zen Week-End HC, Plus, Plus HC et Flex.
+    expect(small.unavailable).toBe(7);
   });
 
   it("sans contrat actuel : pas d'écart", () => {

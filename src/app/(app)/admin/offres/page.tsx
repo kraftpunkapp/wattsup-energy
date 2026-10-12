@@ -31,7 +31,7 @@ const plural = (n: number, one: string, many: string) => `${n} ${n > 1 ? many : 
 export default async function MarketOffersPage() {
   const ctx = await pageContext("/admin/offres");
   if (!ctx.isAdmin) redirect("/");
-  const { state, offers, imports } = await getMarketCatalog(ctx);
+  const { state, offers, imports, sobriety } = await getMarketCatalog(ctx);
   const now = new Date();
   const today = localParts(now, TZ).date;
   const enabled = marketSyncEnabled();
@@ -147,6 +147,11 @@ export default async function MarketOffersPage() {
                 label="Offres"
                 value={String(offers.length)}
                 sub={`${compared} comparée${compared > 1 ? "s" : ""}`}
+              />
+              <StatTile
+                label="Jours Zen Flex"
+                value={String(sobriety.days)}
+                sub={sobriety.last ? `dernier le ${isoDate(sobriety.last)}` : "aucun"}
               />
             </div>
             {enabled && <RefreshButton />}

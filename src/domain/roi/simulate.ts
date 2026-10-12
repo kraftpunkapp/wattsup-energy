@@ -106,6 +106,7 @@ export function simulationSavings(
     contract: Contract;
     timezone: string;
     tempoColor?: (day: string) => TempoColor | undefined;
+    sobrietyDay?: (day: string) => boolean;
     exportPriceEurKwh: number | null;
   },
 ): number {
@@ -124,6 +125,7 @@ export function simulationSavings(
         timezone: o.timezone,
         period: { from: "2000-01-01", to: "2000-01-01" },
         tempoColor: o.tempoColor,
+        sobrietyDay: o.sobrietyDay,
       },
     ).energyCents;
   const exported = (list: readonly { gridExport: number }[]) =>

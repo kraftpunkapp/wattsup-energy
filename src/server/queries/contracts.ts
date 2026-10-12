@@ -18,7 +18,7 @@ import { addDays, eachDay, localParts, zonedInstant } from "@/lib/time";
 import type { HouseholdContext } from "../context";
 import { listContracts, type ContractWithPeriods } from "../contracts";
 import { shareInFlight } from "../inflight";
-import { tempoColorsFor } from "../tempo/sync";
+import { pricingDays } from "../calendars";
 
 // Comparaison des contrats sur la consommation réelle (T18) : 12 derniers mois, ou depuis
 // la première donnée si l'historique est plus court (coût alors annualisé).
@@ -54,6 +54,7 @@ export type ComparisonInputs =
       periodDays: number;
       intervals: PriceableInterval[];
       colors: Map<string, TempoColor>;
+      sobriety: Set<string>;
       pricing: PricingContext;
       contracts: ContractWithPeriods[];
       /** Grille actuelle du contrat en cours ; null sans contrat en cours. */
@@ -99,7 +100,11 @@ async function loadInputs(ctx: HouseholdContext, now: Date): Promise<ComparisonI
   );
 
   // La veille de la période est incluse : ses heures de 0 h à 6 h sont du jour Tempo précédent.
-  const colors = await tempoColorsFor(ctx.householdId, addDays(from, -1), today);
+  const { colors, sobriety, calendars } = await pricingDays(
+    ctx.householdId,
+    addDays(from, -1),
+    today,
+  );
   const contracts = await listContracts(ctx);
   const current = currentContract(contracts, today);
   return {
@@ -109,7 +114,8 @@ async function loadInputs(ctx: HouseholdContext, now: Date): Promise<ComparisonI
     periodDays,
     intervals,
     colors,
-    pricing: { timezone: tz, period: { from, to: today }, tempoColor: (d) => colors.get(d) },
+    sobriety,
+    pricing: { timezone: tz, period: { from, to: today }, ...calendars },
     contracts,
     current: current ? { id: current.id, contract: latestGrid(current) } : null,
   };
@@ -130,8 +136,6 @@ export async function getContractComparison(
   const inputs = await comparisonInputs(ctx, now);
   if (inputs.status !== "ok") return inputs;
   const { from, today, periodDays, intervals, colors, contracts, current } = inputs;
-  const tz = ctx.timezone;
-  const tempoColor = inputs.pricing.tempoColor;
   // Chaque offre est simulée avec sa grille actuelle : ce qu'elle coûterait aujourd'hui.
   const compared = compareContracts(
     contracts.map((c) => ({
@@ -148,10 +152,7 @@ export async function getContractComparison(
   // Coût réel : contrat souscrit et grille en vigueur à chaque date.
   const hasSubscribed = contracts.some((c) => c.status === "subscribed");
   const timeline = hasSubscribed
-    ? priceTimeline(intervals, buildTimeline(contracts, from, today, today), {
-        timezone: tz,
-        tempoColor,
-      })
+    ? priceTimeline(intervals, buildTimeline(contracts, from, today, today), inputs.pricing)
     : null;
   const real = timeline
     ? {

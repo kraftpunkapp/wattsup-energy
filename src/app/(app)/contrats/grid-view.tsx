@@ -150,7 +150,11 @@ export function GridView({ contract }: { contract: Contract }) {
                 label={r.label}
                 value={fmtPrice(r.price)}
                 unit="€/kWh"
-                sub={monthsLabel(r.months) ?? undefined}
+                sub={
+                  [r.onlySobrietyDays ? "jours de sobriété" : null, monthsLabel(r.months)]
+                    .filter(Boolean)
+                    .join(" · ") || undefined
+                }
               />
             ))}
             <SubscriptionTile eurYear={contract.subscriptionEurYear} />

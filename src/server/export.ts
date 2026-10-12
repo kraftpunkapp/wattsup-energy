@@ -12,6 +12,7 @@ import {
   idea,
   ingestLog,
   marker,
+  sobrietyOverride,
   tempoOverride,
   user,
 } from "@/db/schema";
@@ -81,6 +82,7 @@ export async function exportData(ctx: HouseholdContext, now = new Date()) {
     equipments,
     markers,
     tempo,
+    sobriety,
     log,
     ideas,
   ] = await Promise.all([
@@ -172,6 +174,11 @@ export async function exportData(ctx: HouseholdContext, now = new Date()) {
       .where(mine(tempoOverride.householdId))
       .orderBy(asc(tempoOverride.date)),
     db
+      .select({ date: sobrietyOverride.date, sobriety: sobrietyOverride.sobriety })
+      .from(sobrietyOverride)
+      .where(mine(sobrietyOverride.householdId))
+      .orderBy(asc(sobrietyOverride.date)),
+    db
       .select({
         receivedAt: ingestLog.receivedAt,
         httpStatus: ingestLog.httpStatus,
@@ -211,6 +218,7 @@ export async function exportData(ctx: HouseholdContext, now = new Date()) {
     equipment: equipments,
     markers,
     tempoOverrides: tempo,
+    sobrietyOverrides: sobriety,
     ingestLog: log,
     ideas,
   };

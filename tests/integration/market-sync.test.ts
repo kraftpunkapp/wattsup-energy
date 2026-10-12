@@ -1,9 +1,9 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { eq } from "drizzle-orm";
+import { desc, eq } from "drizzle-orm";
 import { beforeEach, describe, expect, it } from "vitest";
 import { db } from "@/db";
-import { marketImport, marketOffer, marketSync, user } from "@/db/schema";
+import { marketImport, marketOffer, marketSync, sobrietyDay, user } from "@/db/schema";
 import { ForbiddenError } from "@/server/admin";
 import { getMarketCatalog } from "@/server/market/catalog";
 import { MANIFEST_PATH, type OfferSource } from "@/server/market/source";
@@ -44,13 +44,16 @@ function fakeSource(init: { sha: string; files: Record<string, string> }) {
   return { source, state };
 }
 
+const CALENDAR = "scripts/tarifs-lib/calendars/zenflex-sobriete.js";
 const files = (paths: string[], overrides: Record<string, string> = {}) => ({
   [MANIFEST_PATH]: manifest(paths),
+  [CALENDAR]: read(CALENDAR),
   ...Object.fromEntries(paths.map((p) => [p, read(p)])),
   ...overrides,
 });
 
 beforeEach(async () => {
+  await db.delete(sobrietyDay);
   await db.delete(marketOffer);
   await db.delete(marketImport);
   await db.delete(marketSync);
@@ -161,6 +164,21 @@ describe("synchronisation du catalogue", () => {
     state.files = { [MANIFEST_PATH]: manifest([]) };
     expect(await syncMarket(source, { now: t0 })).toMatchObject({ status: "error" });
     expect(await names()).toHaveLength(2);
+  });
+});
+
+describe("jours de sobriété Zen Flex (T57)", () => {
+  it("importés avec le catalogue ; un calendrier illisible garde le précédent", async () => {
+    const { source, state } = fakeSource({ sha: SHA_A, files: files([BLEU]) });
+    await syncMarket(source);
+    const count = await db.$count(sobrietyDay);
+    expect(count).toBeGreaterThan(100);
+    state.sha = SHA_B;
+    state.files = files([BLEU], { [CALENDAR]: 'defineCalendar("zenflex-sobriete", 42);' });
+    expect(await syncMarket(source)).toMatchObject({ status: "imported" });
+    expect(await db.$count(sobrietyDay)).toBe(count);
+    const [imp] = await db.select().from(marketImport).orderBy(desc(marketImport.at)).limit(1);
+    expect(imp?.unreadable).toEqual([expect.stringContaining("zenflex-sobriete.js")]);
   });
 });
 

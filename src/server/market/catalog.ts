@@ -1,6 +1,6 @@
-import { asc, desc } from "drizzle-orm";
+import { asc, count, desc, max } from "drizzle-orm";
 import { db } from "@/db";
-import { marketImport, marketOffer, marketSync } from "@/db/schema";
+import { marketImport, marketOffer, marketSync, sobrietyDay } from "@/db/schema";
 import { describeOffer, type OfferInfo } from "@/domain/market/offer";
 import { requireAdmin } from "../admin";
 import type { HouseholdContext } from "../context";
@@ -17,10 +17,11 @@ export interface CatalogOffer extends OfferInfo {
 
 export async function getMarketCatalog(ctx: HouseholdContext) {
   requireAdmin(ctx);
-  const [[state], rows, imports] = await Promise.all([
+  const [[state], rows, imports, [sobriety]] = await Promise.all([
     db.select().from(marketSync),
     db.select().from(marketOffer).orderBy(asc(marketOffer.name)),
     db.select().from(marketImport).orderBy(desc(marketImport.at)),
+    db.select({ days: count(), last: max(sobrietyDay.date) }).from(sobrietyDay),
   ]);
   const offers: CatalogOffer[] = rows.map((r) => ({
     name: r.name,
@@ -29,5 +30,11 @@ export async function getMarketCatalog(ctx: HouseholdContext) {
     subscriptionUrl: r.definition.subscription_url || null,
     firstSeenAt: r.firstSeenAt,
   }));
-  return { state: state ?? null, offers, imports };
+  return {
+    state: state ?? null,
+    offers,
+    imports,
+    /** Calendrier Zen Flex importé : nombre de jours de sobriété et le plus récent. */
+    sobriety: { days: sobriety?.days ?? 0, last: sobriety?.last ?? null },
+  };
 }

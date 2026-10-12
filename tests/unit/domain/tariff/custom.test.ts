@@ -320,3 +320,53 @@ describe("saisons (T56)", () => {
     );
   });
 });
+
+describe("jours de sobriété Zen Flex (T57)", () => {
+  const HC = [
+    { from: "00:00", to: "08:00" },
+    { from: "13:00", to: "18:00" },
+    { from: "20:00", to: "24:00" },
+  ];
+  const WEEK = [1, 2, 3, 4, 5, 6, 7];
+  const zenFlex: CustomContract = {
+    kind: "custom",
+    subscriptionEurYear: 0,
+    rules: [
+      { label: "Sobriété HC", days: WEEK, ranges: HC, price: 0.2142, onlySobrietyDays: true },
+      { label: "Sobriété HP", days: WEEK, ranges: ALL_DAY, price: 0.7467, onlySobrietyDays: true },
+      { label: "HC", days: WEEK, ranges: HC, price: 0.1595 },
+      { label: "HP", days: WEEK, ranges: ALL_DAY, price: 0.2142 },
+    ],
+  };
+  // Mardi 12 et mercredi 13 janvier 2026 (UTC+1), 1 kWh par heure ; le 13 est un jour de sobriété.
+  const twoDays = hourly("2026-01-11T23:00:00Z", "2026-01-13T23:00:00Z");
+  const withSobriety = (days: string[]): PricingContext => ({
+    ...ctx("2026-01-12", "2026-01-14"),
+    sobrietyDay: (d) => days.includes(d),
+  });
+
+  it("les règles des jours de sobriété ne valent que ces jours-là", () => {
+    const r = priceIntervals(twoDays, zenFlex, withSobriety(["2026-01-13"]));
+    // Chaque jour : 17 h creuses (0–8, 13–18, 20–24) et 7 h pleines.
+    expect(r.bySlot.HC?.kwh).toBe(17);
+    expect(r.bySlot.HP?.kwh).toBe(7);
+    expect(r.bySlot["Sobriété HC"]?.kwh).toBe(17);
+    expect(r.bySlot["Sobriété HP"]?.kwh).toBe(7);
+    expect(r.energyCents).toBe(
+      Math.round((17 * 0.1595 + 7 * 0.2142 + 17 * 0.2142 + 7 * 0.7467) * 100),
+    );
+  });
+
+  it("sans calendrier : tous les jours sont normaux", () => {
+    const r = priceIntervals(twoDays, zenFlex, ctx("2026-01-12", "2026-01-14"));
+    expect(r.bySlot["Sobriété HP"]).toBeUndefined();
+    expect(r.bySlot.HP?.kwh).toBe(14);
+  });
+
+  it("validation : la couverture se vérifie sur les règles des jours normaux", () => {
+    expect(validateCustomRules(zenFlex.rules)).toEqual([]);
+    expect(validateCustomRules(zenFlex.rules.slice(0, 2))).toEqual([
+      "aucune règle ne couvre lundi à 00:00",
+    ]);
+  });
+});

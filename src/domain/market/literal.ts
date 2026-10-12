@@ -7,7 +7,9 @@
 
 export type Literal = null | boolean | number | string | Literal[] | { [key: string]: Literal };
 
-export type CallArgument = { ok: true; value: Literal } | { ok: false; error: string };
+/** Arguments littéraux d'un appel : `value` est le premier, `args` tous, dans l'ordre. */
+export type CallArgument =
+  { ok: true; value: Literal; args: Literal[] } | { ok: false; error: string };
 
 const MAX_DEPTH = 32;
 const FORBIDDEN_KEYS = new Set(["__proto__", "constructor", "prototype"]);
@@ -254,9 +256,15 @@ export function findCallArguments(src: string, name: string): CallArgument[] {
       r.pos++;
       const start = r.pos;
       try {
-        const value = r.value(0);
+        const args = [r.value(0)];
+        for (r.skip(); r.peek() === ","; r.skip()) {
+          r.pos++;
+          r.skip();
+          if (r.peek() === ")") break; // virgule finale
+          args.push(r.value(0));
+        }
         r.expect(")");
-        out.push({ ok: true, value });
+        out.push({ ok: true, value: args[0] as Literal, args });
       } catch (err) {
         out.push({ ok: false, error: (err as Error).message });
         r.pos = start;

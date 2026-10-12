@@ -32,7 +32,7 @@ import { getLastPushAt } from "./ingest/status";
 import { knownMarketSaving } from "./market/compare";
 import { mailConfigured, sendMail } from "./mail";
 import { gridIntervals } from "./queries/overview";
-import { tempoColorsFor } from "./tempo/sync";
+import { pricingDays } from "./calendars";
 
 // Alertes du foyer (T44) : réunit les faits (seulement pour les modules du profil), les
 // évalue (src/domain/alerts.ts) et retire celles que l'utilisateur a masquées. Chaque
@@ -129,8 +129,8 @@ async function budgetFacts(ctx: HouseholdContext, today: string): Promise<AlertF
     gridIntervals(ctx, shift(from), shift(to)),
   ]);
   if (current.length === 0) return null;
-  const colors = await tempoColorsFor(ctx.householdId, addDays(shift(from), -1), to);
-  const pricing = { timezone: ctx.timezone, tempoColor: (d: string) => colors.get(d) };
+  const { calendars } = await pricingDays(ctx.householdId, addDays(shift(from), -1), to);
+  const pricing = { timezone: ctx.timezone, ...calendars };
   const cost = (list: typeof current, a: string, b: string) => {
     const timeline = buildTimeline(contracts, a, b, today);
     return timeline.some((s) => s.contract)

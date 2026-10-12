@@ -11,7 +11,7 @@ import { addDays, localParts, zonedInstant } from "@/lib/time";
 import type { HouseholdContext } from "../context";
 import { listContracts } from "../contracts";
 import { listEquipment, type Equipment, type EquipmentKind } from "../equipment";
-import { tempoColorsFor } from "../tempo/sync";
+import { pricingDays } from "../calendars";
 
 // Écran Rentabilité (T30) : économies depuis l'installation (contrat actuel, kWh évité au
 // créneau), amortissement projeté, rendement solaire normalisé du dernier mois complet.
@@ -133,11 +133,11 @@ export async function getRoi(ctx: HouseholdContext, now = new Date()): Promise<R
   const yieldFrom = `${addDays(today, -400).slice(0, 7)}-01`;
   const from = [...equipmentList.map((e) => e.installedOn), yieldFrom].sort()[0] ?? yieldFrom;
   const slots = await energySlots(ctx, from, end);
-  const colors = await tempoColorsFor(ctx.householdId, addDays(from, -1), end);
+  const { calendars } = await pricingDays(ctx.householdId, addDays(from, -1), end);
   const options = {
     contract,
     timezone: tz,
-    tempoColor: (d: string) => colors.get(d),
+    ...calendars,
     exportEnabled: s.exportEnabled,
     exportPriceEurKwh: s.exportPriceEurKwh,
     batteryGridCharging: s.batteryGridCharging,

@@ -1,13 +1,14 @@
 import { addDays, weekdayOf } from "@/lib/time";
 import { toSegments } from "./base-hphc";
 import type { Pricer, Share } from "./pricer";
-import type { CustomContract, CustomRule } from "./types";
+import type { CustomContract, CustomRule, PricingContext } from "./types";
 
 // Contrats sur mesure (SPEC §7.1) : règles ordonnées { jours, plages, prix, mois }, la
 // première qui couvre une minute donnée s'applique. Une table des 10 080 minutes de la
 // semaine (minute → indice de règle) est précalculée par mois (une seule si aucune règle
-// n'a de mois). Avec `dayStartHour` = 6 (T56), le jour et le mois d'une heure avant 6 h
-// sont ceux de la veille ; les plages restent en heure locale.
+// n'a de mois), et à part pour les jours de sobriété EDF Zen Flex (T57), où les règles
+// `onlySobrietyDays` passent en tête. Avec `dayStartHour` = 6 (T56), le jour et le mois
+// d'une heure avant 6 h sont ceux de la veille ; les plages restent en heure locale.
 
 const DAY_MIN = 1440;
 const WEEK_MIN = 7 * DAY_MIN;
@@ -33,10 +34,20 @@ const hm = (min: number) =>
 const appliesIn = (rule: CustomRule, month: number) =>
   rule.months === undefined || rule.months.includes(month);
 
-/** Table minute de la semaine → indice de règle, pour un mois (0 : règles sans mois). */
-function buildTable(rules: readonly CustomRule[], month: number): Int16Array {
+/**
+ * Table minute de la semaine → indice de règle, pour un mois (0 : règles sans mois) et un
+ * type de jour (sobriété ou non). Les règles des jours de sobriété ne comptent que ces
+ * jours-là, et y priment sur les autres.
+ */
+function buildTable(rules: readonly CustomRule[], month: number, sobriety = false): Int16Array {
   const table = new Int16Array(WEEK_MIN).fill(-1);
-  rules.forEach((rule, index) => {
+  const order = rules
+    .map((rule, index) => ({ rule, index }))
+    .filter(({ rule }) => sobriety || !rule.onlySobrietyDays)
+    .sort(
+      (a, b) => Number(Boolean(b.rule.onlySobrietyDays)) - Number(Boolean(a.rule.onlySobrietyDays)),
+    );
+  order.forEach(({ rule, index }) => {
     if (month !== 0 && !appliesIn(rule, month)) return;
     for (const [from, to] of toSegments(rule.ranges)) {
       for (const day of rule.days) {
@@ -97,16 +108,19 @@ export function validateCustomRules(rules: readonly CustomRule[]): string[] {
   return errors;
 }
 
-export function customPricer(contract: CustomContract): Pricer {
+export function customPricer(contract: CustomContract, ctx: PricingContext): Pricer {
   const errors = validateCustomRules(contract.rules);
   if (errors.length > 0) throw new Error(`contrat invalide : ${errors.join(" ; ")}`);
   const monthly = usesMonths(contract.rules);
+  const sobrietyRules = contract.rules.some((r) => r.onlySobrietyDays);
+  const isSobriety = (date: string) => sobrietyRules && (ctx.sobrietyDay?.(date) ?? false);
   const dayStart = contract.dayStartHour ?? 0;
   const tables = new Map<number, Int16Array>();
-  const tableFor = (month: number) => {
-    const key = monthly ? month : 0;
+  const tableFor = (month: number, sobriety: boolean) => {
+    const key = (monthly ? month : 0) * 2 + Number(sobriety);
     let table = tables.get(key);
-    if (!table) tables.set(key, (table = buildTable(contract.rules, key)));
+    if (!table)
+      tables.set(key, (table = buildTable(contract.rules, monthly ? month : 0, sobriety)));
     return table;
   };
 
@@ -114,12 +128,15 @@ export function customPricer(contract: CustomContract): Pricer {
   // mémorisées.
   const memo = new Map<number, Share[]>();
 
-  /** Parts par règle sur [start, start + length) minutes de la semaine, pour un mois. */
-  const shares = (month: number, start: number, length: number): Share[] => {
-    const memoKey = ((monthly ? month : 0) * WEEK_MIN + start) * 2048 + length;
+  /** Parts par règle sur [start, start + length) minutes de la semaine, pour un jour donné. */
+  const shares = (date: string, start: number, length: number): Share[] => {
+    const month = Number(date.slice(5, 7));
+    const sobriety = isSobriety(date);
+    const memoKey =
+      (((monthly ? month : 0) * 2 + Number(sobriety)) * WEEK_MIN + start) * 2048 + length;
     const known = memo.get(memoKey);
     if (known) return known;
-    const table = tableFor(month);
+    const table = tableFor(month, sobriety);
     const counts = new Map<number, number>();
     for (let i = 0; i < length; i++) {
       const rule = table[(start + i) % WEEK_MIN] as number;
@@ -139,16 +156,12 @@ export function customPricer(contract: CustomContract): Pricer {
       const before = local.hour < dayStart;
       const date = before ? addDays(local.date, -1) : local.date;
       const weekday = before ? (local.weekday === 1 ? 7 : local.weekday - 1) : local.weekday;
-      return shares(
-        Number(date.slice(5, 7)),
-        (weekday - 1) * DAY_MIN + local.hour * 60 + local.minute,
-        60,
-      );
+      return shares(date, (weekday - 1) * DAY_MIN + local.hour * 60 + local.minute, 60);
     },
     // Un total journalier (même ventilé HP/HC par HA) ne dit pas à quelle règle il
     // revient : réparti au prorata des minutes, exact seulement si une règle couvre tout.
     day: (date) => {
-      const result = shares(Number(date.slice(5, 7)), (weekdayOf(date) - 1) * DAY_MIN, DAY_MIN);
+      const result = shares(date, (weekdayOf(date) - 1) * DAY_MIN, DAY_MIN);
       return { shares: result, approximated: result.length > 1 };
     },
   };

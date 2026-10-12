@@ -9,6 +9,7 @@ import {
   isNewOffer,
   isOldGrid,
   parseManifest,
+  parseSobrietyCalendar,
   parseSourceTariff,
   splitName,
   toContract,
@@ -199,7 +200,6 @@ describe("conversion", () => {
 
   it.each([
     ["EDF - EJP", { status: "never", reason: "closed" }],
-    ["EDF - Zen Week-End Option Flex", { status: "pending", reason: "special-days" }],
     ["Sobry - SoCap", { status: "pending", reason: "spot" }],
   ])("%s : pas encore comparée, avec sa raison", (name, support) => {
     expect(describeOffer(get(name)).support).toEqual(support);
@@ -237,6 +237,31 @@ describe("conversion", () => {
       ["Été HC", [1, 2, 3, 4, 5], 0.13831],
       ["Été HP", [1, 2, 3, 4, 5], 0.19567],
     ]);
+  });
+
+  it("Zen Week-End Option Flex : prix propres aux jours de sobriété", () => {
+    const t = get("EDF - Zen Week-End Option Flex");
+    expect(describeOffer(t).support).toMatchObject({ status: "compared", kind: "custom" });
+    const c = toContract(t, 9, null)?.contract as CustomContract;
+    expect(c.rules.map((r) => [r.label, r.price, r.onlySobrietyDays ?? false])).toEqual([
+      ["Jours de sobriété HC", 0.2142, true],
+      ["Jours de sobriété HP", 0.7467, true],
+      ["Heures creuses", 0.1595, false],
+      ["Heures pleines", 0.2142, false],
+    ]);
+  });
+
+  it("calendrier Zen Flex de la source : dates ISO, croissantes", () => {
+    const days = parseSobrietyCalendar(
+      readFileSync(join(ROOT, "scripts/tarifs-lib/calendars/zenflex-sobriete.js"), "utf8"),
+    );
+    expect(days.length).toBeGreaterThan(100);
+    expect(days).toContain("2026-03-26");
+    expect([...days].sort()).toEqual(days);
+    expect(() => parseSobrietyCalendar(`defineCalendar("tempo-edf", {})`)).toThrow(/introuvable/);
+    expect(() =>
+      parseSobrietyCalendar(`defineCalendar("zenflex-sobriete", { sobriete: { days: ["hier"] } })`),
+    ).toThrow(/date invalide/);
   });
 
   it("Zen Week-End Plus : le jour choisi s'ajoute au week-end", () => {

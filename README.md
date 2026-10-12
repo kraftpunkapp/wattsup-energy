@@ -95,6 +95,13 @@ WattsUp vous rend service ? Vous pouvez soutenir son développement :
 
 ## Notes de version
 
+### 1.5.0 — 12 octobre 2026
+
+- **Jours de sobriété EDF Zen Flex** : une règle de contrat personnalisé peut ne valoir que ces
+  jours-là ; leur calendrier est importé automatiquement et corrigeable jour par jour depuis
+  la page Contrats. Tous les coûts en tiennent compte.
+- L'offre Zen Week-End Option Flex rejoint la comparaison des offres du marché.
+
 ### 1.4.0 — 12 octobre 2026
 
 - **Contrats à saisons** : dans un contrat personnalisé, chaque règle peut ne valoir qu'en

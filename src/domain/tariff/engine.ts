@@ -23,7 +23,7 @@ function pricerFor(contract: Contract, ctx: PricingContext): Pricer {
     case "tempo":
       return tempoPricer(contract, ctx);
     case "custom":
-      return customPricer(contract);
+      return customPricer(contract, ctx);
   }
 }
 

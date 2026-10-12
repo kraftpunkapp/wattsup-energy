@@ -55,7 +55,7 @@ import type { HouseholdContext } from "../context";
 import { listContracts } from "../contracts";
 import { listEquipment } from "../equipment";
 import { listMarkers } from "../markers";
-import { tempoColorsFor } from "../tempo/sync";
+import { pricingDays } from "../calendars";
 
 // Vue d'ensemble (T20) : budget réel (contrat et grille en vigueur chaque jour), coût
 // mensuel, bilan et origine de la consommation, postes, production et ensoleillement.
@@ -431,8 +431,8 @@ export async function getOverview(
       : new Map<string, Record<string, number>>(),
     ctx.granularity === "hourly" ? nightHours(ctx, previousYearFrom, yearTo) : null,
   ]);
-  const colors = await tempoColorsFor(ctx.householdId, addDays(previousYearFrom, -1), yearTo);
-  const pricing = { timezone: tz, tempoColor: (d: string) => colors.get(d) };
+  const { calendars } = await pricingDays(ctx.householdId, addDays(previousYearFrom, -1), yearTo);
+  const pricing = { timezone: tz, ...calendars };
   const price = (list: PriceableInterval[], from: string, to: string): TimelineResult =>
     priceTimeline(list, buildTimeline(contracts, from, to, today), pricing);
 

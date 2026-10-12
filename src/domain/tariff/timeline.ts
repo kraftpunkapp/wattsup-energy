@@ -5,8 +5,8 @@ import type {
   Contract,
   MonthBreakdown,
   PriceableInterval,
+  PricingContext,
   PricedResult,
-  TempoColor,
 } from "./types";
 
 // Contrats datés et historique de prix (SPEC §7.1, T18b). Un contrat souscrit couvre
@@ -167,7 +167,7 @@ export interface TimelineResult extends PricedResult {
 export function priceTimeline(
   intervals: readonly PriceableInterval[],
   segments: readonly Segment[],
-  ctx: { timezone: string; tempoColor?: (day: string) => TempoColor | undefined },
+  ctx: Pick<PricingContext, "timezone" | "tempoColor" | "sobrietyDay">,
 ): TimelineResult {
   const dayOf = (i: PriceableInterval) =>
     i.granularity === "hour" ? localParts(i.start, ctx.timezone).date : i.date;
@@ -203,6 +203,7 @@ export function priceTimeline(
       timezone: ctx.timezone,
       period: { from: segment.from, to: segment.to },
       tempoColor: ctx.tempoColor,
+      sobrietyDay: ctx.sobrietyDay,
     });
     result.totalCents += r.totalCents;
     result.energyCents += r.energyCents;

@@ -53,6 +53,7 @@ const custom = z.object({
         ranges: z.array(range).min(1),
         price,
         months: z.array(z.number().int()).max(12).optional(),
+        onlySobrietyDays: z.literal(true).optional(),
       }),
     )
     .superRefine((rules, ctx) => {

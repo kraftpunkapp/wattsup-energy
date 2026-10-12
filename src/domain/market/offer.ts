@@ -2,7 +2,7 @@ import { z } from "zod";
 import { toSegments } from "../tariff/base-hphc";
 import { parseContractInput } from "../tariff/schema";
 import type { Contract, CustomContract, CustomRule, TimeRange } from "../tariff/types";
-import { literalAfter, type Literal } from "./literal";
+import { findCallArguments, literalAfter, type Literal } from "./literal";
 
 // Offres du marché (SPEC §7.12) : définitions de la source comparateur-abonnements-
 // electricite.fr (dépôt JC144/EDF_Simulateur_Prix), lues sans exécution, puis converties
@@ -59,10 +59,9 @@ export function parseSourceTariff(
 }
 
 /** Raison pour laquelle une offre n'est pas (encore) comparée. */
-export type PendingReason = "special-days" | "spot" | "unknown";
+export type PendingReason = "spot" | "unknown";
 
 export const REASON_LABELS: Record<PendingReason | "closed", string> = {
-  "special-days": "jours spéciaux (Zen Flex)",
   spot: "prix spot",
   unknown: "format non reconnu",
   closed: "offre fermée aux nouveaux abonnés",
@@ -345,19 +344,42 @@ function build(
     contract = { kind: "custom", subscriptionEurYear, ...built };
   } else if (rule.type === "calendar") {
     if (rule.calendar === "ejp-edf") return { reason: "closed" };
-    if (rule.calendar === "zenflex-sobriete") return { reason: "special-days" };
-    if (rule.calendar !== "tempo-edf" || rule.default !== "bleu") return { reason: "unknown" };
-    const ranges = rangesSchema.safeParse(t.hcRanges);
-    if (!ranges.success || !sameSegments(ranges.data, DEFAULT_OFF_PEAK)) {
-      return { reason: "unknown" };
+    if (rule.calendar === "zenflex-sobriete") {
+      // Zen Flex (T57) : les jours de sobriété, connus par le calendrier importé avec le
+      // catalogue, ont leurs propres prix ; les autres jours, ceux de l'offre.
+      const sobriety = spec("sobriete");
+      const normal = spec(rule.default);
+      if (!sobriety || !normal) return { reason: "unknown" };
+      const a = withOffPeak(sobriety, WEEK, offPeak, {
+        hp: "Jours de sobriété HP",
+        hc: "Jours de sobriété HC",
+        single: "Jours de sobriété",
+      });
+      const b = withOffPeak(normal, WEEK, offPeak, {
+        hp: "Heures pleines",
+        hc: "Heures creuses",
+        single: "Autres jours",
+      });
+      if (!a || !b) return { reason: "unknown" };
+      contract = {
+        kind: "custom",
+        subscriptionEurYear,
+        rules: [...a.map((r) => ({ ...r, onlySobrietyDays: true as const })), ...b],
+      };
+    } else {
+      if (rule.calendar !== "tempo-edf" || rule.default !== "bleu") return { reason: "unknown" };
+      const ranges = rangesSchema.safeParse(t.hcRanges);
+      if (!ranges.success || !sameSegments(ranges.data, DEFAULT_OFF_PEAK)) {
+        return { reason: "unknown" };
+      }
+      const prices = {} as Record<(typeof TEMPO_TYPES)[number], { hp: number; hc: number }>;
+      for (const color of TEMPO_TYPES) {
+        const s = spec(color);
+        if (!s || "price" in s) return { reason: "unknown" };
+        prices[color] = { hp: eur(s.HP), hc: eur(s.HC) };
+      }
+      contract = { kind: "tempo", subscriptionEurYear, prices };
     }
-    const prices = {} as Record<(typeof TEMPO_TYPES)[number], { hp: number; hc: number }>;
-    for (const color of TEMPO_TYPES) {
-      const s = spec(color);
-      if (!s || "price" in s) return { reason: "unknown" };
-      prices[color] = { hp: eur(s.HP), hc: eur(s.HC) };
-    }
-    contract = { kind: "tempo", subscriptionEurYear, prices };
   } else {
     return { reason: "unknown" };
   }
@@ -403,8 +425,9 @@ function build(
    */
   function seasonRules(
     r: Record<string, unknown>,
-  ): Pick<CustomContract, "rules" | "dayStartHour"> | { reason: PendingReason } {
-    if (r.calendarOverride !== undefined) return { reason: "special-days" };
+  ): Pick<CustomContract, "rules" | "dayStartHour"> | { reason: "unknown" } {
+    // Saison et jours d'un calendrier (OctoTempo) : aucune offre de la source ne l'utilise.
+    if (r.calendarOverride !== undefined) return { reason: "unknown" };
     if (!isObject(r.seasons)) return { reason: "unknown" };
     const shift = r.previousDayBefore;
     if (shift !== undefined && shift !== 6) return { reason: "unknown" };
@@ -549,4 +572,29 @@ export function isNewOffer(firstSeen: Date, catalogStart: Date, now: Date): bool
     firstSeen.getTime() > catalogStart.getTime() &&
     now.getTime() - firstSeen.getTime() < 30 * DAY_MS
   );
+}
+
+/** Calendrier des jours de sobriété Zen Flex dans le dépôt de la source (T57). */
+export const SOBRIETY_CALENDAR_PATH = "scripts/tarifs-lib/calendars/zenflex-sobriete.js";
+
+/**
+ * Jours de sobriété (AAAA-MM-JJ, croissants) du calendrier de la source :
+ * `defineCalendar("zenflex-sobriete", { sobriete: { days: ["AAAA/MM/JJ", …] } })`.
+ */
+export function parseSobrietyCalendar(src: string): string[] {
+  const call = findCallArguments(src, "defineCalendar").find(
+    (c) => c.ok && c.args[0] === "zenflex-sobriete",
+  );
+  if (!call?.ok) throw new Error("calendrier Zen Flex introuvable");
+  const body = call.args[1];
+  const days = isObject(body) && isObject(body.sobriete) ? body.sobriete.days : null;
+  if (!Array.isArray(days)) throw new Error("calendrier Zen Flex : liste de jours attendue");
+  const out = new Set<string>();
+  for (const d of days) {
+    if (typeof d !== "string" || !/^\d{4}\/\d{2}\/\d{2}$/.test(d)) {
+      throw new Error(`calendrier Zen Flex : date invalide ${String(d)}`);
+    }
+    out.add(d.replaceAll("/", "-"));
+  }
+  return [...out].sort();
 }

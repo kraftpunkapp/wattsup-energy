@@ -7,7 +7,7 @@ import { addDays, localParts, zonedInstant } from "@/lib/time";
 import type { HouseholdContext } from "./context";
 import { listContracts } from "./contracts";
 import { listEquipment } from "./equipment";
-import { tempoColorsFor } from "./tempo/sync";
+import { pricingDays } from "./calendars";
 
 // Simulateur « Et si… » (T45) : rejoue les 12 derniers mois horaires du foyer avec une
 // batterie et/ou des panneaux en plus, au prix du contrat actuel. Filtre par ctx.householdId.
@@ -93,11 +93,11 @@ export async function runSimulation(
     currentKwc,
     battery: req.battery && { ...req.battery, efficiency: BATTERY_EFFICIENCY },
   });
-  const colors = await tempoColorsFor(ctx.householdId, addDays(from, -1), today);
+  const { calendars } = await pricingDays(ctx.householdId, addDays(from, -1), today);
   const savings = simulationSavings(hours, result.hours, {
     contract: latestGrid(current),
     timezone: tz,
-    tempoColor: (d) => colors.get(d),
+    ...calendars,
     exportPriceEurKwh: ctx.settings.exportEnabled ? ctx.settings.exportPriceEurKwh : null,
   });
   const factor = 365 / days;

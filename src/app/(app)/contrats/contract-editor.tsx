@@ -240,6 +240,19 @@ function RuleEditor({
           );
         })}
       </div>
+      <label className="flex items-center gap-2 text-[13px]">
+        <input
+          type="checkbox"
+          checked={rule.onlySobrietyDays === true}
+          onChange={(e) => {
+            const next = { ...rule, onlySobrietyDays: true as const };
+            if (!e.target.checked) delete (next as { onlySobrietyDays?: true }).onlySobrietyDays;
+            onChange(next);
+          }}
+          className="size-4 accent-[var(--color-grid)]"
+        />
+        Seulement les jours de sobriété EDF (Zen Flex)
+      </label>
       <MonthsField
         months={rule.months}
         onChange={(months) => {
@@ -381,7 +394,8 @@ export function GridFields({
           <div className="flex flex-col gap-3">
             <span className="text-xs text-muted">
               Règles appliquées dans l&apos;ordre : la première qui couvre un moment fixe son prix.
-              Chaque minute de la semaine doit être couverte, tous les mois de l&apos;année.
+              Chaque minute de la semaine doit être couverte, tous les mois de l&apos;année, par les
+              règles des jours normaux ; les jours de sobriété, leurs règles passent en tête.
             </span>
             <label className="flex items-start gap-2 text-[13px]">
               <input

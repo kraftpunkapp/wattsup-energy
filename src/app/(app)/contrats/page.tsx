@@ -7,11 +7,13 @@ import { shareInFlight } from "@/server/inflight";
 import { pageContext } from "@/server/page";
 import { getMarketOffers } from "@/server/market/compare";
 import { getContractComparison } from "@/server/queries/contracts";
+import { sobrietyCalendarView } from "@/server/calendars";
 import { tempoCalendarView } from "@/server/tempo/sync";
 import { ComparisonBanner, ComparisonEmpty, comparedRows, comparisonExtras } from "./comparison";
 import { ComparisonCard, type MarketState } from "./comparison-card";
 import { ContractsManager } from "./contracts-manager";
 import { toContractItems } from "./items";
+import { SobrietyCalendar, type SobrietyDay } from "./sobriety-calendar";
 import { TempoCalendar, type CalendarDay } from "./tempo-calendar";
 
 export const metadata = { title: "Contrats · WattsUp Energy" };
@@ -27,15 +29,33 @@ export default async function ContractsPage() {
   // Calendrier Tempo de la saison en cours, jusqu'au lendemain (couleur publiée vers 11 h).
   const today = localParts(new Date(), ctx.timezone).date;
   const hasTempo = contracts.some((c) => c.kind === "tempo");
+  // Zen Flex (T57) : un contrat dont une grille a des règles propres aux jours de sobriété.
+  const hasSobriety = contracts.some((c) =>
+    c.periods.some(
+      (p) => p.contract.kind === "custom" && p.contract.rules.some((r) => r.onlySobrietyDays),
+    ),
+  );
   const season = tempoSeasonOf(today);
+  const seasonFrom = `${season.slice(0, 4)}-09-01`;
+  const seasonTo = addDays(today, 1);
+  const seasonDays = eachDay(seasonFrom, addDays(seasonTo, 1));
   let calendar: CalendarDay[] = [];
   if (hasTempo) {
-    const from = `${season.slice(0, 4)}-09-01`;
-    const to = addDays(today, 1);
-    const view = await tempoCalendarView(ctx.householdId, from, to);
-    calendar = eachDay(from, addDays(to, 1)).map((date) => ({
+    const view = await tempoCalendarView(ctx.householdId, seasonFrom, seasonTo);
+    calendar = seasonDays.map((date) => ({
       date,
       color: view.get(date)?.color ?? null,
+      source: view.get(date)?.source ?? null,
+    }));
+  }
+  let sobrietyDays: SobrietyDay[] = [];
+  if (hasSobriety) {
+    // Jours de sobriété possibles d'octobre à avril : la carte commence le 1er octobre.
+    const from = `${season.slice(0, 4)}-10-01`;
+    const view = await sobrietyCalendarView(ctx.householdId, from, seasonTo);
+    sobrietyDays = (from > seasonTo ? [] : eachDay(from, addDays(seasonTo, 1))).map((date) => ({
+      date,
+      sobriety: view.get(date)?.sobriety ?? false,
       source: view.get(date)?.source ?? null,
     }));
   }
@@ -76,6 +96,7 @@ export default async function ContractsPage() {
             )
           )}
           {hasTempo && <TempoCalendar season={season} days={calendar} />}
+          {sobrietyDays.length > 0 && <SobrietyCalendar season={season} days={sobrietyDays} />}
         </div>
         <ContractsManager today={today} contracts={toContractItems(contracts, today)} />
       </div>

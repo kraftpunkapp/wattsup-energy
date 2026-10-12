@@ -1,3 +1,4 @@
+import { setManualSobriety } from "@/server/calendars";
 import { eq, is } from "drizzle-orm";
 import { PgTable, type PgColumn } from "drizzle-orm/pg-core";
 import { describe, expect, it } from "vitest";
@@ -76,6 +77,7 @@ async function seedEverything(ctx: HouseholdContext) {
     auth: "secret",
     label: "Chrome sur Android",
   });
+  await setManualSobriety(ctx.householdId, "2026-01-15", true);
   await createMarker(ctx, {
     kind: "other",
     text: "Repère",

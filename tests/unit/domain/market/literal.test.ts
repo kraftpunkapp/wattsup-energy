@@ -75,8 +75,8 @@ describe("findCallArguments", () => {
       defineTarif ( { name: "B", n: [1] } );
     `;
     expect(findCallArguments(src, "defineTarif")).toEqual([
-      { ok: true, value: { name: "A" } },
-      { ok: true, value: { name: "B", n: [1] } },
+      { ok: true, value: { name: "A" }, args: [{ name: "A" }] },
+      { ok: true, value: { name: "B", n: [1] }, args: [{ name: "B", n: [1] }] },
     ]);
   });
 
@@ -84,7 +84,13 @@ describe("findCallArguments", () => {
     const src = `defineTarif({ name: "A", x: compute() });\ndefineTarif({ name: "B" });`;
     const [first, second] = findCallArguments(src, "defineTarif");
     expect(first?.ok).toBe(false);
-    expect(second).toEqual({ ok: true, value: { name: "B" } });
+    expect(second).toEqual({ ok: true, value: { name: "B" }, args: [{ name: "B" }] });
+  });
+
+  it("lit tous les arguments d'un appel", () => {
+    expect(findCallArguments(`defineCalendar("zenflex", { a: [1] },);`, "defineCalendar")).toEqual([
+      { ok: true, value: "zenflex", args: ["zenflex", { a: [1] }] },
+    ]);
   });
 
   it("ne confond pas un nom plus long", () => {

@@ -1,12 +1,14 @@
 import { desc, notInArray } from "drizzle-orm";
 import { db } from "@/db";
-import { marketImport, marketOffer, marketSync } from "@/db/schema";
+import { marketImport, marketOffer, marketSync, sobrietyDay } from "@/db/schema";
 import { findCallArguments } from "@/domain/market/literal";
 import {
   describeOffer,
   diffCatalogs,
   parseManifest,
+  parseSobrietyCalendar,
   parseSourceTariff,
+  SOBRIETY_CALENDAR_PATH,
   type CatalogDiff,
   type SourceTariff,
 } from "@/domain/market/offer";
@@ -64,7 +66,14 @@ async function readCatalog(source: OfferSource, sha: string) {
       }
     }
   }
-  return { offers: [...offers.values()], unreadable };
+  // Jours de sobriété Zen Flex (T57) : illisibles, le calendrier précédent reste en place.
+  let sobriety: string[] | null = null;
+  try {
+    sobriety = parseSobrietyCalendar(await source.file(sha, SOBRIETY_CALENDAR_PATH));
+  } catch (err) {
+    unreadable.push(`${SOBRIETY_CALENDAR_PATH} : ${(err as Error).message}`);
+  }
+  return { offers: [...offers.values()], unreadable, sobriety };
 }
 
 async function saveState(values: Partial<typeof marketSync.$inferInsert>) {
@@ -83,7 +92,7 @@ async function run(source: OfferSource, force: boolean, now: Date): Promise<Mark
       return { status: "unchanged", commit: commit.sha };
     }
 
-    const { offers, unreadable } = await readCatalog(source, commit.sha);
+    const { offers, unreadable, sobriety } = await readCatalog(source, commit.sha);
     if (offers.length === 0) throw new Error("aucune offre lisible dans le catalogue");
     const compared = offers.filter(
       (o) => describeOffer(o.definition).support.status === "compared",
@@ -105,6 +114,12 @@ async function run(source: OfferSource, force: boolean, now: Date): Promise<Mark
           importedAt: now,
         })),
       );
+      if (sobriety) {
+        await tx.delete(sobrietyDay);
+        if (sobriety.length > 0) {
+          await tx.insert(sobrietyDay).values(sobriety.map((date) => ({ date, importedAt: now })));
+        }
+      }
       await tx.insert(marketImport).values({
         at: now,
         sourceCommit: commit.sha,

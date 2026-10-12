@@ -5,7 +5,7 @@ import { alertFacts, alertSettings } from "./alerts";
 import type { HouseholdContext } from "./context";
 import { listContracts } from "./contracts";
 import { getOverview, gridIntervals } from "./queries/overview";
-import { tempoColorsFor } from "./tempo/sync";
+import { pricingDays } from "./calendars";
 
 // Résumé lisible par Home Assistant (SPEC §6.6, T47) : quelques chiffres prêts à afficher
 // dans des capteurs REST, calculés comme dans l'appli. Filtré par le foyer du contexte.
@@ -39,12 +39,12 @@ export async function getSummary(ctx: HouseholdContext, now = new Date()): Promi
     listContracts(ctx),
     gridIntervals(ctx, today, tomorrow),
   ]);
-  const colors = await tempoColorsFor(ctx.householdId, addDays(today, -1), tomorrow);
+  const { calendars } = await pricingDays(ctx.householdId, addDays(today, -1), tomorrow);
   const timeline = buildTimeline(contracts, today, tomorrow, today);
   const todayCents = timeline.some((s) => s.contract)
     ? priceTimeline(intervals, timeline, {
         timezone: ctx.timezone,
-        tempoColor: (d) => colors.get(d),
+        ...calendars,
       }).totalCents
     : null;
   const ok = overview.status === "ok" ? overview : null;
