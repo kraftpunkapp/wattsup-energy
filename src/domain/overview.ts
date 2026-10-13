@@ -257,22 +257,3 @@ export function solarSavingEstimate(
   const resale = o.exportPriceCents === null ? 0 : month.gridExport * o.exportPriceCents;
   return Math.round(self * o.avgPriceCents + resale);
 }
-
-/** Valeurs connues nécessaires pour tracer une tendance. */
-const MIN_TREND_POINTS = 3;
-
-/**
- * Courbe de tendance (vue mois) : moyenne centrée sur `2 × half + 1` points, réduite aux
- * bords. Une valeur inconnue (jour sans donnée, jour en cours) n'a pas de point et n'entre
- * pas dans la moyenne de ses voisines.
- */
-export function movingAverage(values: readonly (number | null)[], half = 3): (number | null)[] {
-  if (values.filter((v) => v !== null).length < MIN_TREND_POINTS) return values.map(() => null);
-  return values.map((v, i) => {
-    if (v === null) return null;
-    const window = values
-      .slice(Math.max(0, i - half), i + half + 1)
-      .filter((x): x is number => x !== null);
-    return window.reduce((a, x) => a + x, 0) / window.length;
-  });
-}

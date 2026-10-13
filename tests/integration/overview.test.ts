@@ -89,22 +89,16 @@ describe("vue d'ensemble sur le foyer de démo", () => {
     expect(o.categories.find((c) => c.name === "Eau chaude")?.kwh).toBeCloseTo(water, 3);
 
     // Vue mois : un jour par barre ; leur somme fait le mois, à l'arrondi près.
-    const days = o.days?.list ?? [];
+    const days = o.days ?? [];
     expect(days).toHaveLength(30);
     expect(days.reduce((a, d) => a + d.kwh, 0)).toBeCloseTo(grid, 3);
     const daysCents = days.reduce((a, d) => a + d.energyCents + d.subscriptionCents, 0);
     expect(Math.abs((o.budget.totalCents ?? 0) - daysCents)).toBeLessThanOrEqual(60);
     expect(days.every((d) => d.hasData && d.previous !== null)).toBe(true);
-    // Tendance : moyenne sur 7 jours, centrée, un point par jour.
-    const trend = o.days?.trend.kwh ?? [];
-    expect(trend).toHaveLength(30);
-    const window = days.slice(7, 14).reduce((a, d) => a + d.kwh, 0) / 7;
-    expect(trend[10]).toBeCloseTo(window, 6);
-    // Mois en cours : jusqu'à aujourd'hui, sans point de tendance pour le jour entamé.
+    // Mois en cours : jusqu'à aujourd'hui.
     const current = await getOverview(ctx, "2026-10", now);
     if (current.status !== "ok") throw new Error(current.status);
-    expect(current.days?.list.map((d) => d.key)).toEqual(["2026-10-01", "2026-10-02", "2026-10-03"]);
-    expect(current.days?.trend.kwh.at(-1)).toBeNull();
+    expect(current.days?.map((d) => d.key)).toEqual(["2026-10-01", "2026-10-02", "2026-10-03"]);
 
     expect(o.solar?.points).toHaveLength(30);
     // N-1 : production de septembre 2025, jour par jour.

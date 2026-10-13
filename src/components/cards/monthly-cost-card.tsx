@@ -9,16 +9,14 @@ import { formatEurFromCents, formatKwh, formatPercent } from "@/lib/format";
 import type { DayCost, MonthCost } from "@/server/queries/overview";
 
 // Électricité mois par mois (vue année, chaque barre ouvre le mois) ou jour par jour (vue
-// mois, avec la tendance sur 7 jours), en euros (abonnement en bas de chaque barre) ou en
-// kWh soutirés, avec la même période de l'année précédente en option. L'unité et la
-// comparaison sont mémorisées sur l'appareil.
+// mois), en euros (abonnement en bas de chaque barre) ou en kWh soutirés, avec la même
+// période de l'année précédente en option. L'unité et la comparaison sont mémorisées sur
+// l'appareil.
 
 type Unit = "eur" | "kwh";
 const STORAGE_KEY = "wattsup:monthly-unit";
 const COMPARE_KEY = "wattsup:monthly-compare";
 const SUBSCRIPTION = "bg-subscription";
-/** Couleur de la courbe de tendance (et de son repère dans la légende). */
-const TREND = "var(--color-ink)";
 
 const eur = (cents: number) => formatEurFromCents(cents, 0);
 const kwh = (value: number) => formatKwh(value);
@@ -79,8 +77,8 @@ export function MonthlyCostCard({
   markers,
 }: {
   months: MonthCost[];
-  /** Vue mois : un point par jour et la tendance ; null en vue année. */
-  days: { list: DayCost[]; trend: { eur: (number | null)[]; kwh: (number | null)[] } } | null;
+  /** Vue mois : une barre par jour ; null en vue année. */
+  days: DayCost[] | null;
   period: Period;
   /** Repères de l'année : un point sous chaque mois concerné, texte dans l'info-bulle. */
   markers: Marker[];
@@ -123,11 +121,8 @@ export function MonthlyCostCard({
   const isEur = unit === "eur";
   const marked = markedMonths(markers);
   const previousYear = String(Number(year) - 1);
-  const hasPrevious = days ? days.list.some((d) => d.previous) : months.some((m) => m.previous);
+  const hasPrevious = days ? days.some((d) => d.previous) : months.some((m) => m.previous);
   const comparing = compare && hasPrevious;
-  // La tendance s'efface pendant la comparaison, comme l'ensoleillement : lisibilité.
-  const trend = days && !comparing ? (isEur ? days.trend.eur : days.trend.kwh) : null;
-  const showTrend = trend?.some((v) => v !== null) ?? false;
   type Figures = { energyCents: number; subscriptionCents: number; kwh: number };
   const valueOf = (m: Figures) => (isEur ? m.energyCents + m.subscriptionCents : m.kwh);
   const segmentsOf = (m: Figures) =>
@@ -159,7 +154,7 @@ export function MonthlyCostCard({
     segments: segmentsOf(m),
   }));
   const dayMarks = days ? markedDays(markers, period.from, period.to) : new Map<string, Marker[]>();
-  const dayBars = (days?.list ?? []).map((d, i) => ({
+  const dayBars = (days ?? []).map((d, i) => ({
     key: d.key,
     label: i % 7 === 0 ? String(Number(d.key.slice(8))) : "",
     title: `${dayTitle(d.key)} : ${d.hasData ? fmt(valueOf(d)) : "pas de donnée"}${
@@ -237,22 +232,13 @@ export function MonthlyCostCard({
               days ? `jour, ${period.label}` : `mois en ${year}`
             }`}
             bars={days ? dayBars : monthBars}
-            line={showTrend && trend ? { values: trend, color: TREND, barScale: true } : undefined}
           />
-          {(showTrend || markedCount > 0) && (
-            <p className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px] text-muted">
-              {showTrend && (
-                <span className="flex items-center gap-1.5">
-                  <span className="h-0.5 w-3 rounded-full" style={{ background: TREND }} />
-                  Tendance (moyenne sur 7 jours)
-                </span>
-              )}
-              {markedCount > 0 && (
-                <span className="flex items-center gap-1.5">
-                  <span className="size-[5px] rounded-full bg-ink" />
-                  {days ? "Repère : survolez le jour pour le lire." : "Repère : touchez le mois pour le lire."}
-                </span>
-              )}
+          {markedCount > 0 && (
+            <p className="flex items-center gap-1.5 text-[11px] text-muted">
+              <span className="size-[5px] rounded-full bg-ink" />
+              {days
+                ? "Repère : survolez le jour pour le lire."
+                : "Repère : touchez le mois pour le lire."}
             </p>
           )}
         </div>

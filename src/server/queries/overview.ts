@@ -18,7 +18,6 @@ import {
   coverageWindow,
   energyBalance,
   expectedSlots,
-  movingAverage,
   parsePeriod,
   peakSplit,
   periodNav,
@@ -126,14 +125,8 @@ export type Overview =
       };
       /** Coût et kWh soutirés par mois de l'année de la période. */
       months: MonthCost[];
-      /**
-       * Vue mois : coût et kWh soutirés par jour, et la tendance (moyenne centrée sur 7 jours,
-       * en € abonnement compris et en kWh ; null pour un jour sans donnée ou en cours).
-       */
-      days: {
-        list: DayCost[];
-        trend: { eur: (number | null)[]; kwh: (number | null)[] };
-      } | null;
+      /** Vue mois : coût et kWh soutirés par jour ; null en vue année. */
+      days: DayCost[] | null;
       balance: EnergyBalance;
       /**
        * Part HP / HC de l'électricité soutirée sur la période, si le contrat en cours a des
@@ -180,9 +173,6 @@ export type Overview =
         noLocation: boolean;
       } | null;
     };
-
-/** Demi-fenêtre de la tendance de la vue mois : moyenne sur 7 jours. */
-const TREND_HALF = 3;
 
 const shiftYear = (day: string, years: number) =>
   `${Number(day.slice(0, 4)) + years}${day.slice(4)}`.replace(/-02-29$/, "-02-28");
@@ -528,7 +518,7 @@ export async function getOverview(
     if (!kwhByMonth.has(k) && !solarByMonth.has(k)) return null;
     return figuresOf(k, previousYearCost.byMonth[k]);
   };
-  /** Chiffres d'un jour de l'année de la période ou de la précédente ; null sans donnée. */
+  /** Chiffres d'un jour (période ou même jour un an plus tôt) ; null sans donnée. */
   const dayFigures = (key: string): DayFigures | null => {
     const kwh = kwhByDay.get(key);
     if (kwh === undefined) return null;
@@ -539,9 +529,8 @@ export async function getOverview(
       kwh,
     };
   };
-  const daysOf = () => {
-    const keys = eachDay(period.from, period.to);
-    const list: DayCost[] = keys.map((key) => {
+  const daysOf = (): DayCost[] =>
+    eachDay(period.from, period.to).map((key) => {
       const figures = dayFigures(key);
       return {
         key,
@@ -552,21 +541,6 @@ export async function getOverview(
         previous: dayFigures(shiftYear(key, -1)),
       };
     });
-    // Trois jours de part et d'autre du mois, quand ils sont connus, pour une tendance
-    // centrée jusqu'aux bords ; le jour en cours (incomplet) n'y entre pas.
-    const series = eachDay(addDays(period.from, -TREND_HALF), addDays(period.to, TREND_HALF)).map(
-      (key) => (key < today ? dayFigures(key) : null),
-    );
-    const trend = (pick: (d: DayFigures) => number) =>
-      movingAverage(
-        series.map((d) => (d ? pick(d) : null)),
-        TREND_HALF,
-      ).slice(TREND_HALF, TREND_HALF + keys.length);
-    return {
-      list,
-      trend: { eur: trend((d) => d.energyCents + d.subscriptionCents), kwh: trend((d) => d.kwh) },
-    };
-  };
   const peakOf = () => {
     const id = currentContract(contracts, today)?.id;
     const kind = contracts.find((c) => c.id === id)?.kind;

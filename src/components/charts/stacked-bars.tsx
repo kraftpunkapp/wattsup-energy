@@ -2,8 +2,8 @@ import { PeriodLink } from "@/components/period-transition";
 
 // Barres verticales empilées en HTML (SPEC §2 : graphiques maison). Segments séparés de
 // 2 px, extrémité arrondie, info-bulle native par barre. Une barre peut être un lien
-// (sélection d'un mois). Une courbe peut se superposer aux barres, sur sa propre échelle
-// ou sur celle des barres. Comparaison à l'année précédente : barre claire accolée, les
+// (sélection d'un mois). Une courbe peut se superposer aux barres, sur sa propre échelle.
+// Comparaison à l'année précédente : barre claire accolée, les
 // paires bien séparées ; au-delà de 20 barres (un mois en jours), barre claire plus large
 // derrière la barre de l'année, une colonne par jour reste lisible.
 
@@ -35,14 +35,11 @@ export interface BarLine {
   values: (number | null)[];
   /** Couleur du trait (CSS). */
   color: string;
-  /** Vrai : même échelle que les barres (tendance) ; sinon la sienne, maximum en haut. */
-  barScale?: boolean;
 }
 
 /** Tracés de la courbe en coordonnées 0–100, un par suite de valeurs connues. */
-function linePaths(values: (number | null)[], barsMax?: number): string[] {
-  // Échelle des barres : élargie si la courbe la dépasse (jours voisins du mois plus élevés).
-  const max = Math.max(...values.map((v) => v ?? 0), barsMax ?? 0, 0);
+function linePaths(values: (number | null)[]): string[] {
+  const max = Math.max(...values.map((v) => v ?? 0), 0);
   if (max <= 0) return [];
   const paths: string[] = [];
   let current: string[] = [];
@@ -152,7 +149,7 @@ export function StackedBars({
             preserveAspectRatio="none"
             className="pointer-events-none absolute inset-0 size-full overflow-visible"
           >
-            {linePaths(line.values, line.barScale ? max : undefined).map((points) => (
+            {linePaths(line.values).map((points) => (
               <g key={points}>
                 {/* Liseré couleur de fond : la courbe se détache des barres. */}
                 <polyline
