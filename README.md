@@ -96,14 +96,6 @@ WattsUp vous rend service ? Vous pouvez soutenir son développement :
 
 ## Notes de version
 
-### 1.7.0 — 13 octobre 2026
-
-- Vue d'ensemble, vue mois : le coût et l'électricité achetée s'affichent **jour par jour**,
-  comme la production.
-- Comparaison à l'année précédente plus lisible : mois mieux espacés, et pour les jours, la
-  barre de l'an dernier passe derrière celle de l'année.
-- Le statut Home Assistant du menu se met à jour sans recharger la page.
-
 ### 1.6.0 — 13 octobre 2026
 
 - **Contrats au prix spot** : chaque heure au prix du marché de gros EPEX France (récupéré
