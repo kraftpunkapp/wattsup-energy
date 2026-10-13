@@ -17,6 +17,12 @@
   <a href="#notes-de-version">Notes de version</a>
 </p>
 
+<p align="center">
+  <img src=".github/assets/vue-d-ensemble.png" alt="Vue d'ensemble sur ordinateur : budget du mois, consommation du foyer, production solaire, batterie et coût jour par jour" width="72%">
+  &nbsp;
+  <img src=".github/assets/contrats-mobile.png" alt="Page Contrats sur téléphone : offre la plus économique et comparaison avec les offres du marché" width="22%">
+</p>
+
 ---
 
 ## Ce que fait WattsUp Energy
