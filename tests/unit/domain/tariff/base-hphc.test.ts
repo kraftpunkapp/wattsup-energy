@@ -54,6 +54,16 @@ describe("contrat Base", () => {
     expect(r.byMonth["2026-02"]?.subscriptionCents).toBe(Math.round((22920 * 28) / 365));
   });
 
+  it("ventilation par jour local : kWh, énergie et abonnement du jour", () => {
+    const r = priceIntervals(YEAR_2026, base, ctx2026);
+    expect(Object.keys(r.byDay)).toHaveLength(365);
+    expect(r.byDay["2026-03-29"]?.kwh).toBe(23); // passage à l'heure d'été
+    expect(r.byDay["2026-10-25"]?.kwh).toBe(25);
+    expect(r.byDay["2026-02-10"]?.subscriptionCents).toBe(Math.round(22920 / 365));
+    const january = Object.entries(r.byDay).filter(([d]) => d.startsWith("2026-01"));
+    expect(january.reduce((a, [, d]) => a + d.kwh, 0)).toBe(r.byMonth["2026-01"]?.kwh);
+  });
+
   it("abonnement proratisé au jour sur la période", () => {
     const r = priceIntervals([], base, {
       timezone: TZ,

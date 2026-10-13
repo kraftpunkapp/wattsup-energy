@@ -1,3 +1,4 @@
+import { eachDay } from "@/lib/time";
 import { monthLabel, nextMonth } from "./overview";
 
 // Repères (SPEC §7.10) : notes datées posées sur la frise du temps pour expliquer une hausse
@@ -38,6 +39,20 @@ export function markedMonths(markers: readonly Marker[]): Map<string, Marker[]> 
     }
   }
   return new Map([...months.entries()].sort(([a], [b]) => a.localeCompare(b)));
+}
+
+/** Repères par jour « AAAA-MM-JJ » de la période [from, to) (vue mois). */
+export function markedDays(
+  markers: readonly Marker[],
+  from: string,
+  to: string,
+): Map<string, Marker[]> {
+  const days = new Map<string, Marker[]>();
+  for (const d of eachDay(from, to)) {
+    const list = markers.filter((m) => m.startDate <= d && d <= lastDay(m)).sort(byDate);
+    if (list.length > 0) days.set(d, list);
+  }
+  return days;
 }
 
 const day = (date: string) => Number(date.slice(8, 10));

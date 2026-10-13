@@ -2,7 +2,10 @@ import { PeriodLink } from "@/components/period-transition";
 
 // Barres verticales empilées en HTML (SPEC §2 : graphiques maison). Segments séparés de
 // 2 px, extrémité arrondie, info-bulle native par barre. Une barre peut être un lien
-// (sélection d'un mois). Une courbe peut se superposer aux barres, sur sa propre échelle.
+// (sélection d'un mois). Une courbe peut se superposer aux barres, sur sa propre échelle
+// ou sur celle des barres. Comparaison à l'année précédente : barre claire accolée, les
+// paires bien séparées ; au-delà de 20 barres (un mois en jours), barre claire plus large
+// derrière la barre de l'année, une colonne par jour reste lisible.
 
 export interface BarSegment {
   value: number;
@@ -32,11 +35,14 @@ export interface BarLine {
   values: (number | null)[];
   /** Couleur du trait (CSS). */
   color: string;
+  /** Vrai : même échelle que les barres (tendance) ; sinon la sienne, maximum en haut. */
+  barScale?: boolean;
 }
 
 /** Tracés de la courbe en coordonnées 0–100, un par suite de valeurs connues. */
-function linePaths(values: (number | null)[]): string[] {
-  const max = Math.max(...values.map((v) => v ?? 0), 0);
+function linePaths(values: (number | null)[], barsMax?: number): string[] {
+  // Échelle des barres : élargie si la courbe la dépasse (jours voisins du mois plus élevés).
+  const max = Math.max(...values.map((v) => v ?? 0), barsMax ?? 0, 0);
   if (max <= 0) return [];
   const paths: string[] = [];
   let current: string[] = [];
@@ -79,6 +85,9 @@ export function StackedBars({
   const anySelected = bars.some((b) => b.selected);
   const paired = bars.some((b) => b.previous !== undefined);
   const anyMarked = bars.some((b) => b.marked);
+  const dense = bars.length > 20;
+  // Paires accolées (1 px), séparées de 8 px ; sinon 3 px entre les barres.
+  const column = paired && !dense ? "px-[4px]" : "px-[1.5px]";
   const toHeight = (value: number) => (max > 0 ? `${(value / max) * 100}%` : 0);
   return (
     <div className="flex flex-col gap-1.5" role="img" aria-label={ariaLabel}>
@@ -100,20 +109,25 @@ export function StackedBars({
               {total === 0 && <div className="h-px" />}
             </div>
           );
-          const body = (
+          const opacity = anySelected && !b.selected ? 0.45 : 1;
+          const previousBar = (className: string) => (
             <div
-              className="flex h-full items-end gap-[2px]"
-              style={{ opacity: anySelected && !b.selected ? 0.45 : 1 }}
-            >
-              {paired && (
-                <div
-                  className={`min-w-0 flex-1 rounded-t-[4px] ${previousColor}`}
-                  style={{ height: b.previous ? toHeight(b.previous) : 0 }}
-                />
-              )}
-              {stack}
-            </div>
+              className={`rounded-t-[4px] ${previousColor} ${className}`}
+              style={{ height: b.previous ? toHeight(b.previous) : 0 }}
+            />
           );
+          const body =
+            paired && dense ? (
+              <div className="relative flex h-full items-end justify-center" style={{ opacity }}>
+                {previousBar("absolute inset-x-0 bottom-0")}
+                <div className="relative flex h-full w-[55%] items-end">{stack}</div>
+              </div>
+            ) : (
+              <div className="flex h-full items-end gap-px" style={{ opacity }}>
+                {paired && previousBar("min-w-0 flex-1")}
+                {stack}
+              </div>
+            );
           return b.href ? (
             <PeriodLink
               key={b.key}
@@ -121,12 +135,12 @@ export function StackedBars({
               title={b.title}
               aria-label={b.title}
               selected={b.selected}
-              className="h-full min-w-0 flex-1 rounded-t-[4px] px-[1.5px] hover:opacity-100 focus-visible:outline-2 focus-visible:outline-ink"
+              className={`h-full min-w-0 flex-1 rounded-t-[4px] ${column} hover:opacity-100 focus-visible:outline-2 focus-visible:outline-ink`}
             >
               {body}
             </PeriodLink>
           ) : (
-            <div key={b.key} title={b.title} className="h-full min-w-0 flex-1 px-[1.5px]">
+            <div key={b.key} title={b.title} className={`h-full min-w-0 flex-1 ${column}`}>
               {body}
             </div>
           );
@@ -138,7 +152,7 @@ export function StackedBars({
             preserveAspectRatio="none"
             className="pointer-events-none absolute inset-0 size-full overflow-visible"
           >
-            {linePaths(line.values).map((points) => (
+            {linePaths(line.values, line.barScale ? max : undefined).map((points) => (
               <g key={points}>
                 {/* Liseré couleur de fond : la courbe se détache des barres. */}
                 <polyline

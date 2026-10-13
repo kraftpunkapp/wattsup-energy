@@ -112,6 +112,13 @@ export interface MonthBreakdown {
   slotKwh: Record<string, number>;
 }
 
+/** Coût d'un jour local (vue mois de la Vue d'ensemble). */
+export interface DayBreakdown {
+  energyCents: number;
+  subscriptionCents: number;
+  kwh: number;
+}
+
 export interface PricedResult {
   /** energyCents + subscriptionCents. */
   totalCents: number;
@@ -121,6 +128,8 @@ export interface PricedResult {
   kwh: number;
   /** Clé AAAA-MM (mois local). */
   byMonth: Record<string, MonthBreakdown>;
+  /** Clé AAAA-MM-JJ (jour local) ; arrondi par jour. */
+  byDay: Record<string, DayBreakdown>;
   /** Clés : "base", "hp", "hc", puis les créneaux propres à chaque type de contrat. */
   bySlot: Record<string, { kwh: number; energyCents: number }>;
   /** kWh dont la ventilation a dû être supposée (total journalier sans créneau). */

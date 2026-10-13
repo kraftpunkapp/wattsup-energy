@@ -3,6 +3,7 @@ import {
   coverageWindow,
   energyBalance,
   expectedSlots,
+  movingAverage,
   parsePeriod,
   peakSplit,
   slotHpHc,
@@ -208,5 +209,21 @@ describe("couverture", () => {
     // 25 octobre 2026 : passage à l'heure d'hiver, journée de 25 h
     expect(expectedSlots("2026-10-25", "2026-10-26", "hourly", "Europe/Paris")).toBe(25);
     expect(expectedSlots("2026-09-01", "2026-10-01", "daily", "Europe/Paris")).toBe(30);
+  });
+});
+
+describe("movingAverage", () => {
+  it("moyenne centrée sur 7 points ; fenêtre réduite aux bords", () => {
+    const values = [1, 2, 3, 4, 5, 6, 7, 8, 9];
+    expect(movingAverage(values)).toEqual([2.5, 3, 3.5, 4, 5, 6, 6.5, 7, 7.5]);
+  });
+
+  it("une valeur inconnue n'a pas de point et ne compte pas pour ses voisines", () => {
+    expect(movingAverage([2, null, 4, 6], 1)).toEqual([2, null, 5, 5]);
+  });
+
+  it("pas de tendance sans assez de valeurs connues", () => {
+    expect(movingAverage([5, null, null], 3)).toEqual([null, null, null]);
+    expect(movingAverage([], 3)).toEqual([]);
   });
 });

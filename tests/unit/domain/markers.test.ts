@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   autoMarkers,
+  markedDays,
   markedMonths,
   markerDates,
   markersBetween,
@@ -35,6 +36,18 @@ describe("markedMonths", () => {
     const months = markedMonths([m("2026-09-25", "2026-11-02", "long"), m("2026-10-15")]);
     expect([...months.keys()]).toEqual(["2026-09", "2026-10", "2026-11"]);
     expect(months.get("2026-10")?.map((x) => x.text)).toEqual(["long", "Repère"]);
+  });
+});
+
+describe("markedDays", () => {
+  it("chaque jour couvert de la période [from, to), durée comprise", () => {
+    const days = markedDays(
+      [m("2026-09-28", "2026-10-02", "long"), m("2026-10-02"), m("2026-11-01")],
+      "2026-10-01",
+      "2026-11-01",
+    );
+    expect([...days.keys()]).toEqual(["2026-10-01", "2026-10-02"]);
+    expect(days.get("2026-10-02")?.map((x) => x.text)).toEqual(["long", "Repère"]);
   });
 });
 

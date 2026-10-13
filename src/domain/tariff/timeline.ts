@@ -187,6 +187,7 @@ export function priceTimeline(
     subscriptionCents: 0,
     kwh: 0,
     byMonth: {},
+    byDay: {},
     bySlot: {},
     approximatedKwh: 0,
     assumedTempoDays: 0,
@@ -233,6 +234,8 @@ export function priceTimeline(
       }
       result.byMonth[month] = acc;
     }
+    // Un jour n'appartient qu'à un segment : ses chiffres sont repris tels quels.
+    Object.assign(result.byDay, r.byDay);
     for (const [slot, s] of Object.entries(r.bySlot)) {
       const acc = result.bySlot[slot] ?? { kwh: 0, energyCents: 0 };
       acc.kwh += s.kwh;

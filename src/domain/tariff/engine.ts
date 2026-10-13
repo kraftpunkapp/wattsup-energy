@@ -6,6 +6,7 @@ import { tempoPricer } from "./tempo";
 import type { Pricer } from "./pricer";
 import type {
   Contract,
+  DayBreakdown,
   MonthBreakdown,
   PriceableInterval,
   PricedResult,
@@ -46,6 +47,7 @@ export function priceIntervals(
 ): PricedResult {
   const pricer = pricerFor(contract, ctx);
   const months = new Map<string, Acc>();
+  const days = new Map<string, { energyEur: number; subscriptionEur: number; kwh: number }>();
   const slots = new Map<string, { kwh: number; eur: number }>();
   let approximatedKwh = 0;
 
@@ -53,6 +55,11 @@ export function priceIntervals(
     let m = months.get(key);
     if (!m) months.set(key, (m = { energyEur: 0, subscriptionEur: 0, kwh: 0, slotKwh: {} }));
     return m;
+  };
+  const dayAcc = (key: string) => {
+    let d = days.get(key);
+    if (!d) days.set(key, (d = { energyEur: 0, subscriptionEur: 0, kwh: 0 }));
+    return d;
   };
 
   for (const interval of intervals) {
@@ -70,11 +77,14 @@ export function priceIntervals(
     }
 
     const m = month(date.slice(0, 7));
+    const d = dayAcc(date);
     m.kwh += interval.kwh;
+    d.kwh += interval.kwh;
     for (const share of shares) {
       const kwh = interval.kwh * share.fraction;
       const eur = kwh * share.price;
       m.energyEur += eur;
+      d.energyEur += eur;
       m.slotKwh[share.key] = (m.slotKwh[share.key] ?? 0) + kwh;
       const s = slots.get(share.key) ?? { kwh: 0, eur: 0 };
       s.kwh += kwh;
@@ -84,8 +94,9 @@ export function priceIntervals(
   }
 
   for (const day of eachDay(ctx.period.from, ctx.period.to)) {
-    const year = Number(day.slice(0, 4));
-    month(day.slice(0, 7)).subscriptionEur += contract.subscriptionEurYear / daysInYear(year);
+    const share = contract.subscriptionEurYear / daysInYear(Number(day.slice(0, 4)));
+    month(day.slice(0, 7)).subscriptionEur += share;
+    dayAcc(day).subscriptionEur += share;
   }
 
   let energyEur = 0;
@@ -105,6 +116,15 @@ export function priceIntervals(
     };
   }
 
+  const byDay: Record<string, DayBreakdown> = {};
+  for (const [key, d] of days) {
+    byDay[key] = {
+      energyCents: cents(d.energyEur),
+      subscriptionCents: cents(d.subscriptionEur),
+      kwh: d.kwh,
+    };
+  }
+
   const bySlot: PricedResult["bySlot"] = {};
   for (const [key, s] of slots) bySlot[key] = { kwh: s.kwh, energyCents: cents(s.eur) };
 
@@ -116,6 +136,7 @@ export function priceIntervals(
     subscriptionCents,
     kwh,
     byMonth,
+    byDay,
     bySlot,
     approximatedKwh,
     assumedTempoDays: pricer.assumedDays?.() ?? 0,

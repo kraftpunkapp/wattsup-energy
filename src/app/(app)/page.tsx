@@ -94,6 +94,7 @@ export default async function OverviewPage({
             ))}
             <MonthlyCostCard
               months={overview.months}
+              days={overview.days}
               period={overview.period}
               markers={overview.markers}
             />
