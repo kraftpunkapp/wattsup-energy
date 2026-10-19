@@ -10,7 +10,7 @@ import {
   type MonthlyPayment,
   type PaymentAnalysis,
 } from "@/domain/tariff/payment";
-import { formatEurFromCents } from "@/lib/format";
+import { formatEurFromCents, formatPercent } from "@/lib/format";
 import { saveMonthlyPaymentAction } from "@/server/actions/contracts";
 import { Errors, inputClass, labelClass } from "./contract-editor";
 
@@ -55,7 +55,13 @@ function PaymentForm({
     });
 
   return (
-    <div className="flex flex-col gap-3 rounded-control bg-bg p-3">
+    <form
+      className="flex flex-col gap-3 rounded-control bg-bg p-3"
+      onSubmit={(e) => {
+        e.preventDefault();
+        save({ amount, paymentsPerYear: count, settlementMonth: month });
+      }}
+    >
       <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,140px),1fr))] gap-2">
         <label className={labelClass}>
           Mensualité (€)
@@ -99,12 +105,7 @@ function PaymentForm({
       </div>
       <Errors errors={errors} />
       <div className="flex flex-wrap items-center gap-2">
-        <button
-          type="button"
-          disabled={pending}
-          className={button.primary}
-          onClick={() => save({ amount, paymentsPerYear: count, settlementMonth: month })}
-        >
+        <button type="submit" disabled={pending} className={button.primary}>
           Enregistrer
         </button>
         <button type="button" onClick={onDone} className="h-9 px-2 text-xs text-muted">
@@ -125,11 +126,19 @@ function PaymentForm({
         Le montant prélevé chaque mois figure sur votre échéancier ou votre facture. Le mois de la
         régularisation permet d&apos;estimer son montant.
       </p>
-    </div>
+    </form>
   );
 }
 
 function Verdict({ analysis }: { analysis: PaymentAnalysis }) {
+  if (analysis.status === "incomplete") {
+    return (
+      <p className="text-xs text-muted">
+        Trop de jours sans donnée sur les 12 derniers mois ({formatPercent(analysis.coverage)} des
+        jours reçus) : le verdict reprendra quand les envois de Home Assistant seront complets.
+      </p>
+    );
+  }
   if (analysis.status === "insufficient") {
     return (
       <p className="text-xs text-muted">
@@ -146,7 +155,7 @@ function Verdict({ analysis }: { analysis: PaymentAnalysis }) {
         <Badge tone={v.tone}>{v.label}</Badge>
         <span className="text-ink-soft tabular-nums">
           ≈ {eur(analysis.paidAnnualCents)} prélevés par an pour ≈{" "}
-          {eur(analysis.expectedAnnualCents)} de consommation attendue
+          {eur(analysis.expectedAnnualCents)} de coût attendu
         </span>
       </p>
       {analysis.verdict !== "ok" && (

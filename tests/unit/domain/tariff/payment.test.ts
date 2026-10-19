@@ -144,6 +144,44 @@ describe("analyzePayment", () => {
   });
 });
 
+describe("couverture des données", () => {
+  // Jours sans envoi (Home Assistant muet) en été, à 8 kWh par jour.
+  const gap = (from: string, to: string) => (i: PriceableInterval) =>
+    i.granularity !== "day" || i.date < from || i.date >= to;
+
+  it("trous de moins de 10 % : énergie ramenée aux jours reçus, abonnement sur l'année", () => {
+    const base = input(pay(119), "2026-10-19");
+    // 20 jours manquants : 345 jours reçus, 4 572 kWh.
+    const r = analyzePayment({
+      ...base,
+      intervals: base.intervals.filter(gap("2026-07-01", "2026-07-21")),
+    });
+    expect(r).toMatchObject({
+      status: "ok",
+      expectedAnnualCents: Math.round((4572 * 25 * 365) / 345) + 24000,
+    });
+  });
+
+  it("plus de 10 % de jours manquants : pas de verdict, couverture indiquée", () => {
+    const base = input(pay(119), "2026-10-19");
+    const r = analyzePayment({
+      ...base,
+      intervals: base.intervals.filter(gap("2026-07-01", "2026-09-10")),
+    });
+    expect(r).toEqual({ status: "incomplete", coverage: 294 / 365 });
+  });
+
+  it("aucun coût attendu (ni consommation ni abonnement) : pas de verdict", () => {
+    const base = input(pay(119), "2026-10-19");
+    const r = analyzePayment({
+      ...base,
+      intervals: base.intervals.map((i) => ({ ...i, kwh: 0 })),
+      current: { contract: { ...grid, subscriptionEurYear: 0 }, startDate: B.startDate },
+    });
+    expect(r).toMatchObject({ status: "incomplete" });
+  });
+});
+
 describe("parseMonthlyPayment", () => {
   it("montant en euros (virgule ou point), prélèvements et mois facultatif", () => {
     expect(
@@ -152,6 +190,13 @@ describe("parseMonthlyPayment", () => {
       ok: true,
       value: { amountCents: 8550, paymentsPerYear: 11, settlementMonth: 3 },
     });
+    // Séparateur de milliers (espace, espace fine insécable) : « 1 200 » vaut 1 200 €.
+    expect(
+      parseMonthlyPayment({ amount: "1 200", paymentsPerYear: 12, settlementMonth: null }),
+    ).toMatchObject({ value: { amountCents: 120000 } });
+    expect(
+      parseMonthlyPayment({ amount: "1\u202f050,5", paymentsPerYear: 12, settlementMonth: null }),
+    ).toMatchObject({ value: { amountCents: 105050 } });
     expect(
       parseMonthlyPayment({ amount: "120", paymentsPerYear: 12, settlementMonth: null }),
     ).toEqual({

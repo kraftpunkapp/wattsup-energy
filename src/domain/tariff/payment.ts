@@ -21,7 +21,16 @@ export interface MonthlyPayment {
 const inputSchema = z.object({
   amount: z
     .union([z.string(), z.number()])
-    .transform((v) => Math.round(Number(String(v).replace(",", ".").trim()) * 100))
+    // « 1 200,50 » : séparateurs de milliers (espaces, insécables compris) retirés.
+    .transform((v) =>
+      Math.round(
+        Number(
+          String(v)
+            .replace(/[\s\u00a0\u202f]/g, "")
+            .replace(",", "."),
+        ) * 100,
+      ),
+    )
     .refine((c) => Number.isFinite(c) && c >= 100 && c <= 200_000, "mensualité entre 1 et 2 000 €"),
   paymentsPerYear: z.union([z.literal(12), z.literal(11), z.literal(10)], {
     error: "10, 11 ou 12 prélèvements par an",
@@ -52,6 +61,8 @@ export function parseMonthlyPayment(
 
 /** Jours de données nécessaires pour un verdict (une année, à une semaine près). */
 export const PAYMENT_MIN_DAYS = 358;
+/** Part minimale des jours reçus sur la période pour un verdict (T62). */
+export const PAYMENT_MIN_COVERAGE = 0.9;
 /** Écart toléré entre prélevé et attendu sur l'année. */
 export const PAYMENT_TOLERANCE = 0.05;
 /** Écart au-delà duquel la Vue d'ensemble le signale. */
@@ -59,6 +70,8 @@ export const PAYMENT_NOTICE_GAP = 0.1;
 
 export type PaymentAnalysis =
   | { status: "insufficient"; months: number }
+  /** Trop de jours sans donnée (ou aucun coût attendu) : part des jours reçus, 0–1. */
+  | { status: "incomplete"; coverage: number }
   | {
       status: "ok";
       verdict: "ok" | "high" | "low";
@@ -118,13 +131,30 @@ export function analyzePayment(input: {
     i.granularity === "hour" ? localParts(i.start, pricing.timezone).date : i.date;
   const between = (from: string, to: string) =>
     input.intervals.filter((i) => dayOf(i) >= from && dayOf(i) < to);
-  const atCurrentPrice = (from: string, to: string) =>
+  const priced = (from: string, to: string) =>
     priceIntervals(between(from, to), input.current.contract, {
       ...pricing,
       period: { from, to },
-    }).totalCents;
+    });
+  const atCurrentPrice = (from: string, to: string) => priced(from, to).totalCents;
 
-  const expectedAnnualCents = Math.round((atCurrentPrice(input.from, today) * 365) / periodDays);
+  // Jours reçus : heures ÷ 24 en envoi horaire, jours distincts en envoi quotidien.
+  const hours = input.intervals.filter((i) => i.granularity === "hour").length;
+  const dailyDays = new Set(
+    input.intervals.flatMap((i) => (i.granularity === "day" ? [i.date] : [])),
+  );
+  const covered = Math.min(periodDays, hours / 24 + dailyDays.size);
+  const coverage = covered / periodDays;
+  // L'énergie est ramenée à un an sur les jours reçus ; l'abonnement court toute l'année.
+  const past = priced(input.from, today);
+  const expectedAnnualCents =
+    covered > 0
+      ? Math.round((past.energyCents * 365) / covered) +
+        Math.round((past.subscriptionCents * 365) / periodDays)
+      : 0;
+  if (coverage < PAYMENT_MIN_COVERAGE || expectedAnnualCents <= 0) {
+    return { status: "incomplete", coverage };
+  }
   const paidAnnualCents = payment.amountCents * payment.paymentsPerYear;
   const gap = expectedAnnualCents > 0 ? paidAnnualCents / expectedAnnualCents - 1 : 0;
   const verdict =
