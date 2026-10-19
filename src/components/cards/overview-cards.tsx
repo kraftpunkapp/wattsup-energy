@@ -6,6 +6,7 @@ import { PeriodLink } from "@/components/period-transition";
 import { Badge, button, Card, Icon, Notice, StatTile, tiles } from "@/components/ui";
 import { CATEGORY_SWATCH, CategoryTile, categoryColor } from "@/components/ui/category";
 import { monthLabel } from "@/domain/overview";
+import { PAYMENT_NOTICE_GAP, type PaymentAnalysis } from "@/domain/tariff/payment";
 import { addDays } from "@/lib/time";
 import { formatEurFromCents, formatKwh, formatNumber, formatPercent } from "@/lib/format";
 import type { ContractComparison } from "@/server/queries/contracts";
@@ -626,6 +627,42 @@ export function CheaperContractNotice({
       {partial
         ? `par an que votre contrat actuel, d'après vos ${comparison.periodDays} derniers jours de consommation.`
         : "sur les 12 derniers mois, par rapport à votre contrat actuel, avec la même consommation."}
+    </Notice>
+  );
+}
+
+/**
+ * Mensualité à revoir (T59, SPEC §7.13) : seulement si le prélevé sur l'année s'écarte de plus
+ * de 10 % du coût attendu ; le détail est sur la carte du contrat en cours.
+ */
+export function PaymentNotice({
+  payment,
+  hide,
+}: {
+  payment: { amountCents: number; analysis: PaymentAnalysis } | null;
+  hide?: ReactNode;
+}) {
+  const a = payment?.analysis;
+  if (!payment || a?.status !== "ok" || Math.abs(a.gap) <= PAYMENT_NOTICE_GAP) return null;
+  const s = a.settlement;
+  return (
+    <Notice
+      tone="info"
+      title={`Votre mensualité de ${eur(payment.amountCents)} semble trop ${a.gap > 0 ? "élevée" : "basse"}`}
+      action={
+        <>
+          <Link href="/contrats" className={`${button.secondary} bg-surface text-ink no-underline`}>
+            Voir le contrat
+          </Link>
+          {hide}
+        </>
+      }
+    >
+      : environ {eur(a.advisedCents)} par mois couvriraient votre consommation des 12 derniers mois.
+      {s &&
+        ` Régularisation de ${monthLabel(s.month)} estimée : environ ${eur(Math.abs(s.balanceCents))} ${
+          s.balanceCents > 0 ? "à payer" : "en votre faveur"
+        }.`}
     </Notice>
   );
 }

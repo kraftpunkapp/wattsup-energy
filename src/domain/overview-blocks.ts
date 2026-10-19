@@ -13,6 +13,11 @@ export const OVERVIEW_BLOCKS = [
     description: "Encart quand un autre contrat vous aurait coûté moins cher.",
   },
   {
+    id: "payment",
+    label: "Mensualité",
+    description: "Encart quand votre mensualité semble trop élevée ou trop basse.",
+  },
+  {
     id: "peak",
     label: "Heures pleines et heures creuses",
     description: "Part de l'électricité achetée en heures creuses et en heures pleines.",
@@ -47,7 +52,8 @@ export const withBlockHidden = (
 /**
  * Blocs qui ont lieu d'être pour ce foyer (les autres ne sont pas proposés dans Réglages) :
  * conseils avec du solaire ou un contrat à heures creuses ; comparaison avec au moins deux
- * contrats ; HP/HC avec un contrat HP/HC ou Tempo ; talon en envoi horaire.
+ * contrats ; mensualité renseignée sur le contrat en cours ; HP/HC avec un contrat HP/HC ou
+ * Tempo ; talon en envoi horaire.
  */
 export function applicableBlocks(f: {
   solar: boolean;
@@ -55,11 +61,14 @@ export function applicableBlocks(f: {
   /** Type du contrat en cours ; null sans contrat. */
   contractKind: "base" | "hphc" | "tempo" | "custom" | "spot" | null;
   contracts: number;
+  /** Le contrat en cours a une mensualité renseignée. */
+  payment: boolean;
 }): OverviewBlock[] {
   const offPeak = f.contractKind === "hphc" || f.contractKind === "tempo";
   return OVERVIEW_BLOCKS.map((b) => b.id).filter((id) => {
     if (id === "advice") return f.solar || offPeak;
     if (id === "contract") return f.contracts >= 2;
+    if (id === "payment") return f.payment;
     if (id === "peak") return offPeak;
     return f.granularity === "hourly";
   });

@@ -19,13 +19,31 @@ describe("hiddenBlocks", () => {
 describe("applicableBlocks", () => {
   it("selon le profil, le contrat et les envois", () => {
     expect(
-      applicableBlocks({ solar: false, granularity: "daily", contractKind: "base", contracts: 1 }),
+      applicableBlocks({
+        solar: false,
+        granularity: "daily",
+        contractKind: "base",
+        contracts: 1,
+        payment: false,
+      }),
     ).toEqual([]);
     expect(
-      applicableBlocks({ solar: true, granularity: "hourly", contractKind: "tempo", contracts: 3 }),
-    ).toEqual(["advice", "contract", "peak", "baseload"]);
+      applicableBlocks({
+        solar: true,
+        granularity: "hourly",
+        contractKind: "tempo",
+        contracts: 3,
+        payment: true,
+      }),
+    ).toEqual(["advice", "contract", "payment", "peak", "baseload"]);
     expect(
-      applicableBlocks({ solar: false, granularity: "hourly", contractKind: "hphc", contracts: 1 }),
+      applicableBlocks({
+        solar: false,
+        granularity: "hourly",
+        contractKind: "hphc",
+        contracts: 1,
+        payment: false,
+      }),
     ).toEqual(["advice", "peak", "baseload"]);
   });
 });

@@ -34,7 +34,8 @@ appareils, combien de sacs de granulés commander, quand les panneaux seront rem
 - **Vue d'ensemble** : coût du mois et projection de l'année, origine de la consommation
   (réseau, solaire, batterie), talon de consommation, heures conseillées pour consommer.
 - **Contrats** : Base, Heures creuses, Tempo ; historique des prix et comparaison des offres
-  heure par heure, sur votre propre consommation, y compris celles des fournisseurs du marché.
+  heure par heure, sur votre propre consommation, y compris celles des fournisseurs du marché ;
+  vérification de votre mensualité et estimation de la régularisation.
 - **Chauffage** : granulés et bois (stock, achats, sacs versés), coût par saison corrigé de
   la météo, prévision de réapprovisionnement.
 - **Rentabilité** : retour sur investissement des panneaux solaires et de la batterie,
@@ -101,6 +102,15 @@ WattsUp vous rend service ? Vous pouvez soutenir son développement :
 <a href="https://www.buymeacoffee.com/kraftpunk"><img src="https://img.buymeacoffee.com/button-api/?text=Buy%20me%20a%20coffee&emoji=%E2%98%95&slug=kraftpunk&button_colour=FFDD00&font_colour=000000&font_family=Inter&outline_colour=000000&coffee_colour=ffffff" alt="Buy me a coffee" height="48"></a>
 
 ## Notes de version
+
+### 1.8.0 — 19 octobre 2026
+
+- **Votre mensualité est-elle bien ajustée ?** Indiquez sur votre contrat en cours le montant
+  prélevé chaque mois, le nombre de prélèvements et le mois de régularisation. WattsUp le
+  compare à votre consommation des 12 derniers mois (hiver compris) et vous dit si la
+  mensualité est bien ajustée, trop élevée ou trop basse, avec la mensualité conseillée et une
+  estimation de la facture de régularisation.
+- La Vue d'ensemble le signale quand l'écart dépasse 10 % (encart masquable).
 
 ### 1.6.0 — 13 octobre 2026
 

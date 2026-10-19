@@ -6,7 +6,7 @@ import { listContracts } from "@/server/contracts";
 import { shareInFlight } from "@/server/inflight";
 import { pageContext } from "@/server/page";
 import { getMarketOffers } from "@/server/market/compare";
-import { getContractComparison } from "@/server/queries/contracts";
+import { getContractComparison, getPaymentAnalysis } from "@/server/queries/contracts";
 import { sobrietyCalendarView } from "@/server/calendars";
 import { tempoCalendarView } from "@/server/tempo/sync";
 import { ComparisonBanner, ComparisonEmpty, comparedRows, comparisonExtras } from "./comparison";
@@ -20,10 +20,11 @@ export const metadata = { title: "Contrats · WattsUp Energy" };
 
 export default async function ContractsPage() {
   const ctx = await pageContext("/contrats");
-  const [contracts, comparison, market] = await Promise.all([
+  const [contracts, comparison, market, payment] = await Promise.all([
     listContracts(ctx),
     shareInFlight(`comparison:${ctx.householdId}`, () => getContractComparison(ctx)),
     shareInFlight(`market:${ctx.householdId}`, () => getMarketOffers(ctx)),
+    getPaymentAnalysis(ctx),
   ]);
 
   // Calendrier Tempo de la saison en cours, jusqu'au lendemain (couleur publiée vers 11 h).
@@ -98,7 +99,11 @@ export default async function ContractsPage() {
           {hasTempo && <TempoCalendar season={season} days={calendar} />}
           {sobrietyDays.length > 0 && <SobrietyCalendar season={season} days={sobrietyDays} />}
         </div>
-        <ContractsManager today={today} contracts={toContractItems(contracts, today)} />
+        <ContractsManager
+          today={today}
+          contracts={toContractItems(contracts, today)}
+          paymentAnalysis={payment?.analysis ?? null}
+        />
       </div>
     </>
   );

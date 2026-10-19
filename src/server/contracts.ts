@@ -7,6 +7,7 @@ import {
   latestGrid,
   type DatedContract,
 } from "@/domain/tariff/timeline";
+import type { MonthlyPayment, PaymentsPerYear } from "@/domain/tariff/payment";
 import type { Contract } from "@/domain/tariff/types";
 import { addDays, localParts } from "@/lib/time";
 import type { HouseholdContext } from "./context";
@@ -17,6 +18,8 @@ import type { HouseholdContext } from "./context";
 
 export interface ContractWithPeriods extends DatedContract {
   kind: Contract["kind"];
+  /** Mensualité prélevée (T59), null si non renseignée. */
+  payment: MonthlyPayment | null;
   periods: (DatedContract["periods"][number] & { id: string })[];
 }
 
@@ -54,6 +57,14 @@ async function load(tx: Tx | typeof db, ctx: HouseholdContext): Promise<Contract
     status: c.status,
     startDate: c.startDate,
     endDate: c.endDate,
+    payment:
+      c.monthlyPaymentCents !== null && c.paymentsPerYear !== null
+        ? {
+            amountCents: c.monthlyPaymentCents,
+            paymentsPerYear: c.paymentsPerYear as PaymentsPerYear,
+            settlementMonth: c.settlementMonth,
+          }
+        : null,
     periods: periods
       .filter((p) => p.contractId === c.id)
       .map((p) => ({ id: p.id, validFrom: p.validFrom, contract: p.config })),
@@ -133,6 +144,29 @@ export async function updateContract(
     if (row) await assertNoOverlap(tx, ctx, id);
     return row ?? null;
   });
+}
+
+/** Mensualité d'un contrat souscrit (null : la retire). Refusée pour une offre simulée. */
+export async function setMonthlyPayment(
+  ctx: HouseholdContext,
+  id: string,
+  payment: MonthlyPayment | null,
+) {
+  const row = await ownedContract(db, ctx, id);
+  if (!row) return null;
+  if (row.status !== "subscribed") {
+    throw new ContractError(["la mensualité se renseigne sur un contrat souscrit"]);
+  }
+  const [updated] = await db
+    .update(contract)
+    .set({
+      monthlyPaymentCents: payment?.amountCents ?? null,
+      paymentsPerYear: payment?.paymentsPerYear ?? null,
+      settlementMonth: payment?.settlementMonth ?? null,
+    })
+    .where(and(eq(contract.id, id), eq(contract.householdId, ctx.householdId)))
+    .returning();
+  return updated ?? null;
 }
 
 async function ownedContract(tx: Tx | typeof db, ctx: HouseholdContext, id: string) {

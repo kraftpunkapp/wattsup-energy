@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
+import { parseMonthlyPayment } from "@/domain/tariff/payment";
 import { parseContractInput } from "@/domain/tariff/schema";
 import { setManualSobriety } from "../calendars";
 import { getHouseholdContext } from "../context";
@@ -12,6 +13,7 @@ import {
   deleteContract,
   deletePricePeriod,
   duplicateContract,
+  setMonthlyPayment,
   switchContract,
   updateContract,
   updatePricePeriod,
@@ -109,6 +111,18 @@ export async function duplicateContractAction(id: string): Promise<ActionResult>
 export async function deleteContractAction(id: string): Promise<ActionResult> {
   const ctx = await getHouseholdContext();
   return run(() => deleteContract(ctx, id));
+}
+
+/** Mensualité du contrat (montant en euros, prélèvements, mois de régularisation) ; null la retire. */
+export async function saveMonthlyPaymentAction(id: string, input: unknown): Promise<ActionResult> {
+  const parsed = input === null ? null : parseMonthlyPayment(input);
+  if (parsed && !parsed.ok) return fail(parsed.errors);
+  const ctx = await getHouseholdContext();
+  return run(async () => {
+    const row = await setMonthlyPayment(ctx, id, parsed?.value ?? null);
+    revalidatePath("/");
+    return row;
+  });
 }
 
 export async function setTempoColorAction(date: unknown, color: unknown): Promise<{ ok: boolean }> {

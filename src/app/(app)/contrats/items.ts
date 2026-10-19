@@ -13,6 +13,7 @@ export function toContractItems(contracts: ContractWithPeriods[], today: string)
     startDate: c.startDate,
     endDate: c.endDate,
     isCurrent: c.id === current?.id,
+    payment: c.payment,
     periods: c.periods,
   }));
 }

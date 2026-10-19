@@ -11,6 +11,7 @@ import {
   pgTable,
   primaryKey,
   real,
+  smallint,
   text,
   timestamp,
   unique,
@@ -349,6 +350,12 @@ export const contract = pgTable(
     startDate: date("start_date"),
     /** Contrat souscrit terminé : dernier jour (inclus) ; vide = en cours. */
     endDate: date("end_date"),
+    /** Mensualité prélevée (T59, SPEC §7.13), en centimes ; vide = non renseignée. */
+    monthlyPaymentCents: integer("monthly_payment_cents"),
+    /** Prélèvements par an (10, 11 ou 12), avec la mensualité. */
+    paymentsPerYear: smallint("payments_per_year"),
+    /** Mois (1–12) de la facture de régularisation ; vide = inconnu. */
+    settlementMonth: smallint("settlement_month"),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true })
       .notNull()

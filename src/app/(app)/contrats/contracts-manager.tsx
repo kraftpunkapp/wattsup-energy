@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { Fragment, useState, useTransition } from "react";
+import type { MonthlyPayment, PaymentAnalysis } from "@/domain/tariff/payment";
 import { CONTRACT_PRESETS, type ContractInput } from "@/domain/tariff/schema";
 import { lapsedContract, periodAt } from "@/domain/tariff/timeline";
 import type { Contract } from "@/domain/tariff/types";
@@ -27,6 +28,7 @@ import {
 import { Badge, button, Card, CardFooter, GroupTitle, Icon, Notice } from "@/components/ui";
 import { GridView, gridSummary } from "./grid-view";
 import { KIND_LABELS } from "./labels";
+import { PaymentSection } from "./payment-section";
 
 export interface ContractItem {
   id: string;
@@ -36,6 +38,8 @@ export interface ContractItem {
   startDate: string | null;
   endDate: string | null;
   isCurrent: boolean;
+  /** Mensualité prélevée (T59), null si non renseignée. */
+  payment: MonthlyPayment | null;
   /** Du plus ancien au plus récent. */
   periods: { id: string; validFrom: string; contract: Contract }[];
 }
@@ -194,6 +198,8 @@ interface CardProps {
   onEdit: (e: Editing) => void;
   onAct: (fn: () => Promise<ActionResult>) => void;
   pending: boolean;
+  /** Contrat en cours, page Contrats : verdict de la mensualité ; absent : section masquée. */
+  paymentAnalysis?: PaymentAnalysis | null;
 }
 
 function PriceHistory({
@@ -288,7 +294,7 @@ function SwitchPanel({
 }
 
 function ContractCard(props: CardProps) {
-  const { item, today, onEdit, onAct, pending } = props;
+  const { item, today, onEdit, onAct, pending, paymentAnalysis } = props;
   const [showHistory, setShowHistory] = useState(false);
   const [switching, setSwitching] = useState(false);
   const subscribed = item.status === "subscribed";
@@ -370,6 +376,10 @@ function ContractCard(props: CardProps) {
           </p>
         )}
       </div>
+
+      {item.isCurrent && paymentAnalysis !== undefined && (
+        <PaymentSection contractId={item.id} payment={item.payment} analysis={paymentAnalysis} />
+      )}
 
       {showHistory && <PriceHistory {...props} shownId={shown.id} />}
 
@@ -465,10 +475,13 @@ function LapsedNotice({ item, pending, onAct }: Pick<CardProps, "item" | "pendin
 export function ContractsManager({
   contracts,
   today,
+  paymentAnalysis,
 }: {
   contracts: ContractItem[];
   /** Jour local du foyer (AAAA-MM-JJ). */
   today: string;
+  /** Page Contrats : verdict de la mensualité du contrat en cours (null : non calculé). */
+  paymentAnalysis?: PaymentAnalysis | null;
 }) {
   const router = useRouter();
   const [editing, setEditing] = useState<Editing>(null);
@@ -577,6 +590,7 @@ export function ContractsManager({
                   onEdit={setEditing}
                   onAct={act}
                   pending={pending}
+                  paymentAnalysis={item.isCurrent ? paymentAnalysis : undefined}
                 />
               ))}
             </ul>

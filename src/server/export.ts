@@ -120,6 +120,9 @@ export async function exportData(ctx: HouseholdContext, now = new Date()) {
         status: contract.status,
         startDate: contract.startDate,
         endDate: contract.endDate,
+        monthlyPaymentCents: contract.monthlyPaymentCents,
+        paymentsPerYear: contract.paymentsPerYear,
+        settlementMonth: contract.settlementMonth,
       })
       .from(contract)
       .where(mine(contract.householdId)),

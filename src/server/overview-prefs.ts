@@ -42,11 +42,13 @@ export async function setOverviewBlockHidden(
 /** Blocs proposés dans Réglages › Vue d'ensemble pour ce foyer. */
 export async function overviewBlocksFor(ctx: HouseholdContext, now = new Date()) {
   const contracts = await listContracts(ctx);
-  const current = currentContract(contracts, localParts(now, ctx.timezone).date);
+  const currentId = currentContract(contracts, localParts(now, ctx.timezone).date)?.id;
+  const current = contracts.find((c) => c.id === currentId);
   return applicableBlocks({
     solar: ctx.profile.solar,
     granularity: ctx.granularity,
     contractKind: current ? latestGrid(current).kind : null,
     contracts: contracts.length,
+    payment: Boolean(current?.payment),
   });
 }

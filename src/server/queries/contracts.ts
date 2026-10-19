@@ -2,6 +2,7 @@ import { and, asc, eq, gte, lt } from "drizzle-orm";
 import { db } from "@/db";
 import { energyInterval } from "@/db/schema";
 import { compareContracts, type ComparedContract } from "@/domain/tariff/compare";
+import { analyzePayment, type MonthlyPayment, type PaymentAnalysis } from "@/domain/tariff/payment";
 import {
   buildTimeline,
   currentContract,
@@ -183,5 +184,38 @@ export async function getContractComparison(
     redDays,
     rows: compared,
     real,
+  };
+}
+
+/**
+ * Mensualité du contrat en cours (T59, SPEC §7.13) : null sans contrat en cours ou sans
+ * mensualité renseignée. Même consommation que la comparaison des contrats ; moins de 7 jours
+ * de données comptent comme un historique insuffisant.
+ */
+export async function getPaymentAnalysis(
+  ctx: HouseholdContext,
+  now = new Date(),
+): Promise<{ contractId: string; payment: MonthlyPayment; analysis: PaymentAnalysis } | null> {
+  const inputs = await comparisonInputs(ctx, now);
+  if (inputs.status === "no-data") return null;
+  const contracts = inputs.status === "ok" ? inputs.contracts : await listContracts(ctx);
+  const today = localParts(now, ctx.timezone).date;
+  const currentId = currentContract(contracts, today)?.id;
+  const current = contracts.find((c) => c.id === currentId);
+  if (!current?.payment) return null;
+  const ok = inputs.status === "ok" ? inputs : null;
+  return {
+    contractId: current.id,
+    payment: current.payment,
+    analysis: analyzePayment({
+      payment: current.payment,
+      today,
+      from: ok?.from ?? today,
+      periodDays: ok?.periodDays ?? (inputs.status === "insufficient" ? inputs.days : 0),
+      intervals: ok?.intervals ?? [],
+      contracts,
+      current: { contract: latestGrid(current), startDate: current.startDate },
+      pricing: ok?.pricing ?? { timezone: ctx.timezone },
+    }),
   };
 }
