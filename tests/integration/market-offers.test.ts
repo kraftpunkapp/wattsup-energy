@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { beforeAll, describe, expect, it } from "vitest";
 import { db } from "@/db";
-import { energyInterval, marketImport, marketOffer, marketSync } from "@/db/schema";
+import { energyInterval, marketImport, marketOffer, marketSync, spotPrice } from "@/db/schema";
 import type { HouseholdContext } from "@/server/context";
 import { householdContextFor } from "@/server/context";
 import { ContractError, createContract, listContracts } from "@/server/contracts";
@@ -11,6 +11,7 @@ import { MANIFEST_PATH, type OfferSource } from "@/server/market/source";
 import { syncMarket } from "@/server/market/sync";
 import { updateMeterPower } from "@/server/settings";
 import { alertFacts } from "@/server/alerts";
+import { comparisonInputs } from "@/server/queries/contracts";
 import { createTestHousehold, describeTenantIsolation } from "../helpers/tenancy";
 
 // Offres du marché sur la page Contrats (T55, SPEC §7.12) : catalogue importé depuis les
@@ -66,6 +67,44 @@ beforeAll(async () => {
   await db.delete(marketOffer);
   await db.delete(marketImport);
   await db.delete(marketSync);
+});
+
+describe("prix spot lus seulement s'ils servent (T64)", () => {
+  it("puissance connue en envoi horaire, ou contrat spot ; sinon aucun", async () => {
+    const start = Date.parse("2026-09-15T00:00:00Z");
+    await db
+      .insert(spotPrice)
+      .values(
+        Array.from({ length: 24 }, (_, h) => ({
+          start: new Date(start + h * 3_600_000),
+          eurMwh: 80,
+        })),
+      )
+      .onConflictDoNothing();
+    const spotHours = async (ctx: HouseholdContext) => {
+      const inputs = await comparisonInputs(ctx, now);
+      return inputs.status === "ok" ? inputs.spotHours : -1;
+    };
+    expect(await spotHours(await householdWithData("spot-power"))).toBeGreaterThanOrEqual(24);
+    const noPower = await householdWithData("spot-nopower", null);
+    expect(await spotHours(noPower)).toBe(0);
+    await createContract(noPower, {
+      name: "Spot",
+      contract: {
+        kind: "spot",
+        subscriptionEurYear: 300,
+        formula: {
+          network: { winter: 0.06, summer: 0.015 },
+          excise: 0.03,
+          cap: null,
+          fees: 0.02,
+          vat: 0.2,
+        },
+      },
+      subscription: null,
+    });
+    expect(await spotHours(await householdContextFor(noPower.userId))).toBeGreaterThanOrEqual(24);
+  });
 });
 
 describe("offres du marché", () => {

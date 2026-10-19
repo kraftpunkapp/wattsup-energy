@@ -1,6 +1,7 @@
 import { and, asc, eq, gte, lt } from "drizzle-orm";
 import { db } from "@/db";
 import { energyInterval } from "@/db/schema";
+import { parseMeterPower } from "@/domain/market/compare";
 import { compareContracts, type ComparedContract } from "@/domain/tariff/compare";
 import { analyzePayment, type MonthlyPayment, type PaymentAnalysis } from "@/domain/tariff/payment";
 import {
@@ -103,11 +104,15 @@ async function loadInputs(ctx: HouseholdContext, now: Date): Promise<ComparisonI
   );
 
   // La veille de la période est incluse : ses heures de 0 h à 6 h sont du jour Tempo précédent.
+  // Prix spot (un an, ~8 760 lignes) : pour un contrat spot du foyer (par défaut), ou pour
+  // les offres spot du marché, comparées seulement en envoi horaire avec la puissance connue.
+  const marketSpot =
+    ctx.granularity === "hourly" && parseMeterPower(ctx.settings.meterPowerKva) !== null;
   const { colors, sobriety, spotHours, calendars } = await pricingDays(
     ctx.householdId,
     addDays(from, -1),
     today,
-    { timezone: ctx.timezone, spot: true },
+    { timezone: ctx.timezone, spot: marketSpot || undefined },
   );
   const contracts = await listContracts(ctx);
   const current = currentContract(contracts, today);
@@ -196,13 +201,14 @@ export async function getPaymentAnalysis(
   ctx: HouseholdContext,
   now = new Date(),
 ): Promise<{ contractId: string; payment: MonthlyPayment; analysis: PaymentAnalysis } | null> {
-  const inputs = await comparisonInputs(ctx, now);
-  if (inputs.status === "no-data") return null;
-  const contracts = inputs.status === "ok" ? inputs.contracts : await listContracts(ctx);
+  // Sans mensualité, rien à lire : la consommation de l'année n'est chargée qu'ensuite.
+  const contracts = await listContracts(ctx);
   const today = localParts(now, ctx.timezone).date;
   const currentId = currentContract(contracts, today)?.id;
   const current = contracts.find((c) => c.id === currentId);
   if (!current?.payment) return null;
+  const inputs = await comparisonInputs(ctx, now);
+  if (inputs.status === "no-data") return null;
   const ok = inputs.status === "ok" ? inputs : null;
   return {
     contractId: current.id,
