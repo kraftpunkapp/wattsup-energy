@@ -1,5 +1,6 @@
 "use client";
 
+import { callAction } from "@/lib/action";
 import { useOptimistic, useState, useTransition } from "react";
 import { Card, SwitchRow } from "@/components/ui";
 import { OVERVIEW_BLOCKS, withBlockHidden, type OverviewBlock } from "@/domain/overview-blocks";
@@ -27,7 +28,7 @@ export function OverviewBlocksCard({
     setError(false);
     startTransition(async () => {
       setOptimistic(next);
-      const res = await setOverviewBlockAction(block, hide);
+      const res = await callAction(() => setOverviewBlockAction(block, hide));
       if (res.ok) setSaved(next);
       else setError(true);
     });

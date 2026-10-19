@@ -1,5 +1,6 @@
 "use client";
 
+import { callAction } from "@/lib/action";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { button, Card } from "@/components/ui";
@@ -74,12 +75,14 @@ export function FuelSettingsCard({
   };
   const save = () =>
     startTransition(async () => {
-      const res = await updateFuelSettingsAction({
-        pelletBagKg: toNumber(v.bagKg),
-        pelletBagsPerPallet: toNumber(v.perPallet),
-        heatingSeason: { from: toMonthDay(v.from), to: toMonthDay(v.to) },
-        kwhFactors: { pelletPerKg: toNumber(v.pelletKwh), woodPerStere: toNumber(v.woodKwh) },
-      });
+      const res = await callAction(() =>
+        updateFuelSettingsAction({
+          pelletBagKg: toNumber(v.bagKg),
+          pelletBagsPerPallet: toNumber(v.perPallet),
+          heatingSeason: { from: toMonthDay(v.from), to: toMonthDay(v.to) },
+          kwhFactors: { pelletPerKg: toNumber(v.pelletKwh), woodPerStere: toNumber(v.woodKwh) },
+        }),
+      );
       if (res.ok) {
         setErrors([]);
         setSaved(true);

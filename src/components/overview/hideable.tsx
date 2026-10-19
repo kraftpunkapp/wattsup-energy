@@ -1,5 +1,6 @@
 "use client";
 
+import { callAction } from "@/lib/action";
 import Link from "next/link";
 import { createContext, useContext, useState, useTransition, type ReactNode } from "react";
 import { button, Icon } from "@/components/ui";
@@ -27,7 +28,7 @@ export function Hideable({
   const set = (hide: boolean) => {
     setHidden(hide);
     startTransition(async () => {
-      const res = await setOverviewBlockAction(block, hide);
+      const res = await callAction(() => setOverviewBlockAction(block, hide));
       if (!res.ok) setHidden(!hide);
     });
   };

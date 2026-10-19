@@ -1,5 +1,6 @@
 "use client";
 
+import { callAction } from "@/lib/action";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { button, Card, SwitchRow } from "@/components/ui";
@@ -38,10 +39,12 @@ export function SolarBatteryCard({
 
   const save = () =>
     startTransition(async () => {
-      const res = await updateSolarBatterySettingsAction({
-        ...value,
-        exportPriceEurKwh: parsedPrice,
-      });
+      const res = await callAction(() =>
+        updateSolarBatterySettingsAction({
+          ...value,
+          exportPriceEurKwh: parsedPrice,
+        }),
+      );
       if (res.ok) {
         setErrors([]);
         setSaved(true);

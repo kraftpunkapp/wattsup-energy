@@ -1,5 +1,6 @@
 "use client";
 
+import { callAction } from "@/lib/action";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { Badge, button, Card, Icon, Notice } from "@/components/ui";
@@ -80,7 +81,7 @@ function ValueRow({ item, title, sub }: { item: ValueItem; title: string; sub?: 
   };
   const save = () =>
     startTransition(async () => {
-      const res = await setValueAction(key, toNumber(text));
+      const res = await callAction(() => setValueAction(key, toNumber(text)));
       if (res.ok) {
         setEditing(false);
         setErrors([]);
@@ -89,7 +90,7 @@ function ValueRow({ item, title, sub }: { item: ValueItem; title: string; sub?: 
   const remove = () => {
     if (!confirm(`Supprimer la valeur « ${title} » ?`)) return;
     startTransition(async () => {
-      const res = await deleteValueAction(key);
+      const res = await callAction(() => deleteValueAction(key));
       if (!res.ok) setErrors(res.errors);
     });
   };
@@ -252,7 +253,7 @@ export function DayCard({
   const deleteDay = () => {
     if (!confirm(`Supprimer les ${items.length} valeurs de ce jour pour ce compteur ?`)) return;
     startTransition(async () => {
-      const res = await deleteRangeAction({ metric, from: day, to: day });
+      const res = await callAction(() => deleteRangeAction({ metric, from: day, to: day }));
       if (!res.ok) setErrors(res.errors);
     });
   };
@@ -341,7 +342,7 @@ export function RangeCard({
   };
   const look = () =>
     startTransition(async () => {
-      const res = await rangeSummaryAction(input);
+      const res = await callAction(() => rangeSummaryAction(input));
       if (res.ok) {
         setErrors([]);
         setPreview({ count: res.count, kwh: res.kwh });
@@ -350,7 +351,7 @@ export function RangeCard({
   const remove = () => {
     if (!preview || !confirm(`Supprimer définitivement ${preview.count} valeurs ?`)) return;
     startTransition(async () => {
-      const res = await deleteRangeAction(input);
+      const res = await callAction(() => deleteRangeAction(input));
       if (res.ok) {
         setPreview(null);
         setDone(res.deleted);

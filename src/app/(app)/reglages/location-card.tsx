@@ -1,5 +1,6 @@
 "use client";
 
+import { callAction } from "@/lib/action";
 import { useState, useTransition, type FormEvent } from "react";
 import type { CommuneResult } from "@/domain/weather";
 import { searchCommunesAction, setLocationAction } from "@/server/actions/location";
@@ -34,7 +35,7 @@ export function LocationCard({ status }: { status: Status | null }) {
   const choose = (commune: CommuneResult) => {
     setMessage("Récupération de l'historique météo…");
     startTransition(async () => {
-      const res = await setLocationAction(commune);
+      const res = await callAction(() => setLocationAction(commune));
       if (!res.ok) return setMessage("Enregistrement impossible. Réessayez.");
       setResults(null);
       setEditing(false);

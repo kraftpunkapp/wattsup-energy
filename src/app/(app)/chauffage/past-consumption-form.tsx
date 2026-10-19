@@ -1,5 +1,6 @@
 "use client";
 
+import { callAction } from "@/lib/action";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { button } from "@/components/ui";
@@ -57,7 +58,7 @@ export function PastConsumptionForm({
   const save = () =>
     startTransition(async () => {
       const value = toNumber(qty);
-      const res = await pastConsumptionAction({ fuel, qty: value, unit, month });
+      const res = await callAction(() => pastConsumptionAction({ fuel, qty: value, unit, month }));
       if (!res.ok) {
         setErrors(res.errors);
         return;

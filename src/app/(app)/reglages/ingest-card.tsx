@@ -1,5 +1,6 @@
 "use client";
 
+import { callAction } from "@/lib/action";
 import { useState, useTransition } from "react";
 import {
   createIngestTokenAction,
@@ -77,7 +78,7 @@ export function IngestCard({ endpoint, active, granularity, link, lastPushAt }: 
     const previous = mode;
     setMode(next);
     startTransition(async () => {
-      const res = await setGranularityAction(next);
+      const res = await callAction(() => setGranularityAction(next));
       if (!res.ok) setMode(previous);
     });
   };

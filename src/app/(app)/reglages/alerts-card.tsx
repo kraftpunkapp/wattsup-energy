@@ -1,5 +1,6 @@
 "use client";
 
+import { callAction } from "@/lib/action";
 import { useState, useTransition } from "react";
 import { button, Card, SwitchRow, Toggle } from "@/components/ui";
 import { ALERT_LIMITS, type AlertSettings } from "@/domain/alerts";
@@ -90,7 +91,7 @@ export function AlertsSettingsCard({
 
   const save = () =>
     startTransition(async () => {
-      const res = await saveAlertSettingsAction(settings);
+      const res = await callAction(() => saveAlertSettingsAction(settings));
       setMessage(
         res.ok
           ? { ok: true, text: "Alertes enregistrées." }

@@ -1,5 +1,6 @@
 "use client";
 
+import { callAction } from "@/lib/action";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { button, Card, Icon, Notice } from "@/components/ui";
@@ -43,12 +44,14 @@ function EquipmentForm({
   const [pending, startTransition] = useTransition();
   const save = () =>
     startTransition(async () => {
-      const res = await saveEquipmentAction(kind, {
-        label,
-        capacity: capacity.trim() === "" ? null : toNumber(capacity),
-        installedOn,
-        costEur: toNumber(cost),
-      });
+      const res = await callAction(() =>
+        saveEquipmentAction(kind, {
+          label,
+          capacity: capacity.trim() === "" ? null : toNumber(capacity),
+          installedOn,
+          costEur: toNumber(cost),
+        }),
+      );
       if (res.ok) onDone();
       else setErrors(res.errors);
     });

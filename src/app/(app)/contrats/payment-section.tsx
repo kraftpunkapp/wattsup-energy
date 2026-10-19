@@ -1,5 +1,6 @@
 "use client";
 
+import { callAction } from "@/lib/action";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { Badge, button, Icon } from "@/components/ui";
@@ -47,7 +48,7 @@ function PaymentForm({
   const [pending, startTransition] = useTransition();
   const save = (input: unknown) =>
     startTransition(async () => {
-      const res = await saveMonthlyPaymentAction(contractId, input);
+      const res = await callAction(() => saveMonthlyPaymentAction(contractId, input));
       if (!res.ok) return setErrors(res.errors);
       onDone();
       router.refresh();

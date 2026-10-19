@@ -1,5 +1,6 @@
 "use client";
 
+import { callAction } from "@/lib/action";
 import { useState, useTransition } from "react";
 import { Badge, button, Card } from "@/components/ui";
 import type { SignupMode } from "@/domain/signup";
@@ -45,7 +46,7 @@ export function SignupCard({
 
   const save = () =>
     startTransition(async () => {
-      const res = await saveSignupPolicyAction(mode, codes);
+      const res = await callAction(() => saveSignupPolicyAction(mode, codes));
       setMessage(
         res.ok
           ? { ok: true, text: "Réglage enregistré : il s'applique dès maintenant." }

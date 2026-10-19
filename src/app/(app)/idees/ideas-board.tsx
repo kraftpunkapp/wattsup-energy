@@ -1,5 +1,6 @@
 "use client";
 
+import { callAction } from "@/lib/action";
 import { useMemo, useOptimistic, useState, useTransition } from "react";
 import { Badge, button, Icon, type BadgeTone } from "@/components/ui";
 import {
@@ -76,7 +77,7 @@ function AdminBar({ idea, currentVersion }: { idea: IdeaCard; currentVersion: st
 
   const run = (fn: () => ReturnType<typeof deleteIdeaAction>) =>
     startTransition(async () => {
-      const res = await fn();
+      const res = await callAction(() => fn());
       setError(res.ok ? null : (res.errors[0] ?? "action impossible"));
     });
 
@@ -208,7 +209,7 @@ export function IdeasBoard({
   const vote = (id: string) =>
     startTransition(async () => {
       toggleOptimistic(id);
-      const res = await toggleVoteAction(id);
+      const res = await callAction(() => toggleVoteAction(id));
       setVoteError(res.ok ? null : "Vote non enregistré. Réessayez.");
     });
 

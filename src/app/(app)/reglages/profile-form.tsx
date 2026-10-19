@@ -1,5 +1,6 @@
 "use client";
 
+import { callAction } from "@/lib/action";
 import { useOptimistic, useState, useTransition } from "react";
 import { PROFILE_KEYS, type EnergyProfile } from "@/domain/profile";
 import { updateProfileAction } from "@/server/actions/profile";
@@ -34,7 +35,7 @@ export function ProfileForm({ initial }: { initial: EnergyProfile }) {
     setError(false);
     startTransition(async () => {
       setOptimistic(next);
-      const res = await updateProfileAction(next);
+      const res = await callAction(() => updateProfileAction(next));
       if (res.ok) setSaved(next);
       else setError(true);
     });

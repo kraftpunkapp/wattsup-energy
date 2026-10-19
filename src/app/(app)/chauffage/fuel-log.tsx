@@ -1,5 +1,6 @@
 "use client";
 
+import { callAction } from "@/lib/action";
 import { useRouter } from "next/navigation";
 import { useEffect, useState, useTransition } from "react";
 import { Badge, button, Card, Icon, type IconName } from "@/components/ui";
@@ -59,13 +60,15 @@ function EditRow({
   const [pending, startTransition] = useTransition();
   const save = () =>
     startTransition(async () => {
-      const res = await updateFuelEventAction(item.id, {
-        qty: toNumber(qty),
-        unit: item.unit,
-        priceEur: item.type === "purchase" && price.trim() !== "" ? toNumber(price) : null,
-        // Une consommation ou un relevé gardent leur heure ; un achat se date au jour.
-        date: item.type === "purchase" && date !== localDay ? date : null,
-      });
+      const res = await callAction(() =>
+        updateFuelEventAction(item.id, {
+          qty: toNumber(qty),
+          unit: item.unit,
+          priceEur: item.type === "purchase" && price.trim() !== "" ? toNumber(price) : null,
+          // Une consommation ou un relevé gardent leur heure ; un achat se date au jour.
+          date: item.type === "purchase" && date !== localDay ? date : null,
+        }),
+      );
       if (res.ok) onDone();
       else setErrors(res.errors);
     });

@@ -1,5 +1,6 @@
 "use client";
 
+import { callAction } from "@/lib/action";
 import { useState, useTransition, type ReactNode } from "react";
 import { Badge, button, Icon, Notice } from "@/components/ui";
 import { METER_POWERS } from "@/domain/market/compare";
@@ -70,7 +71,7 @@ function usePower() {
   const [error, setError] = useState<string | null>(null);
   const save = (kva: number) =>
     startTransition(async () => {
-      const res = await saveMeterPowerAction(kva);
+      const res = await callAction(() => saveMeterPowerAction(kva));
       setError(res.ok ? null : (res.errors[0] ?? "enregistrement impossible"));
     });
   return { pending, error, save };
@@ -115,7 +116,7 @@ function AddButton({ name, chosenDay }: { name: string; chosenDay: number | null
         disabled={pending}
         onClick={() =>
           startTransition(async () => {
-            const res = await addMarketOfferAction(name, chosenDay);
+            const res = await callAction(() => addMarketOfferAction(name, chosenDay));
             setError(res.ok ? null : (res.errors[0] ?? "ajout impossible"));
           })
         }

@@ -1,5 +1,6 @@
 "use client";
 
+import { callAction } from "@/lib/action";
 import { useRouter } from "next/navigation";
 import { Fragment, useState, useTransition } from "react";
 import type { MonthlyPayment, PaymentAnalysis } from "@/domain/tariff/payment";
@@ -82,7 +83,7 @@ function useSubmit(onDone: () => void) {
   const [pending, startTransition] = useTransition();
   const submit = (fn: () => Promise<ActionResult>) =>
     startTransition(async () => {
-      const res = await fn();
+      const res = await callAction(() => fn());
       if (res.ok) onDone();
       else setErrors(res.errors);
     });
@@ -493,7 +494,7 @@ export function ContractsManager({
   };
   const act = (fn: () => Promise<ActionResult>) =>
     startTransition(async () => {
-      const res = await fn();
+      const res = await callAction(() => fn());
       setErrors(res.ok ? [] : res.errors);
       router.refresh();
     });

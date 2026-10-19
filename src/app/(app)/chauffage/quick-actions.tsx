@@ -1,5 +1,6 @@
 "use client";
 
+import { callAction } from "@/lib/action";
 import { useRouter } from "next/navigation";
 import { useEffect, useState, useTransition } from "react";
 import { Badge, button, Card, CardFooter, Icon, Notice, StatTile, tiles } from "@/components/ui";
@@ -54,13 +55,15 @@ function PurchaseForm({ fuel, onDone }: { fuel: Fuel; onDone: () => void }) {
   const [pending, startTransition] = useTransition();
   const save = () =>
     startTransition(async () => {
-      const res = await purchaseAction({
-        fuel,
-        qty: toNumber(qty),
-        unit,
-        priceEur: price.trim() === "" ? null : toNumber(price),
-        date,
-      });
+      const res = await callAction(() =>
+        purchaseAction({
+          fuel,
+          qty: toNumber(qty),
+          unit,
+          priceEur: price.trim() === "" ? null : toNumber(price),
+          date,
+        }),
+      );
       if (res.ok) onDone();
       else setErrors(res.errors);
     });
@@ -143,7 +146,7 @@ function StockForm({ fuel, initial, onDone }: { fuel: Fuel; initial: number; onD
     setText(formatNumber(Math.max(0, (valid ? value : 0) + delta), digits).replace(/\s/g, ""));
   const save = () =>
     startTransition(async () => {
-      const res = await setStockAction({ fuel, qty: value, unit });
+      const res = await callAction(() => setStockAction({ fuel, qty: value, unit }));
       if (res.ok) onDone();
       else setErrors(res.errors);
     });
@@ -248,7 +251,7 @@ export function FuelCard({ summary }: { summary: FuelSummary }) {
 
   const act = (fn: () => Promise<FuelActionResult>, onOk?: (id?: string) => void) =>
     startTransition(async () => {
-      const res = await fn();
+      const res = await callAction(() => fn());
       if (res.ok) {
         setErrors([]);
         onOk?.(res.id);

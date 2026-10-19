@@ -1,5 +1,6 @@
 "use client";
 
+import { callAction } from "@/lib/action";
 import { useState, useTransition, type FormEvent } from "react";
 import { button, Card } from "@/components/ui";
 import { IDEA_DESCRIPTION_MAX, IDEA_TITLE_MAX } from "@/domain/ideas";
@@ -28,7 +29,7 @@ export function IdeaForm() {
   const submit = (e: FormEvent) => {
     e.preventDefault();
     startTransition(async () => {
-      const res = await proposeIdeaAction({ title, description });
+      const res = await callAction(() => proposeIdeaAction({ title, description }));
       if (!res.ok) {
         setMessage({ ok: false, text: res.errors.join(" ") });
         return;

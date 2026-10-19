@@ -1,5 +1,6 @@
 "use client";
 
+import { callAction } from "@/lib/action";
 import { useState, useTransition } from "react";
 import { button, Card, Notice } from "@/components/ui";
 import { RichText } from "@/components/rich-text";
@@ -40,7 +41,7 @@ export function ContactTextsCard({
 
   const save = () =>
     startTransition(async () => {
-      const res = await saveContactTextsAction({ label, intro, notice });
+      const res = await callAction(() => saveContactTextsAction({ label, intro, notice }));
       setMessage(
         res.ok
           ? { ok: true, text: "Enregistré : visible dès maintenant dans le menu et sur la page." }

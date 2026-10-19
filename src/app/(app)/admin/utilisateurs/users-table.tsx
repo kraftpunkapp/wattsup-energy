@@ -1,5 +1,6 @@
 "use client";
 
+import { callAction } from "@/lib/action";
 import { useState, useTransition } from "react";
 import { Badge, button, Icon } from "@/components/ui";
 import type { PushState } from "@/domain/ingest/push-state";
@@ -40,7 +41,7 @@ function Actions({ row }: { row: UserRow }) {
 
   const run = (fn: () => ReturnType<typeof deleteUserAction>) =>
     startTransition(async () => {
-      const res = await fn();
+      const res = await callAction(() => fn());
       setError(res.ok ? null : (res.errors[0] ?? "action impossible"));
       if (res.ok) setConfirming(false);
     });

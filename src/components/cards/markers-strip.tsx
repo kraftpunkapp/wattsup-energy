@@ -1,5 +1,6 @@
 "use client";
 
+import { callAction } from "@/lib/action";
 import { useState, useTransition } from "react";
 import { Badge, button, Icon, type IconName } from "@/components/ui";
 import {
@@ -48,12 +49,14 @@ function MarkerForm({
   const [pending, startTransition] = useTransition();
   const save = () =>
     startTransition(async () => {
-      const res = await saveMarkerAction(initial?.id ?? null, {
-        kind,
-        text,
-        startDate: start,
-        endDate: end,
-      });
+      const res = await callAction(() =>
+        saveMarkerAction(initial?.id ?? null, {
+          kind,
+          text,
+          startDate: start,
+          endDate: end,
+        }),
+      );
       if (res.ok) onDone();
       else setErrors(res.errors);
     });

@@ -1,5 +1,6 @@
 "use client";
 
+import { callAction } from "@/lib/action";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { Badge, button, Card, CardFooter, Icon, Notice } from "@/components/ui";
@@ -102,7 +103,7 @@ function CategoryForm({
 
   const save = () =>
     startTransition(async () => {
-      const res: CategoryActionResult = await saveCategoryAction(id, value);
+      const res: CategoryActionResult = await callAction(() => saveCategoryAction(id, value));
       if (res.ok) onDone();
       else setErrors(res.errors);
     });
@@ -332,7 +333,7 @@ export function CategoriesCard({
     const data = item.lastDataAt ? " et toutes ses données reçues" : "";
     if (!confirm(`Supprimer le poste « ${item.name} »${data} ?`)) return;
     startTransition(async () => {
-      const res = await deleteCategoryAction(item.id);
+      const res = await callAction(() => deleteCategoryAction(item.id));
       setErrors(res.ok ? [] : res.errors);
       router.refresh();
     });

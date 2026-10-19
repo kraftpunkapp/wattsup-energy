@@ -1,5 +1,6 @@
 "use client";
 
+import { callAction } from "@/lib/action";
 import { useState, useTransition } from "react";
 import { Card } from "@/components/ui";
 import { THEME_LABELS, THEMES, type Theme } from "@/domain/theme";
@@ -23,7 +24,7 @@ export function ThemeCard({ theme: saved }: { theme: Theme }) {
     setError(false);
     document.documentElement.dataset.theme = next;
     startTransition(async () => {
-      const res = await setThemeAction(next);
+      const res = await callAction(() => setThemeAction(next));
       if (!res.ok) {
         setTheme(previous);
         document.documentElement.dataset.theme = previous;

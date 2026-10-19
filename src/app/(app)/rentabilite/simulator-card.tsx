@@ -1,5 +1,6 @@
 "use client";
 
+import { callAction } from "@/lib/action";
 import { useState, useTransition } from "react";
 import { button, Card, Figures, Notice, SwitchRow } from "@/components/ui";
 import { formatEur, formatEurFromCents, formatNumber, formatPercent } from "@/lib/format";
@@ -77,22 +78,24 @@ export function SimulatorCard({
 
   const run = () =>
     startTransition(async () => {
-      const res = await simulateAction({
-        battery: battery
-          ? {
-              capacityKwh: toNumber(capacity),
-              powerKw: toNumber(power),
-              costEur: toNumber(batteryCost),
-            }
-          : null,
-        panels: panels ? { kwc: toNumber(kwc), costEur: toNumber(panelsCost) } : null,
-      });
+      const res = await callAction(() =>
+        simulateAction({
+          battery: battery
+            ? {
+                capacityKwh: toNumber(capacity),
+                powerKw: toNumber(power),
+                costEur: toNumber(batteryCost),
+              }
+            : null,
+          panels: panels ? { kwc: toNumber(kwc), costEur: toNumber(panelsCost) } : null,
+        }),
+      );
       if (res.ok) {
         setView(res.view);
         setError(null);
       } else {
         setView(null);
-        setError(res.error);
+        setError("error" in res ? res.error : (res.errors[0] ?? null));
       }
     });
 

@@ -1,5 +1,6 @@
 "use client";
 
+import { callAction } from "@/lib/action";
 import { useEffect, useState, useTransition } from "react";
 import { button, Card, Icon, Notice } from "@/components/ui";
 import { subscribePushAction, testPushAction, unsubscribePushAction } from "@/server/actions/push";
@@ -68,7 +69,7 @@ export function PushCard({ publicKey, devices }: { publicKey: string; devices: D
           userVisibleOnly: true,
           applicationServerKey: keyBytes(publicKey),
         });
-        const res = await subscribePushAction(sub.toJSON());
+        const res = await callAction(() => subscribePushAction(sub.toJSON()));
         if (!res.ok) throw new Error("abonnement refusé");
         setCurrent(sub.endpoint);
         setMessage({ ok: true, text: "Notifications activées sur cet appareil." });

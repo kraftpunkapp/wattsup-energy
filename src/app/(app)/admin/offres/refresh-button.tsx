@@ -1,5 +1,6 @@
 "use client";
 
+import { callAction } from "@/lib/action";
 import { useState, useTransition } from "react";
 import { button, Icon } from "@/components/ui";
 import { refreshMarketAction } from "@/server/actions/admin";
@@ -14,7 +15,7 @@ export function RefreshButton() {
 
   const refresh = () =>
     startTransition(async () => {
-      const res = await refreshMarketAction();
+      const res = await callAction(() => refreshMarketAction());
       if (!res.ok)
         return setMessage({ ok: false, text: res.errors[0] ?? "Mise à jour impossible." });
       const r = res.result;

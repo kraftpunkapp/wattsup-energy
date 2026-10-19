@@ -1,5 +1,6 @@
 "use client";
 
+import { callAction } from "@/lib/action";
 import { useState, useTransition, type FormEvent } from "react";
 import { button, Card } from "@/components/ui";
 import {
@@ -37,7 +38,7 @@ export function ContactForm({
   const submit = (e: FormEvent) => {
     e.preventDefault();
     startTransition(async () => {
-      const res = await sendContactAction({ kind, message });
+      const res = await callAction(() => sendContactAction({ kind, message }));
       if (!res.ok) {
         setStatus({ ok: false, text: res.errors.join(" ") });
         return;
