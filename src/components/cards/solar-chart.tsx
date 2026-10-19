@@ -10,7 +10,8 @@ import type { SolarPoint } from "@/server/queries/overview";
 // Graphique de la carte « Production et ensoleillement » : barres de production, courbe
 // d'ensoleillement superposée (échelle propre, valeur du haut de chaque côté), et en
 // option la production de l'année précédente en barre claire (la courbe s'efface alors,
-// pour rester lisible). Le choix est mémorisé sur l'appareil.
+// pour rester lisible). Le choix est mémorisé sur l'appareil. En vue mois, toucher un jour
+// affiche ses chiffres sous le graphique (T61).
 
 const COMPARE_KEY = "wattsup:solar-compare";
 /** Couleur de la courbe d'ensoleillement (et de son repère dans la tuile). */
@@ -35,6 +36,8 @@ export function SolarChart({
   noLocation: boolean;
 }) {
   const [compare, setCompare] = useState(false);
+  // Jour touché ; une autre période (autre premier jour) efface la sélection.
+  const [picked, setPicked] = useState<{ first: string; key: string } | null>(null);
   useEffect(() => {
     try {
       if (localStorage.getItem(COMPARE_KEY) === "1") setCompare(true);
@@ -66,6 +69,17 @@ export function SolarChart({
     0,
   );
   const maxSunshine = Math.max(...points.map((p) => p.sunshineHours ?? 0), 0);
+  const first = points[0]?.key ?? "";
+  const focus =
+    !byMonth && picked?.first === first ? points.find((p) => p.key === picked.key) : undefined;
+  const detail = (p: SolarPoint) =>
+    `${pointTitle(p.key)} : ${kwh(p.kwh)}${
+      comparing && p.previousKwh !== null
+        ? ` · ${previousYear} : ${kwh(p.previousKwh)}`
+        : !noLocation && p.sunshineHours !== null
+          ? ` · ${fmtHours(p.sunshineHours)} de soleil`
+          : ""
+    }`;
 
   return (
     <div className="flex flex-col gap-2">
@@ -104,18 +118,23 @@ export function SolarChart({
         bars={points.map((p, i) => ({
           key: p.key,
           label: label(p.key, i),
-          title: `${pointTitle(p.key)} : ${kwh(p.kwh)}${
-            comparing && p.previousKwh !== null
-              ? ` · ${previousYear} : ${kwh(p.previousKwh)}`
-              : !noLocation && p.sunshineHours !== null
-                ? ` · ${fmtHours(p.sunshineHours)} de soleil`
-                : ""
-          }`,
+          title: detail(p),
+          ...(byMonth
+            ? {}
+            : {
+                selected: p.key === focus?.key,
+                onSelect: () => setPicked(p.key === focus?.key ? null : { first, key: p.key }),
+              }),
           segments: [{ value: p.kwh, color: "bg-solar", label: "Production" }],
           previous: comparing ? p.previousKwh : undefined,
         }))}
         line={showSun ? { values: points.map((p) => p.sunshineHours), color: SUNSHINE } : undefined}
       />
+      {!byMonth && (
+        <p className="text-[11px] text-muted tabular-nums" aria-live="polite">
+          {focus ? detail(focus) : "Touchez un jour pour son détail."}
+        </p>
+      )}
     </div>
   );
 }

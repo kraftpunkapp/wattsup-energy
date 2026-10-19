@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { StackedBars } from "@/components/charts/stacked-bars";
-import { Card, Toggle } from "@/components/ui";
+import { button, Card, Toggle } from "@/components/ui";
 import { markedDays, markedMonths, type Marker } from "@/domain/markers";
 import { monthLabel, shortMonth, type Period } from "@/domain/overview";
 import { formatEurFromCents, formatKwh, formatPercent } from "@/lib/format";
@@ -10,8 +10,8 @@ import type { DayCost, MonthCost } from "@/server/queries/overview";
 
 // Électricité mois par mois (vue année, chaque barre ouvre le mois) ou jour par jour (vue
 // mois), en euros (abonnement en bas de chaque barre) ou en kWh soutirés, avec la même
-// période de l'année précédente en option. L'unité et la comparaison sont mémorisées sur
-// l'appareil.
+// période de l'année précédente en option. En vue mois, toucher un jour affiche ses chiffres
+// dans le panneau (T61). L'unité et la comparaison sont mémorisées sur l'appareil.
 
 type Unit = "eur" | "kwh";
 const STORAGE_KEY = "wattsup:monthly-unit";
@@ -84,6 +84,8 @@ export function MonthlyCostCard({
   markers: Marker[];
 }) {
   const [unit, setUnit] = useState<Unit>("eur");
+  // Jour touché, rattaché à sa période : changer de mois efface la sélection.
+  const [picked, setPicked] = useState<{ period: string; day: string } | null>(null);
   const [compare, setCompare] = useState(false);
   useEffect(() => {
     try {
@@ -111,13 +113,17 @@ export function MonthlyCostCard({
 
   const year = period.key.slice(0, 4);
   const selected = period.kind === "month" ? months.find((m) => m.key === period.key) : null;
+  const focusDay =
+    picked?.period === period.key ? (days?.find((d) => d.key === picked.day) ?? null) : null;
   const sum = (pick: (m: MonthCost) => number) =>
     selected ? pick(selected) : months.reduce((a, m) => a + pick(m), 0);
-  const totals = {
-    energy: sum((m) => m.energyCents),
-    subscription: sum((m) => m.subscriptionCents),
-    kwh: sum((m) => m.kwh),
-  };
+  const totals = focusDay
+    ? { energy: focusDay.energyCents, subscription: focusDay.subscriptionCents, kwh: focusDay.kwh }
+    : {
+        energy: sum((m) => m.energyCents),
+        subscription: sum((m) => m.subscriptionCents),
+        kwh: sum((m) => m.kwh),
+      };
   const isEur = unit === "eur";
   const marked = markedMonths(markers);
   const previousYear = String(Number(year) - 1);
@@ -134,9 +140,15 @@ export function MonthlyCostCard({
       : [{ value: m.kwh, color: "bg-grid", label: "Soutiré" }];
   const fmt = (v: number) => (isEur ? eur(v) : kwh(v));
   const scope = selected ? [selected] : months;
-  const previousTotal = scope.every((m) => m.previous)
-    ? scope.reduce((a, m) => a + (m.previous ? valueOf(m.previous) : 0), 0)
-    : null;
+  const previousTotal = focusDay
+    ? focusDay.previous && valueOf(focusDay.previous)
+    : scope.every((m) => m.previous)
+      ? scope.reduce((a, m) => a + (m.previous ? valueOf(m.previous) : 0), 0)
+      : null;
+  // Écart en % seulement sur une période terminée (le jour en cours ne l'est pas).
+  const complete = focusDay
+    ? period.complete || focusDay.key !== days?.at(-1)?.key
+    : period.complete;
   const currentTotal = isEur ? totals.energy + totals.subscription : totals.kwh;
 
   const monthBars = months.map((m) => ({
@@ -157,6 +169,8 @@ export function MonthlyCostCard({
   const dayBars = (days ?? []).map((d, i) => ({
     key: d.key,
     label: i % 7 === 0 ? String(Number(d.key.slice(8))) : "",
+    selected: d.key === focusDay?.key,
+    onSelect: () => setPicked(d.key === focusDay?.key ? null : { period: period.key, day: d.key }),
     title: `${dayTitle(d.key)} : ${d.hasData ? fmt(valueOf(d)) : "pas de donnée"}${
       comparing && d.previous ? ` · ${previousYear} : ${fmt(valueOf(d.previous))}` : ""
     }${(dayMarks.get(d.key) ?? []).map((x) => ` · ${x.text}`).join("")}`,
@@ -166,16 +180,23 @@ export function MonthlyCostCard({
   }));
   const markedCount = days ? dayMarks.size : marked.size;
 
-  const prevLabel = selected
-    ? monthLabel(`${previousYear}${selected.key.slice(4)}`)
-    : `mêmes mois ${previousYear}`;
+  const prevLabel = focusDay
+    ? dayTitle(
+        `${Number(focusDay.key.slice(0, 4)) - 1}${focusDay.key.slice(4)}`.replace(
+          /-02-29$/,
+          "-02-28",
+        ),
+      )
+    : selected
+      ? monthLabel(`${previousYear}${selected.key.slice(4)}`)
+      : `mêmes mois ${previousYear}`;
   const comparison = comparing && previousTotal !== null && (
     <div className="flex items-center justify-between gap-2 text-ink-soft">
       <span>{prevLabel.charAt(0).toUpperCase() + prevLabel.slice(1)}</span>
       <span className="whitespace-nowrap tabular-nums">
         {fmt(previousTotal)}
         {/* Période en cours : comparer un mois entamé à un mois entier tromperait. */}
-        {period.complete && previousTotal > 0 && (
+        {complete && previousTotal > 0 && (
           <span className={currentTotal <= previousTotal ? "text-positive" : "text-negative"}>
             {" "}
             ({currentTotal <= previousTotal ? "−" : "+"}
@@ -201,7 +222,7 @@ export function MonthlyCostCard({
         isEur
           ? "Contrat et prix en vigueur chaque jour, abonnement compris."
           : "Énergie achetée au réseau."
-      }${days ? "" : " Touchez un mois pour le détail."}`}
+      }${days ? " Touchez un jour pour son détail." : " Touchez un mois pour le détail."}`}
       actions={<UnitSwitch unit={unit} onChange={choose} />}
     >
       <div className="flex flex-wrap items-stretch gap-5">
@@ -237,14 +258,35 @@ export function MonthlyCostCard({
             <p className="flex items-center gap-1.5 text-[11px] text-muted">
               <span className="size-[5px] rounded-full bg-ink" />
               {days
-                ? "Repère : survolez le jour pour le lire."
+                ? "Repère : touchez le jour pour le lire."
                 : "Repère : touchez le mois pour le lire."}
             </p>
           )}
         </div>
         <div className="flex grow basis-[220px] flex-col gap-2.5 rounded-control bg-bg p-4 text-[13px] md:grow-0">
-          <h3 className="font-semibold capitalize">{period.label}</h3>
-          {isEur ? (
+          <div className="flex items-baseline justify-between gap-2">
+            <h3 className="font-semibold capitalize">
+              {focusDay ? dayTitle(focusDay.key) : period.label}
+            </h3>
+            {focusDay && (
+              <button type="button" className={button.link} onClick={() => setPicked(null)}>
+                Tout le mois
+              </button>
+            )}
+          </div>
+          {focusDay &&
+            (dayMarks.get(focusDay.key) ?? []).map((m) => (
+              <p
+                key={`${m.startDate}${m.text}`}
+                className="flex items-center gap-1.5 text-xs text-ink-soft"
+              >
+                <span className="size-[5px] flex-none rounded-full bg-ink" />
+                {m.text}
+              </p>
+            ))}
+          {focusDay && !focusDay.hasData ? (
+            <p className="text-muted">Pas de donnée reçue ce jour-là.</p>
+          ) : isEur ? (
             <>
               <Row color="bg-grid" label="Consommation" value={eur(totals.energy)} />
               <Row color={SUBSCRIPTION} label="Abonnement" value={eur(totals.subscription)} />

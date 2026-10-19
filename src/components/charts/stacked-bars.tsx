@@ -2,7 +2,8 @@ import { PeriodLink } from "@/components/period-transition";
 
 // Barres verticales empilées en HTML (SPEC §2 : graphiques maison). Segments séparés de
 // 2 px, extrémité arrondie, info-bulle native par barre. Une barre peut être un lien
-// (sélection d'un mois). Une courbe peut se superposer aux barres, sur sa propre échelle.
+// (sélection d'un mois) ou un bouton (sélection d'un jour : sa valeur s'affiche à côté, au
+// toucher comme au clavier, l'info-bulle n'existant pas sur mobile). Une courbe peut se superposer aux barres, sur sa propre échelle.
 // Comparaison à l'année précédente : barre claire accolée, les
 // paires bien séparées ; au-delà de 20 barres (un mois en jours), barre claire plus large
 // derrière la barre de l'année, une colonne par jour reste lisible.
@@ -23,6 +24,8 @@ export interface Bar {
   /** Texte de l'info-bulle. */
   title: string;
   href?: string;
+  /** Barre sélectionnable sur place (sans `href`). */
+  onSelect?: () => void;
   selected?: boolean;
   /** Valeur de comparaison (année précédente), en barre claire à gauche ; null : aucune. */
   previous?: number | null;
@@ -87,7 +90,12 @@ export function StackedBars({
   const column = paired && !dense ? "px-[4px]" : "px-[1.5px]";
   const toHeight = (value: number) => (max > 0 ? `${(value / max) * 100}%` : 0);
   return (
-    <div className="flex flex-col gap-1.5" role="img" aria-label={ariaLabel}>
+    // Barres interactives (liens, boutons) : un groupe, sinon les lecteurs d'écran les ignorent.
+    <div
+      className="flex flex-col gap-1.5"
+      role={bars.some((b) => b.href || b.onSelect) ? "group" : "img"}
+      aria-label={ariaLabel}
+    >
       {/* Colonnes de largeur égale (marge de 1,5 px de chaque côté plutôt qu'un gap) : le
           centre de chaque barre est exactement là où la courbe place son point. */}
       <div className="relative flex items-end border-b border-border" style={{ height }}>
@@ -136,6 +144,18 @@ export function StackedBars({
             >
               {body}
             </PeriodLink>
+          ) : b.onSelect ? (
+            <button
+              key={b.key}
+              type="button"
+              title={b.title}
+              aria-label={b.title}
+              aria-pressed={b.selected ?? false}
+              onClick={b.onSelect}
+              className={`h-full min-w-0 flex-1 cursor-pointer rounded-t-[4px] ${column} focus-visible:outline-2 focus-visible:outline-ink`}
+            >
+              {body}
+            </button>
           ) : (
             <div key={b.key} title={b.title} className={`h-full min-w-0 flex-1 ${column}`}>
               {body}
