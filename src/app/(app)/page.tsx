@@ -104,6 +104,7 @@ export default async function OverviewPage({
             <MonthlyCostCard
               months={overview.months}
               days={overview.days}
+              priced={overview.budget.totalCents !== null}
               period={overview.period}
               markers={overview.markers}
             />
@@ -123,6 +124,7 @@ export default async function OverviewPage({
               year={overview.period.key.slice(0, 4)}
               currentMonth={localParts(new Date(), ctx.timezone).date.slice(0, 7)}
               solar={modules.solar}
+              priced={overview.budget.totalCents !== null}
             />
           </PeriodContent>
         </PeriodTransition>

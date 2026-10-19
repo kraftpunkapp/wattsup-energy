@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useState } from "react";
 import { StackedBars } from "@/components/charts/stacked-bars";
 import { button, Card, Toggle } from "@/components/ui";
@@ -75,8 +76,11 @@ export function MonthlyCostCard({
   days,
   period,
   markers,
+  priced,
 }: {
   months: MonthCost[];
+  /** Faux : aucun contrat pour chiffrer l'électricité, le graphique reste en kWh (T63). */
+  priced: boolean;
   /** Vue mois : une barre par jour ; null en vue année. */
   days: DayCost[] | null;
   period: Period;
@@ -124,7 +128,7 @@ export function MonthlyCostCard({
         subscription: sum((m) => m.subscriptionCents),
         kwh: sum((m) => m.kwh),
       };
-  const isEur = unit === "eur";
+  const isEur = priced && unit === "eur";
   const marked = markedMonths(markers);
   const previousYear = String(Number(year) - 1);
   const hasPrevious = days ? days.some((d) => d.previous) : months.some((m) => m.previous);
@@ -223,8 +227,17 @@ export function MonthlyCostCard({
           ? "Contrat et prix en vigueur chaque jour, abonnement compris."
           : "Énergie achetée au réseau."
       }${days ? " Touchez un jour pour son détail." : " Touchez un mois pour le détail."}`}
-      actions={<UnitSwitch unit={unit} onChange={choose} />}
+      actions={priced ? <UnitSwitch unit={unit} onChange={choose} /> : undefined}
     >
+      {!priced && (
+        <p className="text-xs text-muted">
+          Sans contrat, l&apos;électricité s&apos;affiche en kWh.{" "}
+          <Link href="/contrats" className="font-medium text-ink underline underline-offset-2">
+            Ajoutez votre contrat
+          </Link>{" "}
+          pour la chiffrer.
+        </p>
+      )}
       <div className="flex flex-wrap items-stretch gap-5">
         <div className="flex min-w-0 flex-[1_1_320px] flex-col gap-2">
           {hasPrevious && (

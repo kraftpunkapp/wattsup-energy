@@ -50,6 +50,7 @@ export function MonthlyTable({
   year,
   currentMonth,
   solar,
+  priced,
 }: {
   months: MonthCost[];
   year: string;
@@ -57,6 +58,8 @@ export function MonthlyTable({
   currentMonth: string;
   /** Profil solaire : colonnes production et économie. */
   solar: boolean;
+  /** Faux : aucun contrat pour chiffrer l'électricité, pas de colonne de coût (T63). */
+  priced: boolean;
 }) {
   const [open, setOpen] = useState<Set<string>>(new Set());
   const toggle = (key: string) =>
@@ -90,13 +93,17 @@ export function MonthlyTable({
         ]
       : []),
     { id: "kwh", label: "Soutiré", value: (f) => f.kwh, format: kwh, lowerIsBetter: true },
-    {
-      id: "cost",
-      label: "Coût",
-      value: (f) => f.energyCents + f.subscriptionCents,
-      format: eur,
-      lowerIsBetter: true,
-    },
+    ...(priced
+      ? [
+          {
+            id: "cost",
+            label: "Coût",
+            value: (f: MonthFigures) => f.energyCents + f.subscriptionCents,
+            format: eur,
+            lowerIsBetter: true,
+          },
+        ]
+      : []),
     ...(solar
       ? [
           {
@@ -118,7 +125,7 @@ export function MonthlyTable({
   ];
   const groups = [
     { label: "Électricité (kWh)", span: hasHpHc ? 3 : 1 },
-    { label: "Budget (€)", span: 1 },
+    ...(priced ? [{ label: "Budget (€)", span: 1 }] : []),
     ...(solar ? [{ label: "Solaire", span: 2 }] : []),
   ];
 
