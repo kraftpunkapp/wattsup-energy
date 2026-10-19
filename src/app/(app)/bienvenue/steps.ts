@@ -11,7 +11,7 @@ export const STEPS = [
   {
     title: "Votre contrat",
     description:
-      "Votre contrat d'électricité actuel, avec sa date de début, pour chiffrer ce que vous payez.",
+      "Votre contrat d'électricité actuel, avec sa date de début, pour chiffrer ce que vous payez. Si vous payez par mensualités, indiquez-la : WattsUp vérifiera qu'elle couvre votre consommation.",
   },
   {
     title: "Home Assistant",

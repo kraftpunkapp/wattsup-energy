@@ -239,7 +239,14 @@ export function PaymentSection({
           <Icon name="edit" />
         </button>
       </div>
-      {analysis && <Verdict analysis={analysis} />}
+      {analysis ? (
+        <Verdict analysis={analysis} />
+      ) : (
+        <p className="text-xs text-muted">
+          Le verdict apparaîtra ici dès que vos données couvriront une année complète, hiver
+          compris.
+        </p>
+      )}
     </div>
   );
 }

@@ -20,6 +20,8 @@ const COMPARE_KEY = "wattsup:monthly-compare";
 const SUBSCRIPTION = "bg-subscription";
 
 const eur = (cents: number) => formatEurFromCents(cents, 0);
+/** Un jour se compte en centimes : arrondi à l'euro, il ne dirait rien. */
+const eurDay = (cents: number) => formatEurFromCents(cents, 2);
 const kwh = (value: number) => formatKwh(value);
 
 function UnitSwitch({ unit, onChange }: { unit: Unit; onChange: (u: Unit) => void }) {
@@ -143,6 +145,9 @@ export function MonthlyCostCard({
         ]
       : [{ value: m.kwh, color: "bg-grid", label: "Soutiré" }];
   const fmt = (v: number) => (isEur ? eur(v) : kwh(v));
+  const fmtDay = (v: number) => (isEur ? eurDay(v) : kwh(v));
+  // Panneau : au centime pour un jour touché, à l'euro pour un mois ou l'année.
+  const money = focusDay ? eurDay : eur;
   const scope = selected ? [selected] : months;
   const previousTotal = focusDay
     ? focusDay.previous && valueOf(focusDay.previous)
@@ -175,8 +180,8 @@ export function MonthlyCostCard({
     label: i % 7 === 0 ? String(Number(d.key.slice(8))) : "",
     selected: d.key === focusDay?.key,
     onSelect: () => setPicked(d.key === focusDay?.key ? null : { period: period.key, day: d.key }),
-    title: `${dayTitle(d.key)} : ${d.hasData ? fmt(valueOf(d)) : "pas de donnée"}${
-      comparing && d.previous ? ` · ${previousYear} : ${fmt(valueOf(d.previous))}` : ""
+    title: `${dayTitle(d.key)} : ${d.hasData ? fmtDay(valueOf(d)) : "pas de donnée"}${
+      comparing && d.previous ? ` · ${previousYear} : ${fmtDay(valueOf(d.previous))}` : ""
     }${(dayMarks.get(d.key) ?? []).map((x) => ` · ${x.text}`).join("")}`,
     previous: comparing ? (d.previous ? valueOf(d.previous) : null) : undefined,
     marked: dayMarks.has(d.key),
@@ -198,7 +203,7 @@ export function MonthlyCostCard({
     <div className="flex items-center justify-between gap-2 text-ink-soft">
       <span>{prevLabel.charAt(0).toUpperCase() + prevLabel.slice(1)}</span>
       <span className="whitespace-nowrap tabular-nums">
-        {fmt(previousTotal)}
+        {focusDay ? fmtDay(previousTotal) : fmt(previousTotal)}
         {/* Période en cours : comparer un mois entamé à un mois entier tromperait. */}
         {complete && previousTotal > 0 && (
           <span className={currentTotal <= previousTotal ? "text-positive" : "text-negative"}>
@@ -278,7 +283,7 @@ export function MonthlyCostCard({
         </div>
         <div className="flex grow basis-[220px] flex-col gap-2.5 rounded-control bg-bg p-4 text-[13px] md:grow-0">
           <div className="flex items-baseline justify-between gap-2">
-            <h3 className="font-semibold capitalize">
+            <h3 className={`font-semibold ${focusDay ? "" : "capitalize"}`}>
               {focusDay ? dayTitle(focusDay.key) : period.label}
             </h3>
             {focusDay && (
@@ -301,11 +306,11 @@ export function MonthlyCostCard({
             <p className="text-muted">Pas de donnée reçue ce jour-là.</p>
           ) : isEur ? (
             <>
-              <Row color="bg-grid" label="Consommation" value={eur(totals.energy)} />
-              <Row color={SUBSCRIPTION} label="Abonnement" value={eur(totals.subscription)} />
+              <Row color="bg-grid" label="Consommation" value={money(totals.energy)} />
+              <Row color={SUBSCRIPTION} label="Abonnement" value={money(totals.subscription)} />
               <div className="mt-auto flex justify-between border-t border-border-strong pt-2.5 font-semibold">
                 <span>Total</span>
-                <span className="tabular-nums">{eur(totals.energy + totals.subscription)}</span>
+                <span className="tabular-nums">{money(totals.energy + totals.subscription)}</span>
               </div>
               {comparison}
             </>

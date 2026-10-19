@@ -8,6 +8,7 @@ import { getActiveIngestToken } from "@/server/ingest/token";
 import { getLocationStatus } from "@/server/location";
 import { pageContext } from "@/server/page";
 import { pushState } from "@/domain/ingest/push-state";
+import { getPaymentAnalysis } from "@/server/queries/contracts";
 import { ContractsManager } from "../contrats/contracts-manager";
 import { toContractItems } from "../contrats/items";
 import { CsvCard } from "../reglages/csv-card";
@@ -40,10 +41,12 @@ export default async function WelcomePage({
   if (step === 1) content = <LocationCard status={await getLocationStatus(ctx)} />;
   if (step === 2) {
     const today = localParts(new Date(), ctx.timezone).date;
+    const [contracts, payment] = await Promise.all([listContracts(ctx), getPaymentAnalysis(ctx)]);
     content = (
       <ContractsManager
-        contracts={toContractItems(await listContracts(ctx), today)}
+        contracts={toContractItems(contracts, today)}
         today={today}
+        paymentAnalysis={payment?.analysis ?? null}
       />
     );
   }

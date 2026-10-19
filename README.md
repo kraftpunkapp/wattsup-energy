@@ -103,6 +103,16 @@ WattsUp vous rend service ? Vous pouvez soutenir son développement :
 
 ## Notes de version
 
+### 1.9.0 — 19 octobre 2026
+
+- La **mensualité** peut se renseigner dès le parcours de bienvenue.
+- Vue mois : **touchez un jour** du graphique pour lire ses chiffres (coût au centime, même
+  jour un an plus tôt, repères, production), aussi sur téléphone.
+- Corrections notables : pages d'erreur et « page introuvable » en français, avec un retour
+  possible ; un enregistrement interrompu par une coupure réseau affiche un message au lieu de
+  bloquer l'écran ; la mensualité ne tient plus compte des jours sans données et n'affiche pas
+  de verdict si trop de jours manquent ; sans contrat, plus de coûts affichés à 0 €.
+
 ### 1.8.0 — 19 octobre 2026
 
 - **Votre mensualité est-elle bien ajustée ?** Indiquez sur votre contrat en cours le montant
