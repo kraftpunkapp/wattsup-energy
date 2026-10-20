@@ -160,6 +160,21 @@ variables:
   categories: !input categories
   tempo_color: !input tempo_color
 
+  # Capteurs choisis mais sans valeur numérique (indisponibles, inconnus) : omis de l'envoi,
+  # WattsUp ne peut pas les nommer ; la notification les cite.
+  unreadable: >-
+    {%- set daily = granularity == 'daily' -%}
+    {%- set chosen = [grid_import, grid_import_hp, grid_import_hc]
+        + (energy_entities.values() | list) + ((categories or {}).values() | list) -%}
+    {%- set ns = namespace(found=[]) -%}
+    {%- for e in chosen if e -%}
+      {%- set v = state_attr(e, 'last_period') if daily else states(e) -%}
+      {%- if v is none or not (v | is_number) -%}
+        {%- set ns.found = ns.found + [e ~ ' (' ~ states(e) ~ ')'] -%}
+      {%- endif -%}
+    {%- endfor -%}
+    {{ ns.found }}
+
   # Historique : compteur WattsUp → capteur, d'après les mêmes entrées que l'envoi horaire.
   backfill_metrics: >-
     {%- set ns = namespace(m={}) -%}
@@ -272,9 +287,16 @@ actions:
                     notification_id: wattsup_backfill
                     title: WattsUp Energy — historique interrompu
                     message: >-
-                      Envoi du {{ bf_day }} refusé (statut
-                      {{ wattsup_response.status if wattsup_response is defined else 'inconnu' }}) :
-                      {{ wattsup_response.content if wattsup_response is defined else 'pas de réponse' }}
+                      {%- set r = wattsup_response if wattsup_response is defined else none -%}
+                      Envoi du {{ bf_day }} refusé :
+                      {% if r is none -%}
+                        WattsUp ne répond pas (adresse du rest_command « wattsup_push » ou
+                        connexion internet de Home Assistant).
+                      {%- elif r.content is mapping and r.content.message is defined -%}
+                        {{ r.content.message }}
+                      {%- else -%}
+                        statut {{ r.status }}, {{ r.content }}
+                      {%- endif -%}
                 - stop: Historique interrompu
             # 120 envois par minute au plus côté WattsUp : on reste très en dessous.
             - delay:
@@ -292,20 +314,36 @@ actions:
           payload: "{{ payload }}"
         response_variable: wattsup_response
         continue_on_error: true
+      # Ce qu'il faut corriger, en clair : la phrase renvoyée par WattsUp (`message`, capteur
+      # « Import réseau » oublié, token refusé…), plus les capteurs choisis restés sans valeur.
+      - variables:
+          wattsup_refused: >-
+            {{ wattsup_response is not defined or wattsup_response.status != 200 }}
+          wattsup_message: >-
+            {%- set r = wattsup_response if wattsup_response is defined else none -%}
+            {%- set ns = namespace(parts=[]) -%}
+            {%- if r is none -%}
+              {%- set ns.parts = ns.parts + ["WattsUp ne répond pas : vérifiez l'adresse du rest_command « wattsup_push » et la connexion internet de Home Assistant."] -%}
+            {%- elif r.content is mapping and r.content.message is defined -%}
+              {%- set ns.parts = ns.parts + [r.content.message] -%}
+            {%- elif r.status != 200 -%}
+              {%- set ns.parts = ns.parts + ["Envoi refusé (statut " ~ r.status ~ ") : " ~ (r.content | string)] -%}
+            {%- endif -%}
+            {%- if unreadable | length > 0 -%}
+              {%- set ns.parts = ns.parts + ["Capteurs choisis mais sans valeur dans Home Assistant : " ~ (unreadable | join(', ')) ~ "."] -%}
+            {%- endif -%}
+            {{ ns.parts | join(' ') }}
       - if:
           - condition: template
-            # Refus, ou envoi accepté sans aucune donnée d'énergie (capteurs mal choisis).
-            value_template: >-
-              {{ wattsup_response is not defined or wattsup_response.status != 200
-                 or 'no_energy_data' in (wattsup_response.content | string) }}
+            value_template: "{{ wattsup_message | trim != '' }}"
         then:
           - action: persistent_notification.create
             data:
               notification_id: wattsup_push_error
-              title: WattsUp Energy — envoi refusé ou vide
-              message: >-
-                Statut {{ wattsup_response.status if wattsup_response is defined else 'inconnu' }} :
-                {{ wattsup_response.content if wattsup_response is defined else 'pas de réponse' }}
+              title: >-
+                {{ 'WattsUp Energy — envoi refusé' if wattsup_refused
+                   else 'WattsUp Energy — envoi à vérifier' }}
+              message: "{{ wattsup_message }}"
         else:
           - action: persistent_notification.dismiss
             data:

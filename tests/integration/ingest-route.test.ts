@@ -45,7 +45,7 @@ describe("POST /api/v1/ingest : authentification et validation", () => {
     for (const auth of ["", "Bearer wu_faux", "Bearer " + "wu_" + "A".repeat(43)]) {
       const r = await push(hourly("2026-10-02T12:00:00Z", 1), auth);
       expect(r.status).toBe(401);
-      expect(r.json).toEqual({ ok: false });
+      expect(r.json).toMatchObject({ ok: false, message: expect.stringContaining("Token refusé") });
     }
   });
 
@@ -70,6 +70,7 @@ describe("POST /api/v1/ingest : authentification et validation", () => {
     });
     expect(r.status).toBe(400);
     expect((r.json.errors as { path: string }[])[0]?.path).toBe("energy.grid_import_kwh");
+    expect(r.json.message).toMatch(/^Envoi refusé, contenu invalide : energy\.grid_import_kwh/);
   });
 });
 
@@ -143,7 +144,28 @@ describe("mode horaire", () => {
       hourly("2026-10-02T13:00:00Z", 1, { categories: { "eau-chaude": 50.4, piscine: 4 } }),
     );
     expect(r.json.warnings).toEqual([{ code: "unknown_category", key: "piscine" }]);
+    expect(r.json.message).toBe(
+      "Poste « piscine » inconnu : créez-le dans Postes ou corrigez son slug dans Home Assistant.",
+    );
     expect((await intervals(ctx, "category:eau-chaude"))[0]?.kwh).toBeCloseTo(0.4, 4);
+  });
+
+  it("import réseau oublié : accepté, avertissement et message clair (T66)", async () => {
+    const { push } = await setup();
+    const r = await push({
+      version: 1,
+      ts: "2026-10-02T12:00:00Z",
+      energy: { solar_production_kwh: 120.5 },
+    });
+    expect(r.status).toBe(200);
+    expect(r.json.warnings).toContainEqual({ code: "missing_grid_import" });
+    expect(r.json.message).toMatch(/^Pas d'import réseau dans cet envoi/);
+  });
+
+  it("envoi sans rien à vérifier : pas de message", async () => {
+    const { push } = await setup();
+    const r = await push(hourly("2026-10-02T12:00:00Z", 1));
+    expect(r.json).not.toHaveProperty("message");
   });
 
   it("couleur Tempo rattachée au jour Tempo (6 h → 6 h)", async () => {

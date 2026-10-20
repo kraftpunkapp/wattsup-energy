@@ -22,7 +22,9 @@ export type IngestWarning =
   /** Bloc reçu mais pas encore exploité par cette version (ex. `fuel` avant T23). */
   | { code: "ignored_block"; key: string }
   /** Payload valide mais sans aucune valeur d'énergie exploitable (capteurs mal choisis ?). */
-  | { code: "no_energy_data" };
+  | { code: "no_energy_data" }
+  /** D'autres compteurs envoyés, mais pas l'import réseau (capteur oublié ou sans valeur). */
+  | { code: "missing_grid_import" };
 
 export interface HourlyInterval {
   metric: Metric;

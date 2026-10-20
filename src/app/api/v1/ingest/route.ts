@@ -1,5 +1,6 @@
 import { isBackfill } from "@/domain/ingest/backfill";
 import { isFuelEvent } from "@/domain/ingest/fuel-event";
+import { ingestMessage } from "@/domain/ingest/message";
 import { backfill } from "@/server/ingest/backfill";
 import { fuelEvent } from "@/server/ingest/fuel-event";
 import { ingest } from "@/server/ingest/persist";
@@ -13,15 +14,22 @@ export const dynamic = "force-dynamic";
 
 const MAX_BODY_BYTES = 64 * 1024;
 
+/** Réponse JSON, avec sa phrase pour la notification de Home Assistant (`message`). */
+function reply(status: number, body: object, init: ResponseInit = {}): Response {
+  const message = ingestMessage(status, body as Record<string, unknown>);
+  return Response.json(message ? { ...body, message } : body, { ...init, status });
+}
+
 export async function POST(request: Request): Promise<Response> {
   const auth = await verifyIngestToken(request.headers.get("authorization"));
-  if (!auth) return Response.json({ ok: false }, { status: 401 });
+  if (!auth) return reply(401, { ok: false });
 
   const limit = ingestRateLimiter.hit(auth.tokenId);
   if (!limit.allowed) {
-    return Response.json(
+    return reply(
+      429,
       { ok: false, error: "trop de requêtes : 120 par minute au maximum" },
-      { status: 429, headers: { "Retry-After": String(limit.retryAfterSec) } },
+      { headers: { "Retry-After": String(limit.retryAfterSec) } },
     );
   }
 
@@ -35,14 +43,14 @@ export async function POST(request: Request): Promise<Response> {
   const json = parseJson(body);
   if (isFuelEvent(json)) {
     const result = await fuelEvent(auth.householdId, json, body);
-    return Response.json(result.body, { status: result.status });
+    return reply(result.status, result.body);
   }
   if (isBackfill(json)) {
     const result = await backfill(auth.householdId, json, body);
-    return Response.json(result.body, { status: result.status });
+    return reply(result.status, result.body);
   }
   const result = await ingest(auth.householdId, body);
-  return Response.json(result.body, { status: result.status });
+  return reply(result.status, result.body);
 }
 
 /**
@@ -75,5 +83,4 @@ function parseJson(body: string): unknown {
   }
 }
 
-const tooLarge = () =>
-  Response.json({ ok: false, error: "corps trop volumineux : 64 Ko au maximum" }, { status: 413 });
+const tooLarge = () => reply(413, { ok: false, error: "corps trop volumineux : 64 Ko au maximum" });

@@ -64,6 +64,21 @@ describe("hourlyReadings", () => {
   });
 });
 
+describe("import réseau absent", () => {
+  it("horaire : avertissement missing_grid_import si d'autres compteurs sont envoyés", () => {
+    const p = parse(
+      { version: 1, ts: "2026-10-02T12:00:00Z", energy: { solar_production_kwh: 120.5 } },
+      "hourly",
+    );
+    expect(hourlyReadings(p, []).warnings).toEqual([{ code: "missing_grid_import" }]);
+  });
+
+  it("quotidien : même avertissement, import réseau ni total ni HP/HC", () => {
+    const p = parse({ version: 1, date: "2026-10-02", solar_production_kwh: 11.9 }, "daily");
+    expect(dailyToIntervals(p, []).warnings).toEqual([{ code: "missing_grid_import" }]);
+  });
+});
+
 describe("payload sans aucune donnée d'énergie", () => {
   it("quotidien : avertissement no_energy_data", () => {
     const r = dailyToIntervals(parse({ version: 1, date: "2026-10-02" }, "daily"), []);

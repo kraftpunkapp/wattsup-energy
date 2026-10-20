@@ -59,6 +59,9 @@ export function hourlyReadings(
   for (const [metric, value] of cats.entries) readings.push({ metric, ts: payload.ts, value });
   const warnings = [...cats.warnings];
   if (readings.length === 0) warnings.push({ code: "no_energy_data" });
+  else if (!readings.some((r) => r.metric === "grid_import")) {
+    warnings.push({ code: "missing_grid_import" });
+  }
   return { readings, warnings };
 }
 
@@ -86,5 +89,6 @@ export function dailyToIntervals(
 
   const warnings = [...cats.warnings];
   if (intervals.length === 0) warnings.push({ code: "no_energy_data" });
+  else if (!grid) warnings.push({ code: "missing_grid_import" });
   return { intervals, warnings };
 }

@@ -177,14 +177,20 @@ consommation récente). Le résumé est celui de WattsUp à l'instant de la lect
 ## 7. Vérifier
 
 - WattsUp : « Home Assistant connecté · Dernier push il y a X min » dans la navigation.
-- Home Assistant : en cas de refus (token, mode, format), une notification persistante
-  « WattsUp Energy — envoi refusé ou vide » affiche le statut et le message de l'API ;
-  elle disparaît au premier envoi accepté contenant des données.
+- Home Assistant : une notification persistante dit, en clair, ce qu'il faut corriger.
+  « WattsUp Energy — envoi refusé » (token, mode, format, WattsUp injoignable) ou
+  « WattsUp Energy — envoi à vérifier » (envoi accepté, mais capteur « Import réseau » oublié,
+  aucun capteur lisible, compteur remis à zéro, poste inconnu…). Elle cite aussi les capteurs
+  choisis restés sans valeur (`unavailable`, `unknown`) et disparaît au premier envoi sans
+  rien à signaler. Le texte vient du champ `message` de la réponse de WattsUp. Après une mise
+  à jour du blueprint : Paramètres › Automatisations et scènes › Blueprints › WattsUp ›
+  « Réimporter le blueprint ».
 
-| Statut                 | Cause probable                                                                                                                                    |
-| ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 401                    | token absent, mal recopié (le préfixe `Bearer ` est requis) ou révoqué                                                                            |
-| 409                    | granularité du blueprint ≠ granularité choisie dans WattsUp                                                                                       |
-| 400                    | champ invalide : le message indique lequel                                                                                                        |
-| 200 + `no_energy_data` | aucun capteur lisible : en mode quotidien, ce ne sont pas des `utility_meter` (pas d'attribut `last_period`) ; en horaire, capteurs indisponibles |
-| 429                    | plus de 120 envois par minute (automatisation en boucle ?)                                                                                        |
+| Statut                      | Cause probable                                                                                                                                    |
+| --------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 401                         | token absent, mal recopié (le préfixe `Bearer ` est requis) ou révoqué                                                                            |
+| 409                         | granularité du blueprint ≠ granularité choisie dans WattsUp                                                                                       |
+| 400                         | champ invalide : le message indique lequel                                                                                                        |
+| 200 + `no_energy_data`      | aucun capteur lisible : en mode quotidien, ce ne sont pas des `utility_meter` (pas d'attribut `last_period`) ; en horaire, capteurs indisponibles |
+| 200 + `missing_grid_import` | d'autres compteurs arrivent, mais pas l'import réseau : capteur « Import réseau » non choisi dans l'automatisation, ou sans valeur                |
+| 429                         | plus de 120 envois par minute (automatisation en boucle ?)                                                                                        |

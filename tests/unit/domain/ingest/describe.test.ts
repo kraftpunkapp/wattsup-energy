@@ -73,7 +73,13 @@ describe("describeWarnings", () => {
       },
       {
         tone: "warning",
-        text: "Aucune valeur d'énergie exploitable : vérifiez les capteurs choisis dans Home Assistant.",
+        text: "Aucune valeur d'énergie reçue : dans l'automatisation WattsUp de Home Assistant, choisissez au moins le capteur « Import réseau » et vérifiez qu'il a une valeur.",
+      },
+    ]);
+    expect(describeWarnings([{ code: "missing_grid_import" }], {})).toEqual([
+      {
+        tone: "warning",
+        text: "Pas d'import réseau dans cet envoi : l'électricité achetée et son coût ne sont pas comptés. Choisissez le capteur « Import réseau » dans l'automatisation WattsUp et vérifiez qu'il a une valeur.",
       },
     ]);
   });
