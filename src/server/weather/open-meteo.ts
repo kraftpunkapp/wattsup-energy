@@ -23,10 +23,10 @@ export interface WeatherSource {
   searchCommunes(query: string): Promise<CommuneResult[]>;
 }
 
-/** Prévisions heure par heure (T67, SPEC §7.14). */
+/** Météo heure par heure (T67–T68, SPEC §7.14) : passé récent et prévision. */
 export interface HourlyForecastSource {
-  /** Les `days` prochains jours UTC, aujourd'hui compris. */
-  hourly(cell: Cell, days: number): Promise<WeatherHour[]>;
+  /** Les `pastDays` derniers jours et les `days` prochains jours UTC, aujourd'hui compris. */
+  hourly(cell: Cell, days: number, pastDays: number): Promise<WeatherHour[]>;
 }
 
 const FORECAST_URL = "https://api.open-meteo.com/v1/forecast";
@@ -48,7 +48,7 @@ export class OpenMeteoSource implements WeatherSource, HourlyForecastSource {
     return parseOpenMeteoDaily(await this.http.getJson(url));
   }
 
-  async hourly(cell: Cell, days: number): Promise<WeatherHour[]> {
+  async hourly(cell: Cell, days: number, pastDays: number): Promise<WeatherHour[]> {
     const { lat, lon } = cellCoordinates(cell);
     // Heures en secondes UTC : pas d'ambiguïté au changement d'heure.
     const params = new URLSearchParams({
@@ -58,6 +58,7 @@ export class OpenMeteoSource implements WeatherSource, HourlyForecastSource {
       timezone: "GMT",
       timeformat: "unixtime",
       forecast_days: String(days),
+      past_days: String(pastDays),
     });
     return parseOpenMeteoHourly(await this.http.getJson(`${FORECAST_URL}?${params}`));
   }

@@ -5,12 +5,14 @@ import type { Cell, WeatherHour } from "@/domain/weather";
 import type { HourlyForecastSource } from "./open-meteo";
 import { knownCells } from "./sync";
 
-// Prévisions météo heure par heure (T67, SPEC §7.14) : une requête par maille, jamais par
-// foyer ; aujourd'hui et les deux jours suivants (UTC), soit au moins 36 h devant soi.
+// Météo heure par heure (T67–T68, SPEC §7.14) : une requête par maille, jamais par foyer ;
+// aujourd'hui et les deux jours suivants (UTC), soit au moins 36 h devant soi, plus les
+// 60 derniers jours, d'où le rendement solaire du foyer est appris heure par heure.
 
 export const FORECAST_DAYS = 3;
-/** Heures passées gardées : la journée en cours reste affichable, le reste est purgé. */
-const KEEP_PAST_HOURS = 30;
+export const PAST_DAYS = 60;
+/** Heures passées gardées (au-delà de la fenêtre d'apprentissage : purgées). */
+const KEEP_PAST_HOURS = (PAST_DAYS + 2) * 24;
 const HOUR_MS = 3_600_000;
 
 async function upsert(cell: Cell, hours: readonly WeatherHour[]) {
@@ -42,7 +44,7 @@ export async function syncHourlyForecast(
   let hours = 0;
   for (const cell of cells) {
     try {
-      const fetched = await source.hourly(cell, FORECAST_DAYS);
+      const fetched = await source.hourly(cell, FORECAST_DAYS, PAST_DAYS);
       await upsert(cell, fetched);
       hours += fetched.length;
     } catch {

@@ -199,8 +199,9 @@ export const weatherDaily = pgTable(
 );
 
 /**
- * Prévisions météo heure par heure (T67, SPEC §7.14), globales par maille de 0,01° : les
- * 48 prochaines heures environ, remplacées à chaque rafraîchissement.
+ * Météo heure par heure (T67–T68, SPEC §7.14), globale par maille de 0,01° : les 60 derniers
+ * jours (rendement solaire appris) et les prochaines 48 h environ, remplacés à chaque
+ * rafraîchissement.
  */
 export const weatherForecastHourly = pgTable(
   "weather_forecast_hourly",

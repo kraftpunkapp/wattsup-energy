@@ -41,7 +41,7 @@ describe("OpenMeteoSource", () => {
 
   it("hourly : rayonnement et température, heures en secondes UTC, jours demandés", async () => {
     const { source, calls } = scripted([json(hourly)]);
-    const hours = await source.hourly(cell, 3);
+    const hours = await source.hourly(cell, 3, 60);
     expect(hours).toHaveLength(4);
     const url = new URL(calls[0] ?? "");
     expect(url.origin + url.pathname).toBe("https://api.open-meteo.com/v1/forecast");
@@ -49,6 +49,7 @@ describe("OpenMeteoSource", () => {
     expect(url.searchParams.get("timeformat")).toBe("unixtime");
     expect(url.searchParams.get("timezone")).toBe("GMT");
     expect(url.searchParams.get("forecast_days")).toBe("3");
+    expect(url.searchParams.get("past_days")).toBe("60");
     expect(url.searchParams.get("latitude")).toBe("47.33");
   });
 

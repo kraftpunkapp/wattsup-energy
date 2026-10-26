@@ -37,21 +37,21 @@ const rowsFor = (cell: Cell) =>
     .orderBy(weatherForecastHourly.start);
 
 describe("prévisions météo horaires", () => {
-  it("une requête par maille sur 3 jours ; rafraîchir remplace, une maille en panne n'arrête rien", async () => {
+  it("une requête par maille (60 jours passés, 3 à venir) ; rafraîchir remplace, une maille en panne n'arrête rien", async () => {
     const cell = await locatedCell();
     const broken = await locatedCell();
     let radiation = 300;
     const calls: number[] = [];
     const source: HourlyForecastSource = {
-      hourly: async (c, days) => {
+      hourly: async (c, days, pastDays) => {
         if (c.latE2 === broken.latE2 && c.lonE2 === broken.lonE2) throw new Error("panne");
-        calls.push(days);
+        calls.push(days * 100 + pastDays);
         return [hour("2026-10-26T12:00:00Z", radiation), hour("2026-10-27T11:00:00Z", 450)];
       },
     };
     const first = await syncHourlyForecast(source, now);
     expect(first.failed).toContainEqual(broken);
-    expect(calls.every((d) => d === 3)).toBe(true);
+    expect(calls.every((d) => d === 360)).toBe(true); // 3 jours devant, 60 derrière
     radiation = 120;
     await syncHourlyForecast(source, now);
     const rows = await rowsFor(cell);
@@ -67,14 +67,14 @@ describe("prévisions météo horaires", () => {
     expect(read).toEqual([hour("2026-10-27T11:00:00Z", 450)]);
   });
 
-  it("les heures de plus de 30 h sont purgées", async () => {
+  it("les heures de plus de 62 jours sont purgées", async () => {
     const cell = await locatedCell();
     const source: HourlyForecastSource = {
-      hourly: async () => [hour("2026-10-24T12:00:00Z", 200), hour("2026-10-26T13:00:00Z", 300)],
+      hourly: async () => [hour("2026-08-20T12:00:00Z", 200), hour("2026-09-01T13:00:00Z", 300)],
     };
     await syncHourlyForecast(source, now);
     expect((await rowsFor(cell)).map((r) => r.start.toISOString())).toEqual([
-      "2026-10-26T13:00:00.000Z",
+      "2026-09-01T13:00:00.000Z",
     ]);
   });
 });
