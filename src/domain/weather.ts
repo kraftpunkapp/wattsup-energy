@@ -84,6 +84,52 @@ export function parseOpenMeteoDaily(json: unknown): WeatherDay[] {
     .filter((d) => [d.tMin, d.tMax, d.tMean, d.sunshineS, d.radiationMjM2].some((v) => v !== null));
 }
 
+/** Heure prévue (T67, SPEC §7.14) : heure UTC [start, start + 1 h). */
+export interface WeatherHour {
+  start: Date;
+  /** Rayonnement global moyen sur l'heure (W/m², donc Wh/m² pour l'heure). */
+  radiationWm2: number | null;
+  temperatureC: number | null;
+}
+
+export const HOURLY_VARIABLES = ["shortwave_radiation", "temperature_2m"] as const;
+
+const HOUR_S = 3600;
+const hourlyResponse = z
+  .object({
+    hourly: z.object({
+      time: z.array(z.number().int()),
+      shortwave_radiation: series,
+      temperature_2m: series,
+    }),
+  })
+  .refine((r) => HOURLY_VARIABLES.every((v) => r.hourly[v].length === r.hourly.time.length), {
+    message: "séries de longueurs différentes",
+  });
+
+/**
+ * Réponse forecast horaire (`timeformat=unixtime`) → heures. Open-Meteo donne le rayonnement
+ * à l'instant T comme la moyenne de l'heure qui se termine en T : il est rangé sur l'heure qui
+ * commence en T − 1 h, comme les relevés d'énergie ; la température, instantanée, sur T.
+ */
+export function parseOpenMeteoHourly(json: unknown): WeatherHour[] {
+  const { hourly } = hourlyResponse.parse(json);
+  const hours = new Map<number, WeatherHour>();
+  const at = (s: number) => {
+    let h = hours.get(s);
+    if (!h)
+      hours.set(s, (h = { start: new Date(s * 1000), radiationWm2: null, temperatureC: null }));
+    return h;
+  };
+  hourly.time.forEach((t, i) => {
+    const radiation = hourly.shortwave_radiation[i];
+    const temperature = hourly.temperature_2m[i];
+    if (radiation != null) at(t - HOUR_S).radiationWm2 = radiation;
+    if (temperature != null) at(t).temperatureC = temperature;
+  });
+  return [...hours.values()].sort((a, b) => a.start.getTime() - b.start.getTime());
+}
+
 export interface CommuneResult extends Coordinates {
   /** Nom suivi du département (admin2) ou de la région, ex. « Valence (Drôme) ». */
   label: string;

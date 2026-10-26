@@ -4,6 +4,7 @@ import {
   dju,
   parseGeocoding,
   parseOpenMeteoDaily,
+  parseOpenMeteoHourly,
   radiationKwhM2,
   roundCoord,
   sunshineHours,
@@ -11,6 +12,7 @@ import {
 import archive from "../../fixtures/open-meteo/archive-paris.json";
 import forecast from "../../fixtures/open-meteo/forecast-paris.json";
 import geocode from "../../fixtures/open-meteo/geocode-valence.json";
+import hourly from "../../fixtures/open-meteo/forecast-hourly.json";
 
 describe("maille et arrondis", () => {
   it("arrondit les coordonnées à 0,01°, y compris en longitude négative", () => {
@@ -92,5 +94,21 @@ describe("parseGeocoding", () => {
 
   it("aucun résultat : liste vide", () => {
     expect(parseGeocoding({})).toEqual([]);
+  });
+});
+
+describe("parseOpenMeteoHourly (T67)", () => {
+  it("rayonnement : moyenne de l'heure précédente, rangé au début de cette heure", () => {
+    const at = (iso: string) => new Date(iso);
+    expect(parseOpenMeteoHourly(hourly)).toEqual([
+      { start: at("2026-10-19T09:00:00Z"), radiationWm2: 310, temperatureC: null },
+      { start: at("2026-10-19T10:00:00Z"), radiationWm2: 420.5, temperatureC: 12.1 },
+      { start: at("2026-10-19T11:00:00Z"), radiationWm2: null, temperatureC: 13.4 },
+      { start: at("2026-10-19T12:00:00Z"), radiationWm2: 380, temperatureC: 14 },
+    ]);
+  });
+
+  it("réponse inattendue : erreur", () => {
+    expect(() => parseOpenMeteoHourly({ hourly: { time: [1] } })).toThrow();
   });
 });

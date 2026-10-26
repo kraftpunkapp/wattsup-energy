@@ -198,6 +198,24 @@ export const weatherDaily = pgTable(
   (t) => [primaryKey({ columns: [t.latE2, t.lonE2, t.date] })],
 );
 
+/**
+ * Prévisions météo heure par heure (T67, SPEC §7.14), globales par maille de 0,01° : les
+ * 48 prochaines heures environ, remplacées à chaque rafraîchissement.
+ */
+export const weatherForecastHourly = pgTable(
+  "weather_forecast_hourly",
+  {
+    latE2: integer("lat_e2").notNull(),
+    lonE2: integer("lon_e2").notNull(),
+    /** Début de l'heure (UTC). */
+    start: timestamp("start", { withTimezone: true }).notNull(),
+    radiationWm2: real("radiation_wm2"),
+    temperatureC: real("temperature_c"),
+    fetchedAt: timestamp("fetched_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [primaryKey({ columns: [t.latE2, t.lonE2, t.start] })],
+);
+
 export const tempoColor = pgEnum("tempo_color", ["bleu", "blanc", "rouge"]);
 
 /** Calendrier Tempo global (donnée publique), partagé par tous les foyers (SPEC §7.8). */

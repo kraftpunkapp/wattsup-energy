@@ -11,6 +11,7 @@ import { pushAlertsForAll, pushConfigured } from "./push";
 import { CommunityTempoSource } from "./tempo/community";
 import { loadTempoSeed, syncTempo, tempoSyncEnabled } from "./tempo/sync";
 import { OpenMeteoSource } from "./weather/open-meteo";
+import { syncHourlyForecast } from "./weather/forecast";
 import { syncRecentWeather, weatherSyncEnabled } from "./weather/sync";
 
 // Tâches quotidiennes exécutées dans le processus serveur (instance unique en V1) : rien
@@ -40,6 +41,17 @@ const JOBS: Job[] = [
     run: async () => {
       const { cells, failed } = await syncRecentWeather(new OpenMeteoSource());
       return `${cells - failed.length}/${cells} mailles`;
+    },
+  },
+  {
+    // Météo prévue heure par heure (T67) : fraîche le matin, à midi, avant les prix spot du
+    // soir et avant la notification de 20 h.
+    name: "prévisions météo",
+    at: ["05:30", "11:30", "16:30", "19:30"],
+    enabled: weatherSyncEnabled,
+    run: async () => {
+      const { cells, hours, failed } = await syncHourlyForecast(new OpenMeteoSource());
+      return `${cells - failed.length}/${cells} mailles, ${hours} heures`;
     },
   },
   {

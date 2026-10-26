@@ -1,0 +1,31 @@
+{
+  "latitude": 47.33,
+  "longitude": -1.74,
+  "utc_offset_seconds": 0,
+  "timezone": "GMT",
+  "hourly_units": {
+    "time": "unixtime",
+    "shortwave_radiation": "W/m\u00b2",
+    "temperature_2m": "\u00b0C"
+  },
+  "hourly": {
+    "time": [
+      1792404000,
+      1792407600,
+      1792411200,
+      1792414800
+    ],
+    "shortwave_radiation": [
+      310.0,
+      420.5,
+      null,
+      380.0
+    ],
+    "temperature_2m": [
+      12.1,
+      13.4,
+      14.0,
+      null
+    ]
+  }
+}

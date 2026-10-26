@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { OpenMeteoSource } from "@/server/weather/open-meteo";
 import forecast from "../../fixtures/open-meteo/forecast-paris.json";
 import geocode from "../../fixtures/open-meteo/geocode-valence.json";
+import hourly from "../../fixtures/open-meteo/forecast-hourly.json";
 
 // Aucun appel réseau : fetch est remplacé par une file de réponses scriptées.
 
@@ -36,6 +37,19 @@ describe("OpenMeteoSource", () => {
     expect(url.searchParams.get("timezone")).toBe("Europe/Paris");
     expect(url.searchParams.get("daily")).toContain("sunshine_duration");
     expect(url.searchParams.get("daily")).toContain("shortwave_radiation_sum");
+  });
+
+  it("hourly : rayonnement et température, heures en secondes UTC, jours demandés", async () => {
+    const { source, calls } = scripted([json(hourly)]);
+    const hours = await source.hourly(cell, 3);
+    expect(hours).toHaveLength(4);
+    const url = new URL(calls[0] ?? "");
+    expect(url.origin + url.pathname).toBe("https://api.open-meteo.com/v1/forecast");
+    expect(url.searchParams.get("hourly")).toBe("shortwave_radiation,temperature_2m");
+    expect(url.searchParams.get("timeformat")).toBe("unixtime");
+    expect(url.searchParams.get("timezone")).toBe("GMT");
+    expect(url.searchParams.get("forecast_days")).toBe("3");
+    expect(url.searchParams.get("latitude")).toBe("47.33");
   });
 
   it("archive : période demandée dans l'URL", async () => {

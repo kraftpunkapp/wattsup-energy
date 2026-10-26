@@ -1,11 +1,14 @@
 import {
   cellCoordinates,
   DAILY_VARIABLES,
+  HOURLY_VARIABLES,
+  parseOpenMeteoHourly,
   parseGeocoding,
   parseOpenMeteoDaily,
   type Cell,
   type CommuneResult,
   type WeatherDay,
+  type WeatherHour,
 } from "@/domain/weather";
 import { httpClient, type HttpClient, type HttpOptions } from "../http";
 
@@ -20,11 +23,17 @@ export interface WeatherSource {
   searchCommunes(query: string): Promise<CommuneResult[]>;
 }
 
+/** Prévisions heure par heure (T67, SPEC §7.14). */
+export interface HourlyForecastSource {
+  /** Les `days` prochains jours UTC, aujourd'hui compris. */
+  hourly(cell: Cell, days: number): Promise<WeatherHour[]>;
+}
+
 const FORECAST_URL = "https://api.open-meteo.com/v1/forecast";
 const ARCHIVE_URL = "https://archive-api.open-meteo.com/v1/archive";
 const GEOCODING_URL = "https://geocoding-api.open-meteo.com/v1/search";
 
-export class OpenMeteoSource implements WeatherSource {
+export class OpenMeteoSource implements WeatherSource, HourlyForecastSource {
   private readonly http: HttpClient;
 
   constructor(options: HttpOptions = {}) {
@@ -37,6 +46,20 @@ export class OpenMeteoSource implements WeatherSource {
       forecast_days: "1",
     });
     return parseOpenMeteoDaily(await this.http.getJson(url));
+  }
+
+  async hourly(cell: Cell, days: number): Promise<WeatherHour[]> {
+    const { lat, lon } = cellCoordinates(cell);
+    // Heures en secondes UTC : pas d'ambiguïté au changement d'heure.
+    const params = new URLSearchParams({
+      latitude: lat.toFixed(2),
+      longitude: lon.toFixed(2),
+      hourly: HOURLY_VARIABLES.join(","),
+      timezone: "GMT",
+      timeformat: "unixtime",
+      forecast_days: String(days),
+    });
+    return parseOpenMeteoHourly(await this.http.getJson(`${FORECAST_URL}?${params}`));
   }
 
   async archive(cell: Cell, from: string, to: string): Promise<WeatherDay[]> {
