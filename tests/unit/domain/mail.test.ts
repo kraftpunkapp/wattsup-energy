@@ -6,6 +6,7 @@ import {
   contactEmail,
   newIdeaEmail,
   resetPasswordEmail,
+  tomorrowEmail,
 } from "@/domain/mail";
 
 describe("confirmEmailEmail", () => {
@@ -107,5 +108,21 @@ describe("alertsEmail", () => {
     expect(alertsEmail([alert("a", "A"), alert("b", "B")], "https://w.test").subject).toBe(
       "WattsUp : 2 alertes",
     );
+  });
+});
+
+describe("tomorrowEmail (T74)", () => {
+  it("titre en objet, détail, lien vers les prévisions et pour arrêter", () => {
+    const m = tomorrowEmail(
+      {
+        title: "Demain, lave-linge de 13 h à 15 h",
+        body: "Lave-linge 13 h – 15 h : 90 % solaire.",
+      },
+      "https://wattsup.test",
+    );
+    expect(m.subject).toBe("WattsUp : Demain, lave-linge de 13 h à 15 h");
+    expect(m.text).toContain("Voir les prévisions : https://wattsup.test/previsions");
+    expect(m.text).toContain("https://wattsup.test/reglages?onglet=alertes");
+    expect(m.html).toContain("90 % solaire");
   });
 });

@@ -31,3 +31,18 @@ export async function updateMeterPower(ctx: HouseholdContext, kva: number) {
     .returning({ settings: household.settings });
   return row?.settings ?? null;
 }
+
+/** « Créneaux de demain » (T74) : notification du soir, et sa copie par email. */
+export async function updateTomorrowNotice(
+  ctx: HouseholdContext,
+  value: { enabled: boolean; email: boolean },
+) {
+  const [row] = await db
+    .update(household)
+    .set({
+      settings: sql`${household.settings} || ${JSON.stringify({ tomorrowNotice: value })}::jsonb`,
+    })
+    .where(eq(household.id, ctx.householdId))
+    .returning({ settings: household.settings });
+  return row?.settings ?? null;
+}

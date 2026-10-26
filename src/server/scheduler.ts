@@ -12,6 +12,7 @@ import { CommunityTempoSource } from "./tempo/community";
 import { loadTempoSeed, syncTempo, tempoSyncEnabled } from "./tempo/sync";
 import { OpenMeteoSource } from "./weather/open-meteo";
 import { snapshotForecastsForAll } from "./forecast";
+import { notifyTomorrowForAll } from "./forecast-notify";
 import { syncHourlyForecast } from "./weather/forecast";
 import { syncRecentWeather, weatherSyncEnabled } from "./weather/sync";
 
@@ -53,6 +54,16 @@ const JOBS: Job[] = [
     run: async () => {
       const { cells, hours, failed } = await syncHourlyForecast(new OpenMeteoSource());
       return `${cells - failed.length}/${cells} mailles, ${hours} heures`;
+    },
+  },
+  {
+    // « Créneaux de demain » (T74), après la météo de 19 h 30 ; jamais hors de la soirée.
+    name: "créneaux de demain",
+    at: ["20:00"],
+    enabled: () => mailConfigured() || pushConfigured(),
+    run: async () => {
+      const r = await notifyTomorrowForAll(process.env.BETTER_AUTH_URL);
+      return `${r.sent}/${r.households} foyer(s)`;
     },
   },
   {

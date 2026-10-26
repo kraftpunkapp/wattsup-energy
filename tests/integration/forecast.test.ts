@@ -1,7 +1,13 @@
 import { describe, expect, it } from "vitest";
 import { db } from "@/db";
 import { eq } from "drizzle-orm";
-import { energyInterval, household, householdForecast, weatherForecastHourly } from "@/db/schema";
+import {
+  energyInterval,
+  household,
+  householdForecast,
+  pushSubscription,
+  weatherForecastHourly,
+} from "@/db/schema";
 import { cellOf } from "@/domain/weather";
 import { householdContextFor, type HouseholdContext } from "@/server/context";
 import { saveEquipment } from "@/server/equipment";
@@ -15,6 +21,8 @@ import {
   snapshotForecast,
 } from "@/server/forecast";
 import { saveAppliance } from "@/server/appliances";
+import { notifyTomorrow } from "@/server/forecast-notify";
+import { updateTomorrowNotice } from "@/server/settings";
 import { setLocation } from "@/server/location";
 import { updateProfile } from "@/server/profile";
 import { createTestHousehold, describeTenantIsolation } from "../helpers/tenancy";
@@ -286,4 +294,58 @@ describeTenantIsolation("prévu contre réel", {
   },
   attempt: async (a) => (await getForecastAccuracy(a, new Date("2026-11-23T09:00:00Z"))).days,
   expect: "empty",
+});
+
+describe("notification du soir « Créneaux de demain » (T74)", () => {
+  it("push et email une seule fois par soir ; rien si elle n'est pas demandée", async () => {
+    const { ctx, cell } = await solarHousehold();
+    await weather(cell);
+    await hourlyHistory(ctx);
+    await createContract(ctx, {
+      name: "Base",
+      contract: { kind: "base", subscriptionEurYear: 200, priceEurKwh: 0.25 },
+      subscription: { startDate: "2026-01-01", endDate: null },
+    });
+    await saveAppliance(ctx, null, {
+      name: "Pompe",
+      icon: "plug",
+      powerKw: 0.3,
+      durationMin: 60,
+      allowedFrom: 0,
+      allowedTo: 0,
+    });
+    await db.insert(pushSubscription).values({
+      householdId: ctx.householdId,
+      endpoint: `https://push.test/${ctx.householdId}`,
+      p256dh: "cle",
+      auth: "secret",
+      label: "Test",
+    });
+    const pushed: string[] = [];
+    const mailed: string[] = [];
+    const options = {
+      now: new Date("2026-11-21T20:00:00Z"),
+      origin: "https://wattsup.test",
+      send: async (_s: unknown, body: string) => {
+        pushed.push(body);
+      },
+      mail: async (_to: string, c: { subject: string }) => {
+        mailed.push(c.subject);
+      },
+    };
+    expect(await notifyTomorrow(ctx, options)).toEqual({ push: 0, email: false });
+
+    await updateTomorrowNotice(ctx, { enabled: true, email: true });
+    const fresh = await householdContextFor(ctx.userId, "Test", "test@wattsup.test");
+    expect(await notifyTomorrow(fresh, options)).toEqual({ push: 1, email: true });
+    expect(JSON.parse(pushed[0] ?? "{}")).toMatchObject({
+      title: "Demain, pompe de 9 h à 10 h",
+      url: "/previsions",
+    });
+    expect(mailed).toEqual(["WattsUp : Demain, pompe de 9 h à 10 h"]);
+
+    // Même soir : déjà envoyée.
+    const again = await householdContextFor(ctx.userId, "Test", "test@wattsup.test");
+    expect(await notifyTomorrow(again, options)).toEqual({ push: 0, email: false });
+  });
 });

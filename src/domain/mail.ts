@@ -149,3 +149,24 @@ export function alertsEmail(alerts: readonly Alert[], origin: string): MailConte
 <p style="font-size:12px;color:#6b6f68;border-top:1px solid #e4e0d6;padding-top:12px">Vous recevez cet email parce que vous l'avez demandé. <a href="${escapeHtml(settings)}" style="color:#6b6f68">Régler les alertes</a></p>`);
   return { subject, text, html };
 }
+
+/** « Créneaux de demain » (T74) : le titre en objet, le détail, le lien vers les prévisions. */
+export function tomorrowEmail(
+  notice: { title: string; body: string },
+  origin: string,
+): MailContent {
+  const page = `${origin}/previsions`;
+  const settings = `${origin}/reglages?onglet=alertes`;
+  const subject = `WattsUp : ${notice.title}`;
+  const text = [
+    notice.body,
+    `Voir les prévisions : ${page}`,
+    "",
+    `Vous recevez cet email parce que vous l'avez demandé. Pour l'arrêter : ${settings}`,
+  ].join("\n");
+  const html = layout(`<h2 style="font-size:16px;margin:16px 0 4px">${escapeHtml(notice.title)}</h2>
+<p style="margin:0 0 8px">${escapeHtml(notice.body)}</p>
+<p style="margin:0 0 12px"><a href="${escapeHtml(page)}" style="color:#3d5a80">Voir les prévisions</a></p>
+<p style="font-size:12px;color:#6b6f68;border-top:1px solid #e4e0d6;padding-top:12px">Vous recevez cet email parce que vous l'avez demandé. <a href="${escapeHtml(settings)}" style="color:#6b6f68">Régler les notifications</a></p>`);
+  return { subject, text, html };
+}

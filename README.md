@@ -33,6 +33,8 @@ appareils, combien de sacs de granulés commander, quand les panneaux seront rem
 
 - **Vue d'ensemble** : coût du mois et projection de l'année, origine de la consommation
   (réseau, solaire, batterie), talon de consommation, heures conseillées pour consommer.
+- **Prévisions** : aujourd'hui et demain heure par heure (production, consommation, achats),
+  et le meilleur moment pour lancer chaque appareil.
 - **Contrats** : Base, Heures creuses, Tempo ; historique des prix et comparaison des offres
   heure par heure, sur votre propre consommation, y compris celles des fournisseurs du marché ;
   vérification de votre mensualité et estimation de la régularisation.
@@ -102,6 +104,18 @@ WattsUp vous rend service ? Vous pouvez soutenir son développement :
 <a href="https://www.buymeacoffee.com/kraftpunk"><img src="https://img.buymeacoffee.com/button-api/?text=Buy%20me%20a%20coffee&emoji=%E2%98%95&slug=kraftpunk&button_colour=FFDD00&font_colour=000000&font_family=Inter&outline_colour=000000&coffee_colour=ffffff" alt="Buy me a coffee" height="48"></a>
 
 ## Notes de version
+
+### 1.10.0 — 26 octobre 2026
+
+- **Prévisions** : ce que vous allez produire, consommer et acheter aujourd'hui et demain,
+  heure par heure, d'après la météo de votre commune, le rendement réel de vos panneaux,
+  vos habitudes et votre contrat ; batterie comprise.
+- **Quand lancer vos appareils** : déclarez lave-linge, ballon, recharge du véhicule… dans
+  Réglages › Appareils ; WattsUp trouve pour chacun le créneau le moins cher d'ici demain soir,
+  surplus solaire compris, et dit combien vous gagnez.
+- Sur la Vue d'ensemble, « Quand consommer » devient **Demain**, avec vos prochains créneaux.
+- **Fiabilité** : chaque prévision est comparée à vos mesures du lendemain.
+- **Le soir, une notification** facultative quand un créneau de demain vaut le coup.
 
 ### 1.9.0 — 19 octobre 2026
 

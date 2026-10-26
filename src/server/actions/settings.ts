@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { getHouseholdContext } from "../context";
-import { updateFuelSettings } from "../settings";
+import { updateFuelSettings, updateTomorrowNotice } from "../settings";
 
 export type SettingsActionResult = { ok: true } | { ok: false; errors: string[] };
 
@@ -27,5 +27,17 @@ export async function updateFuelSettingsAction(input: unknown): Promise<Settings
   const ctx = await getHouseholdContext();
   await updateFuelSettings(ctx, p.data);
   revalidatePath("/", "layout");
+  return { ok: true };
+}
+
+const tomorrowNotice = z.object({ enabled: z.boolean(), email: z.boolean() });
+
+/** Réglages › Alertes : notification du soir « Créneaux de demain » (T74). */
+export async function saveTomorrowNoticeAction(input: unknown): Promise<SettingsActionResult> {
+  const p = tomorrowNotice.safeParse(input);
+  if (!p.success) return { ok: false, errors: ["réglage invalide"] };
+  const ctx = await getHouseholdContext();
+  await updateTomorrowNotice(ctx, p.data);
+  revalidatePath("/reglages");
   return { ok: true };
 }

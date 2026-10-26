@@ -1,6 +1,8 @@
 import { headers } from "next/headers";
 import { pushState } from "@/domain/ingest/push-state";
 import { parseSettingsTab, settingsTabsFor } from "@/lib/settings-tabs";
+import { parseTomorrowNotice } from "@/domain/forecast/notify";
+import { pushConfigured } from "@/server/push";
 import { listAppliances } from "@/server/appliances";
 import { listCategories, unknownCategorySlugs } from "@/server/categories";
 import type { HouseholdContext } from "@/server/context";
@@ -16,6 +18,7 @@ import { mailConfigured } from "@/server/mail";
 import { AlertsSettingsCard } from "./alerts-card";
 import { OverviewBlocksCard } from "./overview-blocks-card";
 import { AppliancesCard } from "./appliances-card";
+import { TomorrowNoticeCard } from "./tomorrow-notice-card";
 import { CategoriesCard } from "./categories-card";
 import { CsvCard } from "./csv-card";
 import { DayCard, RangeCard, SuspectCard } from "./data-cards";
@@ -241,6 +244,11 @@ async function SettingsSection({
               "budget",
               "marketOffer",
             ]}
+          />
+          <TomorrowNoticeCard
+            initial={parseTomorrowNotice(ctx.settings.tomorrowNotice)}
+            email={mailConfigured()}
+            push={pushConfigured()}
           />
         </div>
       )}

@@ -46,6 +46,10 @@ export interface HouseholdSettings {
   overview?: unknown;
   /** Puissance souscrite du compteur en kVA (T55, offres du marché) ; absente tant que non saisie. */
   meterPowerKva?: number;
+  /** Notification du soir « Créneaux de demain » (T74) : `{ enabled, email }` ; absente, désactivée. */
+  tomorrowNotice?: unknown;
+  /** Jour « demain » de la dernière notification envoyée (AAAA-MM-JJ), une seule par soir. */
+  tomorrowNoticeSentFor?: string;
 }
 
 /** Commune du foyer pour la météo ; coordonnées arrondies à 0,01° (SPEC §7.9). */
