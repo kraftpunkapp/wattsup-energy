@@ -26,9 +26,20 @@ const navIds = (p: EnergyProfile) => visibleModules(p).nav.map((n) => n.id);
 describe("visibleModules (SPEC §7.6)", () => {
   it("profil complet : tous les onglets (Prévisions hors barre mobile) et tous les blocs", () => {
     const v = visibleModules(all);
-    expect(navIds(all)).toEqual(["overview", "forecast", "heating", "roi", "contracts", "settings"]);
-    // Barre d'onglets mobile : 5 entrées au plus, Prévisions passe par la carte « Demain ».
-    expect(visibleModules(all).nav.filter((n) => n.mobile !== false)).toHaveLength(5);
+    expect(navIds(all)).toEqual([
+      "overview",
+      "forecast",
+      "heating",
+      "roi",
+      "contracts",
+      "settings",
+    ]);
+    // Barre d'onglets mobile : 5 entrées au plus ; Réglages passe dans le menu du compte.
+    expect(
+      visibleModules(all)
+        .nav.filter((n) => n.mobile !== false)
+        .map((n) => n.id),
+    ).toEqual(["overview", "forecast", "heating", "roi", "contracts"]);
     expect(v.refillForecast).toBe(true);
     expect(v.fuelTabs).toBe(true);
     expect(v.heatingCategories).toBe(true);

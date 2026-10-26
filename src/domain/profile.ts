@@ -24,12 +24,12 @@ export interface NavItem {
 
 export const NAV_ITEMS: readonly NavItem[] = [
   { id: "overview", href: "/", label: "Vue d'ensemble", short: "Accueil" },
-  // Sur mobile, la page s'ouvre depuis la carte « Demain » de la Vue d'ensemble (T72).
-  { id: "forecast", href: "/previsions", label: "Prévisions", short: "Prévisions", mobile: false },
+  { id: "forecast", href: "/previsions", label: "Prévisions", short: "Prévisions" },
   { id: "heating", href: "/chauffage", label: "Chauffage", short: "Chauffage" },
   { id: "roi", href: "/rentabilite", label: "Rentabilité", short: "ROI" },
   { id: "contracts", href: "/contrats", label: "Contrats", short: "Contrats" },
-  { id: "settings", href: "/reglages", label: "Réglages", short: "Réglages" },
+  // Sur mobile, Réglages est dans le menu du compte (en-tête) : la barre garde les pages.
+  { id: "settings", href: "/reglages", label: "Réglages", short: "Réglages", mobile: false },
 ];
 
 export interface VisibleModules extends EnergyProfile {

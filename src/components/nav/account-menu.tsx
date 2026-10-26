@@ -5,10 +5,11 @@ import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useRef, useState, type KeyboardEvent } from "react";
 import { Icon } from "@/components/ui";
 import { authClient } from "@/lib/auth-client";
+import { NavIcon } from "./icons";
 import { VersionLine } from "./version-line";
 
 // Menu du profil : le bloc nom (barre latérale) ou l'initiale (mobile) l'ouvrent. « Mon
-// compte », « Boîte à idées », l'entrée Contact (si l'instance envoie des emails ; intitulé réglable), puis un trait, puis « Se déconnecter ». Au clavier : focus sur le premier
+// compte », « Réglages » (mobile seulement : la barre d'onglets n'a pas de place), « Boîte à idées », l'entrée Contact (si l'instance envoie des emails ; intitulé réglable), puis un trait, puis « Se déconnecter ». Au clavier : focus sur le premier
 // élément à l'ouverture, flèches, Début / Fin ; Échap referme et rend le focus au bouton.
 // Fermé aussi par un clic à côté ou un changement de page.
 
@@ -72,7 +73,9 @@ export function AccountMenu({
   const [open, setOpen] = useState(false);
   const root = useRef<HTMLDivElement>(null);
   const initial = userName.slice(0, 1).toUpperCase();
-  const onAccount = ["/compte", "/idees", "/contact"].includes(pathname);
+  const onAccount =
+    ["/compte", "/idees", "/contact"].includes(pathname) ||
+    (variant === "header" && pathname.startsWith("/reglages"));
 
   const menu = useRef<HTMLDivElement>(null);
   const button = useRef<HTMLButtonElement>(null);
@@ -183,6 +186,17 @@ export function AccountMenu({
             <UserIcon />
             Mon compte
           </Link>
+          {variant === "header" && (
+            <Link
+              href="/reglages"
+              role="menuitem"
+              onClick={() => setOpen(false)}
+              className={itemClass}
+            >
+              <NavIcon id="settings" size={16} />
+              Réglages
+            </Link>
+          )}
           <Link href="/idees" role="menuitem" onClick={() => setOpen(false)} className={itemClass}>
             <Icon name="bulb" size={16} />
             Boîte à idées
