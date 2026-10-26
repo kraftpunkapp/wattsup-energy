@@ -7,6 +7,7 @@ import {
   contractPeriod,
   energyInterval,
   equipment,
+  shiftableAppliance,
   fuelEvent,
   household,
   idea,
@@ -80,6 +81,7 @@ export async function exportData(ctx: HouseholdContext, now = new Date()) {
     periods,
     fuel,
     equipments,
+    appliances,
     markers,
     tempo,
     sobriety,
@@ -159,6 +161,17 @@ export async function exportData(ctx: HouseholdContext, now = new Date()) {
       .where(mine(equipment.householdId)),
     db
       .select({
+        name: shiftableAppliance.name,
+        icon: shiftableAppliance.icon,
+        powerKw: shiftableAppliance.powerKw,
+        durationMin: shiftableAppliance.durationMin,
+        allowedFrom: shiftableAppliance.allowedFrom,
+        allowedTo: shiftableAppliance.allowedTo,
+      })
+      .from(shiftableAppliance)
+      .where(mine(shiftableAppliance.householdId)),
+    db
+      .select({
         kind: marker.kind,
         text: marker.text,
         startDate: marker.startDate,
@@ -219,6 +232,7 @@ export async function exportData(ctx: HouseholdContext, now = new Date()) {
     })),
     fuelEvents: fuel,
     equipment: equipments,
+    appliances,
     markers,
     tempoOverrides: tempo,
     sobrietyOverrides: sobriety,

@@ -40,6 +40,13 @@ export const SETTINGS_TABS = [
     description: "Les appareils ou circuits suivis séparément.",
   },
   {
+    id: "appareils",
+    group: "foyer",
+    icon: "washer",
+    label: "Appareils",
+    description: "Les appareils à décaler au moment le moins cher : lave-linge, ballon, véhicule…",
+  },
+  {
     id: "home-assistant",
     group: "donnees",
     icon: "home",

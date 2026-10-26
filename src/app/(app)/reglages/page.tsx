@@ -1,6 +1,7 @@
 import { headers } from "next/headers";
 import { pushState } from "@/domain/ingest/push-state";
 import { parseSettingsTab, settingsTabsFor } from "@/lib/settings-tabs";
+import { listAppliances } from "@/server/appliances";
 import { listCategories, unknownCategorySlugs } from "@/server/categories";
 import type { HouseholdContext } from "@/server/context";
 import { getLastPushAt, listIngestLog } from "@/server/ingest/status";
@@ -14,6 +15,7 @@ import { overviewBlocksFor, overviewHidden } from "@/server/overview-prefs";
 import { mailConfigured } from "@/server/mail";
 import { AlertsSettingsCard } from "./alerts-card";
 import { OverviewBlocksCard } from "./overview-blocks-card";
+import { AppliancesCard } from "./appliances-card";
 import { CategoriesCard } from "./categories-card";
 import { CsvCard } from "./csv-card";
 import { DayCard, RangeCard, SuspectCard } from "./data-cards";
@@ -106,6 +108,14 @@ async function CategoriesTab({ ctx }: { ctx: HouseholdContext }) {
           lastDataAt: c.lastDataAt?.toISOString() ?? null,
         }))}
       />
+    </div>
+  );
+}
+
+async function AppliancesTab({ ctx }: { ctx: HouseholdContext }) {
+  return (
+    <div className={panel}>
+      <AppliancesCard appliances={await listAppliances(ctx)} />
     </div>
   );
 }
@@ -210,6 +220,7 @@ async function SettingsSection({
       {tab === "equipements" && <EquipmentTab ctx={ctx} />}
       {tab === "home-assistant" && <HomeAssistantTab ctx={ctx} />}
       {tab === "postes" && <CategoriesTab ctx={ctx} />}
+      {tab === "appareils" && <AppliancesTab ctx={ctx} />}
       {tab === "vue-ensemble" && (
         <div className={panel}>
           <OverviewBlocksCard

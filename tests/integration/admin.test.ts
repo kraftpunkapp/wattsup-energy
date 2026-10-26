@@ -20,6 +20,8 @@ import { createContract } from "@/server/contracts";
 import { saveEquipment } from "@/server/equipment";
 import { addPurchase } from "@/server/fuel";
 import { createMarker } from "@/server/markers";
+import { saveAppliance } from "@/server/appliances";
+import { APPLIANCE_PRESETS } from "@/domain/forecast/appliances";
 import { dismissAlert } from "@/server/alerts";
 import { ingest } from "@/server/ingest/persist";
 import { createIngestToken, verifyIngestToken } from "@/server/ingest/token";
@@ -78,6 +80,7 @@ async function seedEverything(ctx: HouseholdContext) {
     label: "Chrome sur Android",
   });
   await setManualSobriety(ctx.householdId, "2026-01-15", true);
+  await saveAppliance(ctx, null, APPLIANCE_PRESETS[0] as (typeof APPLIANCE_PRESETS)[number]);
   await createMarker(ctx, {
     kind: "other",
     text: "Repère",

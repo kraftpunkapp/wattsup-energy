@@ -559,3 +559,21 @@ export const marketImport = pgTable(
   },
   (t) => [index("market_import_at_idx").on(t.at)],
 );
+
+/** Appareils déplaçables du foyer (T71, SPEC §7.14) : le créneau le moins cher de chacun. */
+export const shiftableAppliance = pgTable(
+  "shiftable_appliance",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    householdId: householdRef(),
+    name: text("name").notNull(),
+    icon: text("icon").notNull(),
+    powerKw: real("power_kw").notNull(),
+    durationMin: integer("duration_min").notNull(),
+    /** Plage permise, heures locales [from, to) ; égales : toute la journée. */
+    allowedFrom: smallint("allowed_from").notNull(),
+    allowedTo: smallint("allowed_to").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("shiftable_appliance_household_idx").on(t.householdId)],
+);

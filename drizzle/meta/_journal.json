@@ -197,6 +197,13 @@
       "when": 1793020104597,
       "tag": "0027_weather-forecast-hourly",
       "breakpoints": true
+    },
+    {
+      "idx": 28,
+      "version": "7",
+      "when": 1793021678179,
+      "tag": "0028_shiftable-appliance",
+      "breakpoints": true
     }
   ]
 }
