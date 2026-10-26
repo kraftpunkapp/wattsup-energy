@@ -4,9 +4,14 @@ import { energyInterval, household, weatherDaily } from "@/db/schema";
 import { simulateBattery } from "@/domain/forecast/battery";
 import { forecastDayLoad, heatingSlope } from "@/domain/forecast/load";
 import { forecastSolar, learnSolarYield } from "@/domain/forecast/solar";
+import { marginalCosts } from "@/domain/forecast/windows";
+import { hourlyKwhPrices } from "@/domain/tariff/engine";
+import { currentContract, gridAt } from "@/domain/tariff/timeline";
 import { cellOf, dju, type Cell } from "@/domain/weather";
 import { addDays, localParts, zonedInstant } from "@/lib/time";
 import type { HouseholdContext } from "./context";
+import { pricingDays } from "./calendars";
+import { listContracts } from "./contracts";
 import { listEquipment } from "./equipment";
 import { forecastHours } from "./weather/forecast";
 
@@ -217,5 +222,37 @@ export async function getDayAheadForecast(ctx: HouseholdContext, now = new Date(
   return {
     solarMethod: solar?.method ?? null,
     ...simulateBattery(hours, capacity, ctx.timezone),
+  };
+}
+
+/**
+ * Prévision chiffrée (T70) : prix du kWh du contrat en cours à chaque heure (créneaux, Tempo,
+ * spot, sobriété) et coût d'un kWh de plus, surplus solaire compris. `priced` est null sans
+ * contrat en cours (production et consommation restent affichables).
+ */
+export async function getPricedForecast(ctx: HouseholdContext, now = new Date()) {
+  const forecast = await getDayAheadForecast(ctx, now);
+  if (!forecast) return null;
+  const window = forecastWindow(ctx.timezone, now);
+  const current = currentContract(await listContracts(ctx), window.today);
+  if (!current) return { ...forecast, priced: null };
+  const until = addDays(window.today, 2);
+  // La veille est incluse : de 0 h à 6 h, c'est encore son jour Tempo.
+  const { calendars } = await pricingDays(ctx.householdId, addDays(window.today, -1), until, {
+    timezone: ctx.timezone,
+  });
+  const { prices, assumedTempoDays } = hourlyKwhPrices(
+    forecast.hours.map((h) => h.start),
+    gridAt(current, window.today),
+    { timezone: ctx.timezone, period: { from: window.today, to: until }, ...calendars },
+  );
+  const exportPriceEur = ctx.settings.exportEnabled ? ctx.settings.exportPriceEurKwh : 0;
+  return {
+    ...forecast,
+    priced: {
+      hours: marginalCosts(forecast.hours, prices, exportPriceEur),
+      exportPriceEur,
+      assumedTempoDays,
+    },
   };
 }

@@ -143,3 +143,22 @@ export function priceIntervals(
     assumedSpotHours: pricer.assumedHours?.() ?? 0,
   };
 }
+
+/**
+ * Prix du kWh (€ TTC) de chaque heure qui commence en `starts` (T70, SPEC §7.14) : la même
+ * grille que la facture (créneaux, couleur Tempo, prix spot, jours de sobriété), pour le coût
+ * d'un kWh de plus à cette heure. Couleur Tempo inconnue : bleu supposé, compté.
+ */
+export function hourlyKwhPrices(
+  starts: readonly Date[],
+  contract: Contract,
+  ctx: PricingContext,
+): { prices: number[]; assumedTempoDays: number } {
+  const pricer = pricerFor(contract, ctx);
+  const prices = starts.map((start) =>
+    pricer
+      .hour(localParts(start, ctx.timezone), start)
+      .reduce((a, share) => a + share.fraction * share.price, 0),
+  );
+  return { prices, assumedTempoDays: pricer.assumedDays?.() ?? 0 };
+}

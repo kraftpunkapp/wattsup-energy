@@ -5,7 +5,8 @@ import { energyInterval, household, weatherForecastHourly } from "@/db/schema";
 import { cellOf } from "@/domain/weather";
 import { householdContextFor, type HouseholdContext } from "@/server/context";
 import { saveEquipment } from "@/server/equipment";
-import { getDayAheadForecast, getSolarForecast } from "@/server/forecast";
+import { createContract } from "@/server/contracts";
+import { getDayAheadForecast, getPricedForecast, getSolarForecast } from "@/server/forecast";
 import { setLocation } from "@/server/location";
 import { updateProfile } from "@/server/profile";
 import { createTestHousehold } from "../helpers/tenancy";
@@ -155,5 +156,33 @@ describe("aujourd'hui et demain heure par heure (T69)", () => {
       .set({ granularity: "daily" })
       .where(eq(household.id, base.householdId));
     expect(await getDayAheadForecast(await householdContextFor(base.userId), now)).toBeNull();
+  });
+});
+
+describe("prévision chiffrée (T70)", () => {
+  it("prix HP/HC du contrat à chaque heure ; le surplus allège le kWh de plus", async () => {
+    const { ctx, cell } = await solarHousehold();
+    await weather(cell);
+    await hourlyHistory(ctx);
+    const before = await getPricedForecast(ctx, now);
+    expect(before?.priced).toBeNull(); // sans contrat : rien à chiffrer
+    await createContract(ctx, {
+      name: "Heures creuses",
+      contract: {
+        kind: "hphc",
+        subscriptionEurYear: 236.4,
+        prices: { hp: 0.27, hc: 0.2 },
+        hcRanges: [{ from: "22:00", to: "06:00" }],
+      },
+      subscription: { startDate: "2026-01-01", endDate: null },
+    });
+    const f = await getPricedForecast(ctx, now);
+    const at = (h: number) =>
+      f?.priced?.hours.find((x) => x.start.getTime() === Date.UTC(2026, 10, 22, h));
+    expect(at(2)?.priceEurKwh).toBeCloseTo(0.2, 9); // 3 h locales : heures creuses
+    expect(at(18)?.priceEurKwh).toBeCloseTo(0.27, 9);
+    // 15 h UTC : 0,3 kWh de surplus (pas de batterie), sans revente.
+    expect(at(15)?.kwhCostEur).toBeCloseTo(0.7 * 0.27, 9);
+    expect(f?.priced?.exportPriceEur).toBe(0);
   });
 });
