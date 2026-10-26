@@ -11,6 +11,7 @@ import { pushAlertsForAll, pushConfigured } from "./push";
 import { CommunityTempoSource } from "./tempo/community";
 import { loadTempoSeed, syncTempo, tempoSyncEnabled } from "./tempo/sync";
 import { OpenMeteoSource } from "./weather/open-meteo";
+import { snapshotForecastsForAll } from "./forecast";
 import { syncHourlyForecast } from "./weather/forecast";
 import { syncRecentWeather, weatherSyncEnabled } from "./weather/sync";
 
@@ -53,6 +54,14 @@ const JOBS: Job[] = [
       const { cells, hours, failed } = await syncHourlyForecast(new OpenMeteoSource());
       return `${cells - failed.length}/${cells} mailles, ${hours} heures`;
     },
+  },
+  {
+    // Prévision de demain figée chaque soir, après la météo de 19 h 30 et la couleur Tempo,
+    // pour la comparer au réel (T73).
+    name: "prévisions figées",
+    at: ["21:00"],
+    enabled: () => true,
+    run: async () => `${(await snapshotForecastsForAll()).households} foyer(s)`,
   },
   {
     name: "tempo",

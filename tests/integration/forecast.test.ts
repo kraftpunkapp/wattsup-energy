@@ -1,21 +1,23 @@
 import { describe, expect, it } from "vitest";
 import { db } from "@/db";
 import { eq } from "drizzle-orm";
-import { energyInterval, household, weatherForecastHourly } from "@/db/schema";
+import { energyInterval, household, householdForecast, weatherForecastHourly } from "@/db/schema";
 import { cellOf } from "@/domain/weather";
 import { householdContextFor, type HouseholdContext } from "@/server/context";
 import { saveEquipment } from "@/server/equipment";
 import { createContract } from "@/server/contracts";
 import {
   getDayAheadForecast,
+  getForecastAccuracy,
   getForecastPlan,
   getPricedForecast,
   getSolarForecast,
+  snapshotForecast,
 } from "@/server/forecast";
 import { saveAppliance } from "@/server/appliances";
 import { setLocation } from "@/server/location";
 import { updateProfile } from "@/server/profile";
-import { createTestHousehold } from "../helpers/tenancy";
+import { createTestHousehold, describeTenantIsolation } from "../helpers/tenancy";
 
 // Prévisions « Demain » (T68, SPEC §7.14) : production solaire prévue d'après le rendement
 // appris sur l'historique du foyer et la météo horaire de sa commune.
@@ -220,4 +222,68 @@ describe("plan de la page Prévisions (T72)", () => {
     expect(w?.costEur).toBeCloseTo(0, 9);
     expect(w?.start.getTime()).toBe(Date.UTC(2026, 10, 22, 8));
   });
+});
+
+describe("prévu contre réel (T73)", () => {
+  it("la prévision de demain, figée le soir, est comparée aux mesures du lendemain", async () => {
+    const { ctx, cell } = await solarHousehold();
+    await weather(cell);
+    await hourlyHistory(ctx);
+    expect(await snapshotForecast(ctx, new Date("2026-11-21T20:00:00Z"))).toBe(24);
+    // Le 22 : production réelle de 0,6 kWh par heure de 8 h à 16 h UTC (4,8 kWh), consommation
+    // 0,75 kWh à toute heure (18 kWh).
+    const rows = [];
+    for (let h = 0; h < 24; h++) {
+      const start = new Date(Date.UTC(2026, 10, 21, 23) + h * 3_600_000);
+      const row = (metric: string, kwh: number) => ({
+        householdId: ctx.householdId,
+        metric,
+        start,
+        granularity: "hour" as const,
+        kwh,
+        source: "ha" as const,
+      });
+      const sun = start.getUTCHours() >= 8 && start.getUTCHours() < 16;
+      rows.push(row("grid_import", sun ? 0.15 : 0.75));
+      if (sun) rows.push(row("solar_production", 0.6));
+    }
+    await db.insert(energyInterval).values(rows);
+    const r = await getForecastAccuracy(ctx, new Date("2026-11-23T09:00:00Z"));
+    expect(r.days.map((d) => d.date)).toEqual(["2026-11-22"]);
+    // Prévu : 8 h × 0,8 kWh de production et 24 × 0,5 kWh de consommation.
+    expect(r.days[0]?.solar?.forecast).toBeCloseTo(6.4, 6);
+    expect(r.days[0]?.solar?.actual).toBeCloseTo(4.8, 6);
+    expect(r.days[0]?.load).toMatchObject({
+      forecast: expect.closeTo(12, 6),
+      actual: expect.closeTo(18, 6),
+    });
+    expect(r.loadError).toBeCloseTo(6 / 18, 6);
+  });
+});
+
+describeTenantIsolation("prévu contre réel", {
+  setup: async (b) => {
+    const start = Date.UTC(2026, 10, 21, 23);
+    await db.insert(householdForecast).values(
+      Array.from({ length: 24 }, (_, h) => ({
+        householdId: b.householdId,
+        start: new Date(start + h * 3_600_000),
+        solarKwh: 0,
+        loadKwh: 1,
+      })),
+    );
+    await db.insert(energyInterval).values(
+      Array.from({ length: 24 }, (_, h) => ({
+        householdId: b.householdId,
+        metric: "grid_import",
+        start: new Date(start + h * 3_600_000),
+        granularity: "hour" as const,
+        kwh: 1,
+        source: "ha" as const,
+      })),
+    );
+    return b.householdId;
+  },
+  attempt: async (a) => (await getForecastAccuracy(a, new Date("2026-11-23T09:00:00Z"))).days,
+  expect: "empty",
 });

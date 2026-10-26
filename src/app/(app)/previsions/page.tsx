@@ -1,10 +1,12 @@
 import Link from "next/link";
 import { PageHeader } from "@/components/page-header";
-import { Badge, button, Card, Icon, Notice } from "@/components/ui";
+import { Badge, button, Card, Icon, Notice, StatTile, tiles } from "@/components/ui";
+import type { AccuracyDay } from "@/domain/forecast/accuracy";
 import { windowLabel } from "@/domain/forecast/summary";
-import { formatEurFromCents, formatPercent } from "@/lib/format";
+import { formatEurFromCents, formatKwh, formatPercent } from "@/lib/format";
+import { addDays } from "@/lib/time";
 import { settingsHref } from "@/lib/settings-tabs";
-import { getForecastPlan } from "@/server/forecast";
+import { getForecastAccuracy, getForecastPlan } from "@/server/forecast";
 import { pageContext } from "@/server/page";
 import { ForecastDay } from "./forecast-day";
 
@@ -14,12 +16,36 @@ export const metadata = { title: "Prévisions · WattsUp Energy" };
 // créneau le moins cher de chaque appareil déplaçable.
 
 const eur = (v: number) => formatEurFromCents(v * 100, 2);
+const kwh = (v: number) => formatKwh(v, v < 10 ? 1 : 0);
 /** Écart sous lequel lancer tout de suite revient au même. */
 const SAVING_MIN_EUR = 0.05;
 
+/** Dernier jour comparé : production et consommation mesurées, et ce qui était prévu. */
+function LastDay({ day, today }: { day: AccuracyDay; today: string }) {
+  const when =
+    day.date === addDays(today, -1) ? "hier" : `le ${day.date.slice(8)}/${day.date.slice(5, 7)}`;
+  return (
+    <div className={tiles}>
+      {day.solar && (
+        <StatTile
+          label={`Production ${when}`}
+          value={kwh(day.solar.actual)}
+          sub={`prévue : ${kwh(day.solar.forecast)}`}
+          dot="bg-solar"
+        />
+      )}
+      <StatTile
+        label={`Consommation ${when}`}
+        value={kwh(day.load.actual)}
+        sub={`prévue : ${kwh(day.load.forecast)}`}
+      />
+    </div>
+  );
+}
+
 export default async function ForecastPage() {
   const ctx = await pageContext("/previsions");
-  const plan = await getForecastPlan(ctx);
+  const [plan, accuracy] = await Promise.all([getForecastPlan(ctx), getForecastAccuracy(ctx)]);
   const header = (
     <PageHeader
       title="Prévisions"
@@ -163,6 +189,33 @@ export default async function ForecastPage() {
         <Link href={settingsHref("appareils")} className={`${button.link} self-start`}>
           Gérer mes appareils
         </Link>
+      </Card>
+
+      <Card
+        icon="check"
+        title="Fiabilité des prévisions"
+        description="Chaque soir, WattsUp garde sa prévision du lendemain, puis la compare à vos mesures."
+      >
+        {accuracy.days.length === 0 ? (
+          <p className="text-[13px] text-muted">
+            La première comparaison apparaîtra après-demain : la prévision de demain est enregistrée
+            ce soir.
+          </p>
+        ) : (
+          <>
+            {accuracy.days[0] && <LastDay day={accuracy.days[0]} today={plan.today} />}
+            <p className="text-[13px] text-ink-soft">
+              Écart moyen sur {accuracy.days.length} jour{accuracy.days.length > 1 ? "s" : ""} :{" "}
+              {[
+                accuracy.solarError !== null && `production ${formatPercent(accuracy.solarError)}`,
+                accuracy.loadError !== null && `consommation ${formatPercent(accuracy.loadError)}`,
+              ]
+                .filter(Boolean)
+                .join(", ")}
+              .
+            </p>
+          </>
+        )}
       </Card>
 
       {notes.length > 0 && (

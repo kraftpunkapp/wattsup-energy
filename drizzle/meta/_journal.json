@@ -204,6 +204,13 @@
       "when": 1793021678179,
       "tag": "0028_shiftable-appliance",
       "breakpoints": true
+    },
+    {
+      "idx": 29,
+      "version": "7",
+      "when": 1793035014047,
+      "tag": "0029_household-forecast",
+      "breakpoints": true
     }
   ]
 }

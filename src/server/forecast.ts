@@ -1,6 +1,7 @@
-import { and, asc, eq, gte, inArray, lt } from "drizzle-orm";
+import { and, asc, eq, gte, inArray, isNull, lt, sql } from "drizzle-orm";
 import { db } from "@/db";
-import { energyInterval, household, weatherDaily } from "@/db/schema";
+import { energyInterval, household, householdForecast, user, weatherDaily } from "@/db/schema";
+import { compareForecast } from "@/domain/forecast/accuracy";
 import { simulateBattery } from "@/domain/forecast/battery";
 import { forecastDayLoad, heatingSlope } from "@/domain/forecast/load";
 import { forecastSolar, learnSolarYield } from "@/domain/forecast/solar";
@@ -10,7 +11,7 @@ import { hourlyKwhPrices } from "@/domain/tariff/engine";
 import { currentContract, gridAt } from "@/domain/tariff/timeline";
 import { cellOf, dju, type Cell } from "@/domain/weather";
 import { addDays, localParts, zonedInstant } from "@/lib/time";
-import type { HouseholdContext } from "./context";
+import { householdContextFor, type HouseholdContext } from "./context";
 import { listAppliances } from "./appliances";
 import { pricingDays } from "./calendars";
 import { listContracts } from "./contracts";
@@ -295,3 +296,97 @@ export async function getForecastPlan(ctx: HouseholdContext, now = new Date()) {
 }
 
 export type ForecastPlan = Awaited<ReturnType<typeof getForecastPlan>>;
+
+/** Prévisions figées gardées (jours) ; la fiabilité porte sur les 7 derniers. */
+const KEEP_SNAPSHOT_DAYS = 30;
+const ACCURACY_DAYS = 7;
+
+/**
+ * Fige la prévision de demain du foyer (T73) : rejouée le même soir, elle remplace la
+ * précédente. Rien en envoi quotidien ou sans historique.
+ */
+export async function snapshotForecast(ctx: HouseholdContext, now = new Date()): Promise<number> {
+  const forecast = await getDayAheadForecast(ctx, now);
+  if (!forecast) return 0;
+  const tomorrow = addDays(forecastWindow(ctx.timezone, now).today, 1);
+  const rows = forecast.hours
+    .filter((h) => localParts(h.start, ctx.timezone).date === tomorrow)
+    .map((h) => ({
+      householdId: ctx.householdId,
+      start: h.start,
+      solarKwh: h.solarKwh,
+      loadKwh: h.loadKwh,
+    }));
+  if (rows.length === 0) return 0;
+  await db
+    .insert(householdForecast)
+    .values(rows)
+    .onConflictDoUpdate({
+      target: [householdForecast.householdId, householdForecast.start],
+      set: {
+        solarKwh: sql`excluded.solar_kwh`,
+        loadKwh: sql`excluded.load_kwh`,
+        madeAt: sql`now()`,
+      },
+    });
+  return rows.length;
+}
+
+/** Tâche du soir : chaque foyer actif en envoi horaire ; purge au-delà de 30 jours. */
+export async function snapshotForecastsForAll(now = new Date()): Promise<{ households: number }> {
+  const rows = await db
+    .select({ ownerId: household.ownerId, name: user.name, email: user.email })
+    .from(household)
+    .innerJoin(user, eq(user.id, household.ownerId))
+    .where(and(eq(household.granularity, "hourly"), isNull(user.disabledAt)));
+  let done = 0;
+  for (const r of rows) {
+    try {
+      if ((await snapshotForecast(await householdContextFor(r.ownerId, r.name, r.email), now)) > 0)
+        done += 1;
+    } catch (err) {
+      console.error("[prévisions] instantané impossible pour un foyer :", err);
+    }
+  }
+  await db
+    .delete(householdForecast)
+    .where(lt(householdForecast.start, new Date(now.getTime() - KEEP_SNAPSHOT_DAYS * DAY_MS)));
+  return { households: done };
+}
+
+/** Prévu contre réel des 7 derniers jours (T73). */
+export async function getForecastAccuracy(ctx: HouseholdContext, now = new Date()) {
+  const today = localParts(now, ctx.timezone).date;
+  const since = zonedInstant(addDays(today, -ACCURACY_DAYS), 0, ctx.timezone);
+  const until = zonedInstant(today, 0, ctx.timezone);
+  const [forecast, load, solar] = await Promise.all([
+    db
+      .select({
+        start: householdForecast.start,
+        solarKwh: householdForecast.solarKwh,
+        loadKwh: householdForecast.loadKwh,
+      })
+      .from(householdForecast)
+      .where(
+        and(
+          eq(householdForecast.householdId, ctx.householdId),
+          gte(householdForecast.start, since),
+          lt(householdForecast.start, until),
+        ),
+      ),
+    loadHistory(ctx, since, until),
+    db
+      .select({ start: energyInterval.start, kwh: energyInterval.kwh })
+      .from(energyInterval)
+      .where(
+        and(
+          eq(energyInterval.householdId, ctx.householdId),
+          eq(energyInterval.metric, "solar_production"),
+          eq(energyInterval.granularity, "hour"),
+          gte(energyInterval.start, since),
+          lt(energyInterval.start, until),
+        ),
+      ),
+  ]);
+  return compareForecast({ forecast, solar, load, timezone: ctx.timezone, today });
+}

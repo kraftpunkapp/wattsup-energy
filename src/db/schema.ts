@@ -577,3 +577,20 @@ export const shiftableAppliance = pgTable(
   },
   (t) => [index("shiftable_appliance_household_idx").on(t.householdId)],
 );
+
+/**
+ * Prévision du lendemain figée chaque soir (T73, SPEC §7.14), comparée ensuite au réel :
+ * production et consommation prévues de chaque heure ; gardée 30 jours.
+ */
+export const householdForecast = pgTable(
+  "household_forecast",
+  {
+    householdId: householdRef(),
+    /** Début de l'heure (UTC). */
+    start: timestamp("start", { withTimezone: true }).notNull(),
+    solarKwh: real("solar_kwh").notNull(),
+    loadKwh: real("load_kwh").notNull(),
+    madeAt: timestamp("made_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [primaryKey({ columns: [t.householdId, t.start] })],
+);
