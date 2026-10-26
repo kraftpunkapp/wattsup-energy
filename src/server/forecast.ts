@@ -4,12 +4,14 @@ import { energyInterval, household, weatherDaily } from "@/db/schema";
 import { simulateBattery } from "@/domain/forecast/battery";
 import { forecastDayLoad, heatingSlope } from "@/domain/forecast/load";
 import { forecastSolar, learnSolarYield } from "@/domain/forecast/solar";
-import { marginalCosts } from "@/domain/forecast/windows";
+import { daySummaries } from "@/domain/forecast/summary";
+import { bestWindow, marginalCosts } from "@/domain/forecast/windows";
 import { hourlyKwhPrices } from "@/domain/tariff/engine";
 import { currentContract, gridAt } from "@/domain/tariff/timeline";
 import { cellOf, dju, type Cell } from "@/domain/weather";
 import { addDays, localParts, zonedInstant } from "@/lib/time";
 import type { HouseholdContext } from "./context";
+import { listAppliances } from "./appliances";
 import { pricingDays } from "./calendars";
 import { listContracts } from "./contracts";
 import { listEquipment } from "./equipment";
@@ -256,3 +258,40 @@ export async function getPricedForecast(ctx: HouseholdContext, now = new Date())
     },
   };
 }
+
+/**
+ * Page Prévisions et carte « Demain » (T72) : prévision chiffrée, bilan de chaque jour et
+ * meilleur créneau de chaque appareil (à partir de maintenant, jusqu'à la fin de demain).
+ */
+export async function getForecastPlan(ctx: HouseholdContext, now = new Date()) {
+  if (ctx.granularity !== "hourly") return { status: "daily" as const };
+  const [forecast, appliances] = await Promise.all([
+    getPricedForecast(ctx, now),
+    listAppliances(ctx),
+  ]);
+  if (!forecast) return { status: "no-data" as const };
+  const priced = forecast.priced;
+  const windows = priced
+    ? appliances.map((appliance) => ({
+        appliance,
+        window: bestWindow(priced.hours, appliance, ctx.timezone, now, priced.exportPriceEur),
+      }))
+    : [];
+  return {
+    status: "ok" as const,
+    today: forecastWindow(ctx.timezone, now).today,
+    hours: forecast.hours,
+    fullAt: forecast.fullAt,
+    solarMethod: forecast.solarMethod,
+    priced,
+    days: daySummaries(
+      forecast.hours,
+      priced?.hours.map((h) => h.priceEurKwh) ?? null,
+      ctx.timezone,
+    ),
+    appliances: appliances.length,
+    windows,
+  };
+}
+
+export type ForecastPlan = Awaited<ReturnType<typeof getForecastPlan>>;

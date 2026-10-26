@@ -6,7 +6,13 @@ import { cellOf } from "@/domain/weather";
 import { householdContextFor, type HouseholdContext } from "@/server/context";
 import { saveEquipment } from "@/server/equipment";
 import { createContract } from "@/server/contracts";
-import { getDayAheadForecast, getPricedForecast, getSolarForecast } from "@/server/forecast";
+import {
+  getDayAheadForecast,
+  getForecastPlan,
+  getPricedForecast,
+  getSolarForecast,
+} from "@/server/forecast";
+import { saveAppliance } from "@/server/appliances";
 import { setLocation } from "@/server/location";
 import { updateProfile } from "@/server/profile";
 import { createTestHousehold } from "../helpers/tenancy";
@@ -184,5 +190,34 @@ describe("prévision chiffrée (T70)", () => {
     // 15 h UTC : 0,3 kWh de surplus (pas de batterie), sans revente.
     expect(at(15)?.kwhCostEur).toBeCloseTo(0.7 * 0.27, 9);
     expect(f?.priced?.exportPriceEur).toBe(0);
+  });
+});
+
+describe("plan de la page Prévisions (T72)", () => {
+  it("créneau de chaque appareil : le lave-linge dans le surplus solaire de demain", async () => {
+    const { ctx, cell } = await solarHousehold();
+    await weather(cell);
+    await hourlyHistory(ctx);
+    await createContract(ctx, {
+      name: "Base",
+      contract: { kind: "base", subscriptionEurYear: 200, priceEurKwh: 0.25 },
+      subscription: { startDate: "2026-01-01", endDate: null },
+    });
+    // 0,3 kWh de surplus par heure demain de 9 h à 17 h locales : 1 h à 0,3 kW tient dedans.
+    await saveAppliance(ctx, null, {
+      name: "Pompe",
+      icon: "plug",
+      powerKw: 0.3,
+      durationMin: 60,
+      allowedFrom: 0,
+      allowedTo: 0,
+    });
+    const plan = await getForecastPlan(ctx, new Date("2026-11-21T20:00:00Z"));
+    if (plan.status !== "ok") throw new Error(plan.status);
+    expect(plan.days.map((d) => d.date)).toEqual(["2026-11-21", "2026-11-22"]);
+    const w = plan.windows[0]?.window;
+    expect(w?.solarShare).toBeCloseTo(1, 6);
+    expect(w?.costEur).toBeCloseTo(0, 9);
+    expect(w?.start.getTime()).toBe(Date.UTC(2026, 10, 22, 8));
   });
 });

@@ -20,7 +20,7 @@ describe("vue d'ensemble personnalisable", () => {
 
   it("blocs proposés selon le contrat en cours", async () => {
     const ctx = await createTestHousehold("blocs");
-    expect(await overviewBlocksFor(ctx)).toEqual(["baseload"]);
+    expect(await overviewBlocksFor(ctx)).toEqual(["advice", "baseload"]);
     await createContract(ctx, {
       name: "Heures creuses",
       contract: {

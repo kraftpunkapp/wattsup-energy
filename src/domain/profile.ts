@@ -10,7 +10,7 @@ export interface EnergyProfile {
   electricHeating: boolean;
 }
 
-export type NavId = "overview" | "heating" | "roi" | "contracts" | "settings";
+export type NavId = "overview" | "forecast" | "heating" | "roi" | "contracts" | "settings";
 
 export interface NavItem {
   id: NavId;
@@ -18,10 +18,14 @@ export interface NavItem {
   label: string;
   /** Libellé court de la barre d'onglets mobile. */
   short: string;
+  /** Faux : absent de la barre d'onglets mobile (5 entrées au plus), accessible autrement. */
+  mobile?: boolean;
 }
 
 export const NAV_ITEMS: readonly NavItem[] = [
   { id: "overview", href: "/", label: "Vue d'ensemble", short: "Accueil" },
+  // Sur mobile, la page s'ouvre depuis la carte « Demain » de la Vue d'ensemble (T72).
+  { id: "forecast", href: "/previsions", label: "Prévisions", short: "Prévisions", mobile: false },
   { id: "heating", href: "/chauffage", label: "Chauffage", short: "Chauffage" },
   { id: "roi", href: "/rentabilite", label: "Rentabilité", short: "ROI" },
   { id: "contracts", href: "/contrats", label: "Contrats", short: "Contrats" },
@@ -43,6 +47,7 @@ export function visibleModules(profile: EnergyProfile): VisibleModules {
   const hasFuel = profile.pellet || profile.wood;
   const shown: Record<NavId, boolean> = {
     overview: true,
+    forecast: true,
     heating: hasFuel || profile.electricHeating,
     roi: profile.solar || profile.battery,
     contracts: true,

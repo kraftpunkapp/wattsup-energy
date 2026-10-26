@@ -10,7 +10,7 @@ import {
   SolarCard,
 } from "@/components/cards/overview-cards";
 import { BatteryGapNotices } from "@/components/battery-gap-notice";
-import { AdviceCard } from "@/components/cards/advice-card";
+import { AdviceCard, windowTips } from "@/components/cards/advice-card";
 import { AlertsCard } from "@/components/cards/alerts-card";
 import { BaseloadCard } from "@/components/cards/baseload-card";
 import { MarkersStrip } from "@/components/cards/markers-strip";
@@ -28,6 +28,7 @@ import { getAlerts } from "@/server/alerts";
 import { shareInFlight } from "@/server/inflight";
 import { overviewHidden } from "@/server/overview-prefs";
 import { pageContext } from "@/server/page";
+import { getForecastPlan } from "@/server/forecast";
 import { getContractComparison, getPaymentAnalysis } from "@/server/queries/contracts";
 import { getOverview } from "@/server/queries/overview";
 
@@ -42,7 +43,7 @@ export default async function OverviewPage({
   // Blocs masqués par l'utilisateur (Réglages › Vue d'ensemble) : ni calculés ni affichés.
   const hidden = overviewHidden(ctx);
   const shown = (b: OverviewBlock) => !hidden.includes(b);
-  const [overview, alerts, comparison, advice, payment] = await Promise.all([
+  const [overview, alerts, comparison, advice, payment, plan] = await Promise.all([
     // Calculs partagés entre requêtes simultanées (clics rapides Mois / Année).
     shareInFlight(`overview:${ctx.householdId}:${period ?? ""}`, () => getOverview(ctx, period)),
     getAlerts(ctx),
@@ -51,6 +52,7 @@ export default async function OverviewPage({
       : null,
     shown("advice") ? getAdvice(ctx) : [],
     shown("payment") ? getPaymentAnalysis(ctx) : null,
+    shown("advice") ? getForecastPlan(ctx) : null,
   ]);
   const label = (b: OverviewBlock) => OVERVIEW_BLOCKS.find((x) => x.id === b)?.label ?? b;
   const block = (b: OverviewBlock, render: (hide: React.ReactNode) => React.ReactNode) =>
@@ -99,7 +101,15 @@ export default async function OverviewPage({
                 />
               ))}
             {block("advice", (hide) => (
-              <AdviceCard advice={advice} actions={hide} />
+              <AdviceCard
+                advice={advice}
+                forecast={
+                  plan?.status === "ok"
+                    ? { windows: windowTips(plan, ctx.timezone), appliances: plan.appliances }
+                    : null
+                }
+                actions={hide}
+              />
             ))}
             <MonthlyCostCard
               months={overview.months}

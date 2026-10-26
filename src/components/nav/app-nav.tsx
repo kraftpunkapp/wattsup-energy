@@ -189,30 +189,32 @@ export function AppNav({
         aria-label="Navigation principale"
         className="fixed inset-x-0 bottom-0 z-10 flex border-t border-border bg-surface px-1.5 pt-1.5 pb-[max(6px,env(safe-area-inset-bottom))] lg:hidden"
       >
-        {items.map((n) => {
-          const active = isActive(pathname, n.href);
-          return (
-            <Link
-              key={n.id}
-              href={n.href}
-              aria-current={active ? "page" : undefined}
-              onClick={() => setClicked(n.href)}
-              className={`flex min-h-[52px] flex-1 flex-col items-center justify-center gap-1 no-underline ${
-                active ? "text-ink" : "text-subtle"
-              }`}
-            >
-              <span className="relative">
-                <PendingIcon>
-                  <NavIcon id={n.id} size={22} />
-                </PendingIcon>
-                {alertNav.includes(n.id) && <AlertDot className="absolute -top-0.5 -right-1" />}
-              </span>
-              <span className={`text-[11px] ${active ? "font-semibold" : "font-medium"}`}>
-                {n.short}
-              </span>
-            </Link>
-          );
-        })}
+        {items
+          .filter((n) => n.mobile !== false)
+          .map((n) => {
+            const active = isActive(pathname, n.href);
+            return (
+              <Link
+                key={n.id}
+                href={n.href}
+                aria-current={active ? "page" : undefined}
+                onClick={() => setClicked(n.href)}
+                className={`flex min-h-[52px] flex-1 flex-col items-center justify-center gap-1 no-underline ${
+                  active ? "text-ink" : "text-subtle"
+                }`}
+              >
+                <span className="relative">
+                  <PendingIcon>
+                    <NavIcon id={n.id} size={22} />
+                  </PendingIcon>
+                  {alertNav.includes(n.id) && <AlertDot className="absolute -top-0.5 -right-1" />}
+                </span>
+                <span className={`text-[11px] ${active ? "font-semibold" : "font-medium"}`}>
+                  {n.short}
+                </span>
+              </Link>
+            );
+          })}
       </nav>
     </>
   );

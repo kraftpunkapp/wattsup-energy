@@ -4,8 +4,8 @@
 export const OVERVIEW_BLOCKS = [
   {
     id: "advice",
-    label: "Quand consommer",
-    description: "Surplus solaire, heures creuses et couleur Tempo de demain.",
+    label: "Demain",
+    description: "Quand lancer vos appareils, couleur Tempo de demain et heures creuses.",
   },
   {
     id: "contract",
@@ -51,7 +51,7 @@ export const withBlockHidden = (
 
 /**
  * Blocs qui ont lieu d'être pour ce foyer (les autres ne sont pas proposés dans Réglages) :
- * conseils avec du solaire ou un contrat à heures creuses ; comparaison avec au moins deux
+ * conseils (« Demain ») en envoi horaire, avec du solaire ou un contrat à heures creuses ; comparaison avec au moins deux
  * contrats ; mensualité renseignée sur le contrat en cours ; HP/HC avec un contrat HP/HC ou
  * Tempo ; talon en envoi horaire.
  */
@@ -66,7 +66,7 @@ export function applicableBlocks(f: {
 }): OverviewBlock[] {
   const offPeak = f.contractKind === "hphc" || f.contractKind === "tempo";
   return OVERVIEW_BLOCKS.map((b) => b.id).filter((id) => {
-    if (id === "advice") return f.solar || offPeak;
+    if (id === "advice") return f.solar || offPeak || f.granularity === "hourly";
     if (id === "contract") return f.contracts >= 2;
     if (id === "payment") return f.payment;
     if (id === "peak") return offPeak;

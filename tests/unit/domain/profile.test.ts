@@ -24,16 +24,18 @@ const all: EnergyProfile = {
 const navIds = (p: EnergyProfile) => visibleModules(p).nav.map((n) => n.id);
 
 describe("visibleModules (SPEC §7.6)", () => {
-  it("profil complet : les 5 onglets et tous les blocs", () => {
+  it("profil complet : tous les onglets (Prévisions hors barre mobile) et tous les blocs", () => {
     const v = visibleModules(all);
-    expect(navIds(all)).toEqual(["overview", "heating", "roi", "contracts", "settings"]);
+    expect(navIds(all)).toEqual(["overview", "forecast", "heating", "roi", "contracts", "settings"]);
+    // Barre d'onglets mobile : 5 entrées au plus, Prévisions passe par la carte « Demain ».
+    expect(visibleModules(all).nav.filter((n) => n.mobile !== false)).toHaveLength(5);
     expect(v.refillForecast).toBe(true);
     expect(v.fuelTabs).toBe(true);
     expect(v.heatingCategories).toBe(true);
   });
 
   it("profil vide : ni Chauffage ni Rentabilité", () => {
-    expect(navIds(none)).toEqual(["overview", "contracts", "settings"]);
+    expect(navIds(none)).toEqual(["overview", "forecast", "contracts", "settings"]);
     const v = visibleModules(none);
     expect(v.refillForecast).toBe(false);
     expect(v.solar || v.battery || v.pellet || v.wood).toBe(false);
