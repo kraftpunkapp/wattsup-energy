@@ -1,10 +1,11 @@
 import { describe, expect, it } from "vitest";
 import { db } from "@/db";
-import { energyInterval, weatherForecastHourly } from "@/db/schema";
+import { eq } from "drizzle-orm";
+import { energyInterval, household, weatherForecastHourly } from "@/db/schema";
 import { cellOf } from "@/domain/weather";
 import { householdContextFor, type HouseholdContext } from "@/server/context";
 import { saveEquipment } from "@/server/equipment";
-import { getSolarForecast } from "@/server/forecast";
+import { getDayAheadForecast, getSolarForecast } from "@/server/forecast";
 import { setLocation } from "@/server/location";
 import { updateProfile } from "@/server/profile";
 import { createTestHousehold } from "../helpers/tenancy";
@@ -98,5 +99,61 @@ describe("production solaire prévue", () => {
     const base = await createTestHousehold("prevision-sans-solaire");
     await updateProfile(base, { ...base.profile, solar: false });
     expect(await getSolarForecast(await householdContextFor(base.userId), now)).toBeNull();
+  });
+});
+
+/** 28 jours horaires : 0,5 kWh achetés à toute heure, 1 kWh produit et exporté de 8 h à 16 h UTC. */
+async function hourlyHistory(ctx: HouseholdContext) {
+  const rows = [];
+  for (let d = -28; d < 0; d++) {
+    for (let h = 0; h < 24; h++) {
+      const start = new Date(Date.UTC(2026, 10, 21 + d, h));
+      const row = (metric: string, kwh: number) => ({
+        householdId: ctx.householdId,
+        metric,
+        start,
+        granularity: "hour" as const,
+        kwh,
+        source: "ha" as const,
+      });
+      rows.push(row("grid_import", 0.5));
+      if (h >= 8 && h < 16) rows.push(row("solar_production", 1), row("grid_export", 1));
+    }
+  }
+  await db.insert(energyInterval).values(rows);
+}
+
+describe("aujourd'hui et demain heure par heure (T69)", () => {
+  it("consommation du foyer prévue, production, batterie pleine puis surplus exporté", async () => {
+    const { ctx, cell } = await solarHousehold();
+    await updateProfile(ctx, { ...ctx.profile, solar: true, battery: true });
+    await saveEquipment(ctx, "battery", {
+      label: "Batterie",
+      capacity: 1,
+      installedOn: "2025-04-01",
+      costEur: 3000,
+    });
+    await weather(cell);
+    await hourlyHistory(ctx);
+    const f = await getDayAheadForecast(await householdContextFor(ctx.userId), now);
+    // Aujourd'hui et demain : 48 heures (novembre, pas de changement d'heure).
+    expect(f?.hours).toHaveLength(48);
+    // Consommation = 0,5 achetés + 1 produit − 1 exporté = 0,5 kWh à toute heure.
+    expect(f?.hours.every((h) => Math.abs(h.loadKwh - 0.5) < 1e-9)).toBe(true);
+    // Demain 10 h UTC : 400 W/m² × 2 = 0,8 kWh produits pour 0,5 consommés.
+    const at = (h: number) => f?.hours.find((x) => x.start.getTime() === Date.UTC(2026, 10, 22, h));
+    expect(at(10)?.solarKwh).toBeCloseTo(0.8, 6);
+    expect(f?.fullAt.map((x) => x.date)).toContain("2026-11-22");
+    expect(at(15)?.exportKwh).toBeCloseTo(0.3, 6);
+    expect(at(20)?.importKwh).toBeGreaterThan(0);
+  });
+
+  it("envoi quotidien : pas de prévision horaire", async () => {
+    const base = await createTestHousehold("prevision-quotidien");
+    await db
+      .update(household)
+      .set({ granularity: "daily" })
+      .where(eq(household.id, base.householdId));
+    expect(await getDayAheadForecast(await householdContextFor(base.userId), now)).toBeNull();
   });
 });
