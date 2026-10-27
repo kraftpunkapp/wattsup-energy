@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { POST } from "@/app/api/v1/ingest/route";
 import { db } from "@/db";
 import {
-  batteryState,
+  batteryLevel,
   category,
   energyInterval,
   ingestLog,
@@ -169,18 +169,23 @@ describe("mode horaire", () => {
     expect(r.json.message).toMatch(/^Pas d'import réseau dans cet envoi/);
   });
 
-  it("niveau de la batterie (T78) : le plus récent est gardé, un envoi en retard ne recule pas", async () => {
+  it("niveau de la batterie (T78) : un relevé par envoi, un envoi répété remplace le sien", async () => {
     const { ctx, push } = await setup();
-    const soc = async () =>
+    const levels = async () =>
       (
-        await db.select().from(batteryState).where(eq(batteryState.householdId, ctx.householdId))
-      )[0];
+        await db
+          .select()
+          .from(batteryLevel)
+          .where(eq(batteryLevel.householdId, ctx.householdId))
+          .orderBy(batteryLevel.measuredAt)
+      ).map((l) => [l.measuredAt.toISOString(), l.socPercent]);
     await push(hourly("2026-10-02T13:00:00Z", 1, { battery_soc_percent: 62 }));
-    expect(await soc()).toMatchObject({ socPercent: 62 });
     await push(hourly("2026-10-02T12:00:00Z", 1, { battery_soc_percent: 40 }));
-    expect((await soc())?.socPercent).toBe(62);
-    await push(hourly("2026-10-02T14:00:00Z", 2, { battery_soc_percent: 81.5 }));
-    expect(await soc()).toMatchObject({ socPercent: 81.5 });
+    await push(hourly("2026-10-02T13:00:00Z", 1, { battery_soc_percent: 63 }));
+    expect(await levels()).toEqual([
+      ["2026-10-02T12:00:00.000Z", 40],
+      ["2026-10-02T13:00:00.000Z", 63],
+    ]);
   });
 
   it("envoi sans rien à vérifier : pas de message", async () => {

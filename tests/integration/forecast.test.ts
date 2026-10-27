@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { db } from "@/db";
 import { eq } from "drizzle-orm";
 import {
-  batteryState,
+  batteryLevel,
   energyInterval,
   household,
   householdForecast,
@@ -365,7 +365,7 @@ describe("niveau de la batterie envoyé par Home Assistant (T78)", () => {
     await hourlyHistory(ctx);
     const fresh = await householdContextFor(ctx.userId);
     // Mesurée pleine à 11 h UTC (il est midi) : la batterie couvre la soirée d'aujourd'hui.
-    await db.insert(batteryState).values({
+    await db.insert(batteryLevel).values({
       householdId: ctx.householdId,
       socPercent: 100,
       measuredAt: new Date("2026-11-21T11:00:00Z"),
@@ -376,9 +376,9 @@ describe("niveau de la batterie envoyé par Home Assistant (T78)", () => {
     expect(evening?.importKwh).toBe(0);
 
     await db
-      .update(batteryState)
+      .update(batteryLevel)
       .set({ measuredAt: new Date("2026-11-21T08:00:00Z") })
-      .where(eq(batteryState.householdId, ctx.householdId));
+      .where(eq(batteryLevel.householdId, ctx.householdId));
     const stale = await getDayAheadForecast(fresh, now);
     expect(stale?.batteryMeasured).toBeNull();
   });

@@ -218,6 +218,20 @@
       "when": 1793054790658,
       "tag": "0030_battery-state",
       "breakpoints": true
+    },
+    {
+      "idx": 31,
+      "version": "7",
+      "when": 1793122638884,
+      "tag": "0031_battery-level",
+      "breakpoints": true
+    },
+    {
+      "idx": 32,
+      "version": "7",
+      "when": 1793122650081,
+      "tag": "0032_drop-battery-state",
+      "breakpoints": true
     }
   ]
 }

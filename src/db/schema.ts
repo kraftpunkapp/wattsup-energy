@@ -600,14 +600,17 @@ export const householdForecast = pgTable(
 );
 
 /**
- * Dernier niveau de la batterie envoyé par Home Assistant (T78, champ facultatif
- * `battery_soc_percent`) : point de départ de la batterie simulée des prévisions.
+ * Niveaux de la batterie envoyés par Home Assistant (T78, champ facultatif
+ * `battery_soc_percent`), un par envoi : le plus récent est le point de départ de la batterie
+ * simulée des prévisions ; l'historique se consulte dans Réglages › Données.
  */
-export const batteryState = pgTable("battery_state", {
-  householdId: uuid("household_id")
-    .primaryKey()
-    .references(() => household.id, { onDelete: "cascade" }),
-  socPercent: real("soc_percent").notNull(),
-  /** Heure du relevé (`ts` de l'envoi). */
-  measuredAt: timestamp("measured_at", { withTimezone: true }).notNull(),
-});
+export const batteryLevel = pgTable(
+  "battery_level",
+  {
+    householdId: householdRef(),
+    /** Heure du relevé (`ts` de l'envoi). */
+    measuredAt: timestamp("measured_at", { withTimezone: true }).notNull(),
+    socPercent: real("soc_percent").notNull(),
+  },
+  (t) => [primaryKey({ columns: [t.householdId, t.measuredAt] })],
+);

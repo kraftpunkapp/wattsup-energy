@@ -1,7 +1,7 @@
 import { and, eq, inArray, lt, sql } from "drizzle-orm";
 import { db } from "@/db";
 import {
-  batteryState,
+  batteryLevel,
   energyInterval,
   household,
   ingestLog,
@@ -109,7 +109,7 @@ async function persistHourly(
 ): Promise<IngestWarning[]> {
   const { readings, warnings } = hourlyReadings(payload, slugs);
   if (payload.battery_soc_percent !== undefined) {
-    await upsertBatteryState(tx, householdId, payload.ts, payload.battery_soc_percent);
+    await upsertBatteryLevel(tx, householdId, payload.ts, payload.battery_soc_percent);
   }
   if (readings.length === 0) {
     if (payload.tempo_color) {
@@ -197,20 +197,19 @@ async function persistHourly(
   return warnings;
 }
 
-/** Niveau de la batterie (T78) : le plus récent l'emporte, un envoi en retard ne recule pas. */
-async function upsertBatteryState(
+/** Niveau de la batterie (T78), un par relevé : un envoi répété remplace sa valeur. */
+async function upsertBatteryLevel(
   tx: Tx,
   householdId: string,
   measuredAt: Date,
   socPercent: number,
 ) {
   await tx
-    .insert(batteryState)
+    .insert(batteryLevel)
     .values({ householdId, measuredAt, socPercent })
     .onConflictDoUpdate({
-      target: batteryState.householdId,
-      set: { socPercent: sql`excluded.soc_percent`, measuredAt: sql`excluded.measured_at` },
-      setWhere: sql`${batteryState.measuredAt} <= excluded.measured_at`,
+      target: [batteryLevel.householdId, batteryLevel.measuredAt],
+      set: { socPercent: sql`excluded.soc_percent` },
     });
 }
 

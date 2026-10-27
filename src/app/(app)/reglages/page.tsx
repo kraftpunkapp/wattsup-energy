@@ -6,10 +6,18 @@ import { pushConfigured } from "@/server/push";
 import { listAppliances } from "@/server/appliances";
 import { listCategories, unknownCategorySlugs } from "@/server/categories";
 import type { HouseholdContext } from "@/server/context";
-import { getBatteryLevel, getLastPushAt, listIngestLog } from "@/server/ingest/status";
+import { getLastPushAt, listIngestLog } from "@/server/ingest/status";
 import { getActiveIngestToken } from "@/server/ingest/token";
 import { getLocationStatus } from "@/server/location";
-import { dayValues, storedMetrics, suspectValues, type StoredValue } from "@/server/energy-data";
+import {
+  dayBatteryLevels,
+  dayValues,
+  hasBatteryLevels,
+  storedMetrics,
+  suspectValues,
+  type StoredValue,
+} from "@/server/energy-data";
+import { BATTERY_LEVEL } from "@/domain/ingest/metrics";
 import { addDays, localParts } from "@/lib/time";
 import { pageContext } from "@/server/page";
 import { alertSettings } from "@/server/alerts";
@@ -74,12 +82,11 @@ async function EquipmentTab({ ctx }: { ctx: HouseholdContext }) {
 }
 
 async function HomeAssistantTab({ ctx }: { ctx: HouseholdContext }) {
-  const [active, lastPushAt, log, categories, battery] = await Promise.all([
+  const [active, lastPushAt, log, categories] = await Promise.all([
     getActiveIngestToken(ctx),
     getLastPushAt(ctx),
     listIngestLog(ctx),
     listCategories(ctx),
-    ctx.profile.battery ? getBatteryLevel(ctx) : null,
   ]);
   const origin = await requestOrigin();
   return (
@@ -88,7 +95,6 @@ async function HomeAssistantTab({ ctx }: { ctx: HouseholdContext }) {
         endpoint={`${origin}/api/v1/ingest`}
         granularity={ctx.granularity}
         lastPushAt={lastPushAt?.toISOString() ?? null}
-        battery={battery && { percent: battery.percent, at: battery.at.toISOString() }}
         link={pushState(lastPushAt?.getTime() ?? null, Date.now(), ctx.granularity)}
         active={active && { prefix: active.prefix, createdAt: active.createdAt.toISOString() }}
       />
@@ -150,29 +156,34 @@ async function DataTab({
   metric: string | undefined;
   day: string | undefined;
 }) {
-  const [metrics, suspects, categories] = await Promise.all([
+  const [metrics, suspects, categories, levels] = await Promise.all([
     storedMetrics(ctx),
     suspectValues(ctx),
     listCategories(ctx),
+    ctx.profile.battery ? hasBatteryLevels(ctx) : false,
   ]);
+  // Niveau de la batterie (%) : consultable jour par jour, hors suppression de plage (kWh).
+  const dayMetrics = levels ? [...metrics, BATTERY_LEVEL].sort() : metrics;
   const names = Object.fromEntries(categories.map((c) => [c.slug, c.name]));
   const today = localParts(new Date(), ctx.timezone).date;
   // Par défaut : l'import réseau (ou le premier compteur), la veille.
   const m =
-    metric && metrics.includes(metric)
+    metric && dayMetrics.includes(metric)
       ? metric
       : (metrics.find((x) => x === "grid_import") ?? metrics[0] ?? "grid_import");
   const d = day && /^\d{4}-\d{2}-\d{2}$/.test(day) ? day : addDays(today, -1);
-  const values = await dayValues(ctx, m, d);
+  const [values, socs] =
+    m === BATTERY_LEVEL ? [[], await dayBatteryLevels(ctx, d)] : [await dayValues(ctx, m, d), []];
   return (
     <div className={panel}>
       <SuspectCard items={suspects.map(toItem)} names={names} timezone={ctx.timezone} />
       <DayCard
-        metrics={metrics}
+        metrics={dayMetrics}
         names={names}
         metric={m}
         day={d}
         items={values.map(toItem)}
+        levels={socs.map((l) => ({ at: l.at.toISOString(), percent: l.percent }))}
         timezone={ctx.timezone}
       />
       <RangeCard metrics={metrics} names={names} today={today} />

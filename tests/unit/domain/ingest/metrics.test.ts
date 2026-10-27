@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { isSuspect, metricLabel, valueCap } from "@/domain/ingest/metrics";
+import { BATTERY_LEVEL, isSuspect, metricLabel, valueCap } from "@/domain/ingest/metrics";
 
 describe("metricLabel", () => {
   it("compteur, poste nommé, poste supprimé ; majuscule à la demande", () => {
@@ -8,6 +8,7 @@ describe("metricLabel", () => {
     expect(metricLabel("category:ballon", { ballon: "Chauffe-eau" })).toBe("Chauffe-eau");
     expect(metricLabel("category:ancien", {})).toBe("« ancien »");
     expect(metricLabel("autre", {})).toBe("autre");
+    expect(metricLabel(BATTERY_LEVEL, {}, true)).toBe("Niveau de la batterie (%)");
   });
 });
 

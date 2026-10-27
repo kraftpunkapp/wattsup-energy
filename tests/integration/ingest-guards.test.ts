@@ -2,7 +2,7 @@ import { eq } from "drizzle-orm";
 import { describe, expect, it } from "vitest";
 import { POST } from "@/app/api/v1/ingest/route";
 import { db } from "@/db";
-import { batteryState, household, ingestLog } from "@/db/schema";
+import { batteryLevel, household, ingestLog } from "@/db/schema";
 import { updateGranularity } from "@/server/household";
 import { pruneIngestLog } from "@/server/ingest/persist";
 import { getBatteryLevel, getLastPushAt } from "@/server/ingest/status";
@@ -94,13 +94,14 @@ describe("journal et dernier push", () => {
     expect((await getLastPushAt(ctx))?.getTime()).toBe(first?.getTime());
   });
 
-  it("niveau de la batterie : le dernier relevé envoyé, absent sinon", async () => {
+  it("niveau de la batterie : le relevé le plus récent, même reçu avant un plus ancien", async () => {
     const { ctx, push } = await setup();
     await push(hourly);
     expect(await getBatteryLevel(ctx)).toBeNull();
     await push(
       JSON.stringify({ version: 1, ts: "2026-10-02T13:00:00Z", battery_soc_percent: 19.7 }),
     );
+    await push(JSON.stringify({ version: 1, ts: "2026-10-02T11:00:00Z", battery_soc_percent: 40 }));
     expect(await getBatteryLevel(ctx)).toEqual({
       percent: 19.7,
       at: new Date("2026-10-02T13:00:00Z"),
@@ -139,7 +140,7 @@ describeTenantIsolation("dernier push", {
 describeTenantIsolation("niveau de la batterie", {
   setup: async (b) => {
     await db
-      .insert(batteryState)
+      .insert(batteryLevel)
       .values({ householdId: b.householdId, socPercent: 50, measuredAt: new Date() });
     return b.householdId;
   },

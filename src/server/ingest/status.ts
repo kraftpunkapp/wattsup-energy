@@ -1,6 +1,6 @@
 import { and, desc, eq, notInArray } from "drizzle-orm";
 import { db } from "@/db";
-import { batteryState, ingestLog } from "@/db/schema";
+import { batteryLevel, ingestLog } from "@/db/schema";
 import type { HouseholdContext } from "../context";
 
 /** Date du dernier push ordinaire accepté (HTTP 200, hors historique et décompte), ou null. */
@@ -25,9 +25,11 @@ export async function getBatteryLevel(
   ctx: HouseholdContext,
 ): Promise<{ percent: number; at: Date } | null> {
   const [row] = await db
-    .select({ percent: batteryState.socPercent, at: batteryState.measuredAt })
-    .from(batteryState)
-    .where(eq(batteryState.householdId, ctx.householdId));
+    .select({ percent: batteryLevel.socPercent, at: batteryLevel.measuredAt })
+    .from(batteryLevel)
+    .where(eq(batteryLevel.householdId, ctx.householdId))
+    .orderBy(desc(batteryLevel.measuredAt))
+    .limit(1);
   return row ?? null;
 }
 

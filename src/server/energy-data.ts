@@ -1,6 +1,6 @@
 import { and, asc, desc, eq, gt, gte, lt, or, sql, sum } from "drizzle-orm";
 import { db } from "@/db";
-import { energyInterval } from "@/db/schema";
+import { batteryLevel, energyInterval } from "@/db/schema";
 import { isSuspect, valueCap } from "@/domain/ingest/metrics";
 import { addDays, zonedInstant } from "@/lib/time";
 import type { HouseholdContext } from "./context";
@@ -59,6 +59,29 @@ export async function storedMetrics(ctx: HouseholdContext): Promise<string[]> {
     .where(eq(energyInterval.householdId, ctx.householdId))
     .orderBy(asc(energyInterval.metric));
   return rows.map((r) => r.metric);
+}
+
+/** Vrai si Home Assistant a déjà envoyé au moins un niveau de la batterie (T78). */
+export async function hasBatteryLevels(ctx: HouseholdContext): Promise<boolean> {
+  return (await db.$count(batteryLevel, eq(batteryLevel.householdId, ctx.householdId))) > 0;
+}
+
+/** Niveaux de la batterie reçus un jour local, dans l'ordre. */
+export async function dayBatteryLevels(
+  ctx: HouseholdContext,
+  day: string,
+): Promise<{ at: Date; percent: number }[]> {
+  return db
+    .select({ at: batteryLevel.measuredAt, percent: batteryLevel.socPercent })
+    .from(batteryLevel)
+    .where(
+      and(
+        eq(batteryLevel.householdId, ctx.householdId),
+        gte(batteryLevel.measuredAt, zonedInstant(day, 0, ctx.timezone)),
+        lt(batteryLevel.measuredAt, zonedInstant(addDays(day, 1), 0, ctx.timezone)),
+      ),
+    )
+    .orderBy(asc(batteryLevel.measuredAt));
 }
 
 /** Valeurs au-delà du seuil de plausibilité de leur compteur, les plus récentes d'abord. */

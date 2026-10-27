@@ -13,6 +13,9 @@ export const CORE_METRIC_LABELS: Record<string, string> = {
   battery_discharge: "décharge batterie",
 };
 
+/** Niveau de la batterie (T78) : relevés en %, consultables dans l'onglet Données, hors kWh. */
+export const BATTERY_LEVEL = "battery_level";
+
 /**
  * Nom d'un compteur : libellé du compteur, ou nom du poste (son slug entre guillemets s'il
  * a été supprimé). `capitalized` pour un titre ou une liste.
@@ -24,7 +27,9 @@ export function metricLabel(
 ): string {
   const label = metric.startsWith("category:")
     ? (categoryNames[metric.slice("category:".length)] ?? `« ${metric.slice("category:".length)} »`)
-    : (CORE_METRIC_LABELS[metric] ?? metric);
+    : metric === BATTERY_LEVEL
+      ? "niveau de la batterie (%)"
+      : (CORE_METRIC_LABELS[metric] ?? metric);
   return capitalized ? label.charAt(0).toUpperCase() + label.slice(1) : label;
 }
 

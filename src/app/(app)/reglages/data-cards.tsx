@@ -4,8 +4,8 @@ import { callAction } from "@/lib/action";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { Badge, button, Card, Icon, Notice } from "@/components/ui";
-import { metricLabel } from "@/domain/ingest/metrics";
-import { formatNumber } from "@/lib/format";
+import { BATTERY_LEVEL, metricLabel } from "@/domain/ingest/metrics";
+import { formatNumber, formatPercent } from "@/lib/format";
 import { settingsHref } from "@/lib/settings-tabs";
 import {
   deleteRangeAction,
@@ -16,6 +16,12 @@ import {
 
 // Onglet Données (SPEC §7.11) : valeurs suspectes, un jour d'un compteur, suppression
 // d'une plage. Une valeur corrigée passe en « manuel » et n'est plus écrasée.
+
+export interface LevelItem {
+  /** ISO. */
+  at: string;
+  percent: number;
+}
 
 export interface ValueItem {
   metric: string;
@@ -156,6 +162,42 @@ function ValueRow({ item, title, sub }: { item: ValueItem; title: string; sub?: 
   );
 }
 
+/** Niveaux de la batterie d'un jour (T78) : relevés de Home Assistant, en lecture seule. */
+function LevelList({ levels, timezone }: { levels: LevelItem[]; timezone: string }) {
+  const percents = levels.map((l) => l.percent / 100);
+  return (
+    <>
+      <p className="text-[13px] text-muted tabular-nums">
+        {levels.length} relevé{levels.length > 1 ? "s" : ""} · de{" "}
+        <span className="font-semibold text-ink">{formatPercent(Math.min(...percents))}</span> à{" "}
+        <span className="font-semibold text-ink">{formatPercent(Math.max(...percents))}</span>
+      </p>
+      <ul className="flex flex-col">
+        {levels.map((l) => (
+          <li
+            key={l.at}
+            className="flex items-center gap-3 border-t border-track py-2.5 text-[13px] tabular-nums first:border-t-0"
+          >
+            <span className="flex-1">
+              {new Date(l.at).toLocaleTimeString("fr-FR", {
+                hour: "2-digit",
+                minute: "2-digit",
+                timeZone: timezone,
+              })}
+            </span>
+            <span className="font-semibold">{formatPercent(l.percent / 100)}</span>
+            <Badge>HA</Badge>
+          </li>
+        ))}
+      </ul>
+      <p className="text-[11px] text-subtle">
+        Niveau envoyé par Home Assistant à chaque envoi, en lecture seule : il sert de point de
+        départ aux prévisions de la batterie.
+      </p>
+    </>
+  );
+}
+
 /** Valeurs au-delà du seuil de plausibilité de leur compteur. */
 export function SuspectCard({
   items,
@@ -229,6 +271,7 @@ export function DayCard({
   metric,
   day,
   items,
+  levels,
   timezone,
 }: {
   metrics: string[];
@@ -236,6 +279,8 @@ export function DayCard({
   metric: string;
   day: string;
   items: ValueItem[];
+  /** Niveaux de la batterie, quand le compteur choisi est `BATTERY_LEVEL`. */
+  levels: LevelItem[];
   timezone: string;
 }) {
   const router = useRouter();
@@ -284,7 +329,13 @@ export function DayCard({
           Afficher
         </button>
       </form>
-      {items.length === 0 ? (
+      {metric === BATTERY_LEVEL ? (
+        levels.length === 0 ? (
+          <p className="text-sm text-muted">Aucun niveau reçu ce jour-là.</p>
+        ) : (
+          <LevelList levels={levels} timezone={timezone} />
+        )
+      ) : items.length === 0 ? (
         <p className="text-sm text-muted">Aucune valeur pour ce compteur ce jour-là.</p>
       ) : (
         <>

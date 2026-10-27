@@ -1,6 +1,6 @@
 {
   "name": "wattsup-energy",
-  "version": "1.11.3",
+  "version": "1.11.4",
   "private": true,
   "license": "GPL-3.0-or-later",
   "packageManager": "pnpm@9.15.9",
