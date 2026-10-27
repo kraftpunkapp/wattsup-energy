@@ -2,7 +2,14 @@ import { and, eq } from "drizzle-orm";
 import { describe, expect, it } from "vitest";
 import { POST } from "@/app/api/v1/ingest/route";
 import { db } from "@/db";
-import { category, energyInterval, ingestLog, meterState, tempoOverride } from "@/db/schema";
+import {
+  batteryState,
+  category,
+  energyInterval,
+  ingestLog,
+  meterState,
+  tempoOverride,
+} from "@/db/schema";
 import { updateGranularity } from "@/server/household";
 import { createIngestToken } from "@/server/ingest/token";
 import type { HouseholdContext } from "@/server/context";
@@ -160,6 +167,20 @@ describe("mode horaire", () => {
     expect(r.status).toBe(200);
     expect(r.json.warnings).toContainEqual({ code: "missing_grid_import" });
     expect(r.json.message).toMatch(/^Pas d'import réseau dans cet envoi/);
+  });
+
+  it("niveau de la batterie (T78) : le plus récent est gardé, un envoi en retard ne recule pas", async () => {
+    const { ctx, push } = await setup();
+    const soc = async () =>
+      (
+        await db.select().from(batteryState).where(eq(batteryState.householdId, ctx.householdId))
+      )[0];
+    await push(hourly("2026-10-02T13:00:00Z", 1, { battery_soc_percent: 62 }));
+    expect(await soc()).toMatchObject({ socPercent: 62 });
+    await push(hourly("2026-10-02T12:00:00Z", 1, { battery_soc_percent: 40 }));
+    expect((await soc())?.socPercent).toBe(62);
+    await push(hourly("2026-10-02T14:00:00Z", 2, { battery_soc_percent: 81.5 }));
+    expect(await soc()).toMatchObject({ socPercent: 81.5 });
   });
 
   it("envoi sans rien à vérifier : pas de message", async () => {

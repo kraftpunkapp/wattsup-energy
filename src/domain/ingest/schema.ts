@@ -30,6 +30,8 @@ const hourlySchema = z.object({
     .optional(),
   categories: categories.optional(),
   tempo_color: tempoColor.optional(),
+  /** Niveau de la batterie au moment de l'envoi, en % (T78, facultatif). */
+  battery_soc_percent: z.number().min(0).max(100).optional(),
   fuel: z
     .object({
       pellet_bags_total: z.number().nonnegative(),

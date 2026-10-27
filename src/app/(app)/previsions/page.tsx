@@ -2,7 +2,7 @@ import Link from "next/link";
 import { PageHeader } from "@/components/page-header";
 import { Badge, button, Card, Icon, Notice, StatTile, tiles } from "@/components/ui";
 import type { AccuracyDay } from "@/domain/forecast/accuracy";
-import { windowLabel } from "@/domain/forecast/summary";
+import { hourLabel, windowLabel } from "@/domain/forecast/summary";
 import { formatEurFromCents, formatKwh, formatPercent } from "@/lib/format";
 import { addDays } from "@/lib/time";
 import { settingsHref } from "@/lib/settings-tabs";
@@ -98,7 +98,9 @@ export default async function ForecastPage() {
       ? "Couleur Tempo de demain pas encore publiée (vers 11 h) : jour bleu supposé."
       : null,
     ctx.profile.battery
-      ? "Batterie supposée vide à minuit : son niveau n'est pas encore transmis par Home Assistant."
+      ? plan.batteryMeasured
+        ? `Batterie : ${formatPercent(plan.batteryMeasured.percent / 100)} mesurés à ${hourLabel(plan.batteryMeasured.at, tz)}, simulée ensuite.`
+        : "Batterie supposée vide à minuit : envoyez son niveau depuis Home Assistant (blueprint, « Niveau de la batterie ») pour une simulation plus juste."
       : null,
   ].filter((n): n is string => n !== null);
 

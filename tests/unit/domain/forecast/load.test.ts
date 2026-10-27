@@ -98,6 +98,34 @@ describe("simulateBattery", () => {
     expect(evening).toBeCloseTo(1, 6);
   });
 
+  it("niveau mesuré (T78) : la simulation part de lui, sans repartir de zéro à minuit", () => {
+    // Mesuré à 60 % d'une batterie de 5 kWh à 20 h ; consommation 1 kWh par heure le soir.
+    const hours = Array.from({ length: 30 }, (_, i) => ({
+      start: at("2026-12-05", 18 + i),
+      solarKwh: 0,
+      loadKwh: 1,
+    }));
+    const r = simulateBattery(hours, 5, TZ, { at: at("2026-12-05", 20), socKwh: 3 });
+    // 18 h et 19 h : batterie supposée vide (avant la mesure), tout est acheté.
+    expect(r.hours[0]?.importKwh).toBe(1);
+    // De 20 h à 22 h : 3 kWh couverts par la batterie ; ensuite achat.
+    expect(r.hours.slice(2, 5).map((h) => h.importKwh)).toEqual([0, 0, 0]);
+    expect(r.hours[5]?.importKwh).toBe(1);
+    expect(r.hours[4]?.socKwh).toBeCloseTo(0, 9);
+  });
+
+  it("niveau mesuré conservé après minuit quand il reste de l'énergie", () => {
+    const hours = Array.from({ length: 6 }, (_, i) => ({
+      start: at("2026-12-05", 22 + i),
+      solarKwh: 0,
+      loadKwh: 0.5,
+    }));
+    const r = simulateBattery(hours, 5, TZ, { at: at("2026-12-05", 22), socKwh: 4 });
+    // 22 h, 23 h, puis minuit : la batterie continue de se vider au lieu de repartir de zéro.
+    expect(r.hours.map((h) => h.importKwh)).toEqual([0, 0, 0, 0, 0, 0]);
+    expect(r.hours.at(-1)?.socKwh).toBeCloseTo(1, 9);
+  });
+
   it("sans batterie : surplus exporté, manque acheté", () => {
     const r = simulateBattery(
       [

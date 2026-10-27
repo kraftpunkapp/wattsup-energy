@@ -82,13 +82,18 @@ async function seedEverything(ctx: HouseholdContext) {
   await setManualSobriety(ctx.householdId, "2026-01-15", true);
   await saveAppliance(ctx, null, APPLIANCE_PRESETS[0] as (typeof APPLIANCE_PRESETS)[number]);
   await db
-    .insert(schema.householdForecast)
+    .insert(schema.batteryState)
     .values({
       householdId: ctx.householdId,
-      start: new Date("2026-10-02T10:00:00Z"),
-      solarKwh: 1,
-      loadKwh: 1,
+      socPercent: 50,
+      measuredAt: new Date("2026-10-02T10:00:00Z"),
     });
+  await db.insert(schema.householdForecast).values({
+    householdId: ctx.householdId,
+    start: new Date("2026-10-02T10:00:00Z"),
+    solarKwh: 1,
+    loadKwh: 1,
+  });
   await createMarker(ctx, {
     kind: "other",
     text: "Repère",

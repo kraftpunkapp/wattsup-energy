@@ -105,6 +105,14 @@ WattsUp vous rend service ? Vous pouvez soutenir son développement :
 
 ## Notes de version
 
+### 1.11.0 — 27 octobre 2026
+
+- **Niveau de la batterie** : Home Assistant peut envoyer le pourcentage de charge de la
+  batterie (nouvelle entrée du blueprint, à réimporter). Les prévisions partent alors du
+  niveau réel au lieu de supposer la batterie vide à minuit.
+- Sur téléphone, **Prévisions** a sa place dans la barre du bas ; Réglages passe dans le menu
+  du compte.
+
 ### 1.10.0 — 26 octobre 2026
 
 - **Prévisions** : ce que vous allez produire, consommer et acheter aujourd'hui et demain,

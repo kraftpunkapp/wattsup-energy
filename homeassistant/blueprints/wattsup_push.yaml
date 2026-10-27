@@ -104,6 +104,17 @@ blueprint:
               filter:
                 - domain: sensor
                   device_class: energy
+        battery_soc:
+          name: Niveau de la batterie (%, mode horaire)
+          description: >-
+            Facultatif : le pourcentage de charge de la batterie. Les prévisions de WattsUp
+            partent alors du niveau réel au lieu de supposer la batterie vide à minuit.
+          default: ""
+          selector:
+            entity:
+              filter:
+                - domain: sensor
+                  device_class: battery
 
     categories_input:
       name: Postes de consommation
@@ -159,6 +170,7 @@ variables:
     battery_discharge_kwh: !input battery_discharge
   categories: !input categories
   tempo_color: !input tempo_color
+  battery_soc: !input battery_soc
 
   # Capteurs choisis mais sans valeur numérique (indisponibles, inconnus) : omis de l'envoi,
   # WattsUp ne peut pas les nommer ; la notification les cite.
@@ -167,6 +179,9 @@ variables:
     {%- set chosen = [grid_import, grid_import_hp, grid_import_hc]
         + (energy_entities.values() | list) + ((categories or {}).values() | list) -%}
     {%- set ns = namespace(found=[]) -%}
+    {%- if battery_soc and not daily and not (states(battery_soc) | is_number) -%}
+      {%- set ns.found = [battery_soc ~ ' (' ~ states(battery_soc) ~ ')'] -%}
+    {%- endif -%}
     {%- for e in chosen if e -%}
       {%- set v = state_attr(e, 'last_period') if daily else states(e) -%}
       {%- if v is none or not (v | is_number) -%}
@@ -223,6 +238,10 @@ variables:
       {%- set total = read(grid_import) -%}
       {%- if total != '' -%}{%- set ns.energy = dict(ns.energy, grid_import_kwh=total | float) -%}{%- endif -%}
       {%- if ns.energy -%}{%- set ns.p = dict(ns.p, energy=ns.energy) -%}{%- endif -%}
+      {%- set soc = states(battery_soc) if battery_soc else '' -%}
+      {%- if soc | is_number and 0 <= soc | float <= 100 -%}
+        {%- set ns.p = dict(ns.p, battery_soc_percent=soc | float) -%}
+      {%- endif -%}
     {%- endif -%}
     {%- if ns.cats -%}{%- set ns.p = dict(ns.p, categories=ns.cats) -%}{%- endif -%}
     {%- set color = (states(tempo_color) | lower) if tempo_color else '' -%}

@@ -1,6 +1,13 @@
 import { and, eq, inArray, lt, sql } from "drizzle-orm";
 import { db } from "@/db";
-import { energyInterval, household, ingestLog, meterState, tempoOverride } from "@/db/schema";
+import {
+  batteryState,
+  energyInterval,
+  household,
+  ingestLog,
+  meterState,
+  tempoOverride,
+} from "@/db/schema";
 import { indexToIntervals, type MeterReading } from "@/domain/ingest/hourly";
 import { dailyToIntervals, hourlyReadings } from "@/domain/ingest/normalize";
 import {
@@ -101,6 +108,9 @@ async function persistHourly(
   slugs: string[],
 ): Promise<IngestWarning[]> {
   const { readings, warnings } = hourlyReadings(payload, slugs);
+  if (payload.battery_soc_percent !== undefined) {
+    await upsertBatteryState(tx, householdId, payload.ts, payload.battery_soc_percent);
+  }
   if (readings.length === 0) {
     if (payload.tempo_color) {
       await upsertTempo(tx, householdId, tempoDay(payload.ts, timezone), payload.tempo_color);
@@ -185,6 +195,23 @@ async function persistHourly(
   }
 
   return warnings;
+}
+
+/** Niveau de la batterie (T78) : le plus récent l'emporte, un envoi en retard ne recule pas. */
+async function upsertBatteryState(
+  tx: Tx,
+  householdId: string,
+  measuredAt: Date,
+  socPercent: number,
+) {
+  await tx
+    .insert(batteryState)
+    .values({ householdId, measuredAt, socPercent })
+    .onConflictDoUpdate({
+      target: batteryState.householdId,
+      set: { socPercent: sql`excluded.soc_percent`, measuredAt: sql`excluded.measured_at` },
+      setWhere: sql`${batteryState.measuredAt} <= excluded.measured_at`,
+    });
 }
 
 async function persistDaily(

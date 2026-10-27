@@ -1,6 +1,13 @@
 import { and, asc, eq, gte, inArray, isNull, lt, sql } from "drizzle-orm";
 import { db } from "@/db";
-import { energyInterval, household, householdForecast, user, weatherDaily } from "@/db/schema";
+import {
+  batteryState,
+  energyInterval,
+  household,
+  householdForecast,
+  user,
+  weatherDaily,
+} from "@/db/schema";
 import { compareForecast } from "@/domain/forecast/accuracy";
 import { simulateBattery } from "@/domain/forecast/battery";
 import { forecastDayLoad, heatingSlope } from "@/domain/forecast/load";
@@ -20,6 +27,8 @@ import { forecastHours } from "./weather/forecast";
 
 // Prévisions « Demain » du foyer (SPEC §7.14) : aujourd'hui et demain, heure par heure.
 
+/** Âge maximal du niveau de batterie envoyé par Home Assistant pour servir de départ. */
+const SOC_MAX_AGE_MS = 3 * 3_600_000;
 /** Fenêtre d'apprentissage du rendement solaire (jours). */
 const LEARNING_DAYS = 60;
 const DAY_MS = 86_400_000;
@@ -222,9 +231,24 @@ export async function getDayAheadForecast(ctx: HouseholdContext, now = new Date(
   const capacity = ctx.profile.battery
     ? (equipment.find((e) => e.kind === "battery")?.capacity ?? 0)
     : 0;
+  // Niveau envoyé par Home Assistant (T78) : point de départ s'il a moins de 3 heures.
+  const [state] =
+    capacity > 0
+      ? await db.select().from(batteryState).where(eq(batteryState.householdId, ctx.householdId))
+      : [];
+  const fresh =
+    state && state.measuredAt <= now && now.getTime() - state.measuredAt.getTime() <= SOC_MAX_AGE_MS
+      ? state
+      : null;
   return {
     solarMethod: solar?.method ?? null,
-    ...simulateBattery(hours, capacity, ctx.timezone),
+    batteryMeasured: fresh ? { percent: fresh.socPercent, at: fresh.measuredAt } : null,
+    ...simulateBattery(
+      hours,
+      capacity,
+      ctx.timezone,
+      fresh ? { at: fresh.measuredAt, socKwh: (fresh.socPercent / 100) * capacity } : undefined,
+    ),
   };
 }
 
@@ -284,6 +308,7 @@ export async function getForecastPlan(ctx: HouseholdContext, now = new Date()) {
     hours: forecast.hours,
     fullAt: forecast.fullAt,
     solarMethod: forecast.solarMethod,
+    batteryMeasured: forecast.batteryMeasured,
     priced,
     days: daySummaries(
       forecast.hours,

@@ -44,6 +44,14 @@ describe("parseIngestPayload", () => {
     }
   });
 
+  it("niveau de la batterie (T78) : facultatif, en %, entre 0 et 100", () => {
+    const at = { version: 1, ts: "2026-10-02T12:00:00Z" };
+    const ok = parseIngestPayload({ ...at, battery_soc_percent: 47.5 });
+    expect(ok.success && ok.data.kind === "hourly" && ok.data.battery_soc_percent).toBe(47.5);
+    const bad = parseIngestPayload({ ...at, battery_soc_percent: 120 });
+    expect(bad.success ? [] : bad.errors.map((e) => e.path)).toEqual(["battery_soc_percent"]);
+  });
+
   it("rejette ce qui n'est pas un objet", () => {
     expect(parseIngestPayload(null).success).toBe(false);
     expect(parseIngestPayload("hello").success).toBe(false);

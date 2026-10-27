@@ -1,8 +1,10 @@
 import { localParts } from "@/lib/time";
 
 // Batterie simulée (T69, SPEC §7.14) : le surplus solaire la charge (rendement 90 %), puis
-// part au réseau ; elle couvre ensuite la consommation jusqu'à se vider. Faute d'état de
-// charge envoyé par Home Assistant, elle est supposée vide à minuit chaque jour. Pur.
+// part au réseau ; elle couvre ensuite la consommation jusqu'à se vider. Niveau mesuré
+// envoyé par Home Assistant (T78) : la simulation part de lui, au début de l'heure de la
+// mesure, puis continue sans repartir de zéro ; avant lui, ou sans mesure, la batterie est
+// supposée vide à minuit chaque jour. Pur.
 
 const EFFICIENCY = 0.9;
 /** Charge à partir de laquelle la batterie compte comme pleine (part de la capacité). */
@@ -18,17 +20,27 @@ export interface SimulatedHour {
   socKwh: number;
 }
 
+const HOUR_MS = 3_600_000;
+
 export function simulateBattery(
   hours: readonly { start: Date; solarKwh: number; loadKwh: number }[],
   capacityKwh: number,
   timezone: string,
+  /** Dernier niveau mesuré (kWh stockés) et son heure. */
+  measured?: { at: Date; socKwh: number },
 ): { hours: SimulatedHour[]; fullAt: { date: string; start: Date }[] } {
   let soc = 0;
   let day = "";
+  let anchored = false;
   const fullAt: { date: string; start: Date }[] = [];
   const out = hours.map((x) => {
     const date = localParts(x.start, timezone).date;
-    if (date !== day) {
+    const t = x.start.getTime();
+    if (measured && !anchored && t + HOUR_MS > measured.at.getTime()) {
+      anchored = true;
+      day = date;
+      soc = Math.min(capacityKwh, Math.max(0, measured.socKwh));
+    } else if (date !== day && !anchored) {
       day = date;
       soc = 0;
     }

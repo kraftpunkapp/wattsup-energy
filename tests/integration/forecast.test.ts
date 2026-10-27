@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { db } from "@/db";
 import { eq } from "drizzle-orm";
 import {
+  batteryState,
   energyInterval,
   household,
   householdForecast,
@@ -347,5 +348,40 @@ describe("notification du soir « Créneaux de demain » (T74)", () => {
     // Même soir : déjà envoyée.
     const again = await householdContextFor(ctx.userId, "Test", "test@wattsup.test");
     expect(await notifyTomorrow(again, options)).toEqual({ push: 0, email: false });
+  });
+});
+
+describe("niveau de la batterie envoyé par Home Assistant (T78)", () => {
+  it("moins de 3 h : point de départ de la simulation ; plus ancien : ignoré", async () => {
+    const { ctx, cell } = await solarHousehold();
+    await updateProfile(ctx, { ...ctx.profile, solar: true, battery: true });
+    await saveEquipment(ctx, "battery", {
+      label: "Batterie",
+      capacity: 4,
+      installedOn: "2025-04-01",
+      costEur: 3000,
+    });
+    await weather(cell);
+    await hourlyHistory(ctx);
+    const fresh = await householdContextFor(ctx.userId);
+    // Mesurée pleine à 11 h UTC (il est midi) : la batterie couvre la soirée d'aujourd'hui.
+    await db
+      .insert(batteryState)
+      .values({
+        householdId: ctx.householdId,
+        socPercent: 100,
+        measuredAt: new Date("2026-11-21T11:00:00Z"),
+      });
+    const f = await getDayAheadForecast(fresh, now);
+    expect(f?.batteryMeasured).toMatchObject({ percent: 100 });
+    const evening = f?.hours.find((h) => h.start.getTime() === Date.UTC(2026, 10, 21, 17));
+    expect(evening?.importKwh).toBe(0);
+
+    await db
+      .update(batteryState)
+      .set({ measuredAt: new Date("2026-11-21T08:00:00Z") })
+      .where(eq(batteryState.householdId, ctx.householdId));
+    const stale = await getDayAheadForecast(fresh, now);
+    expect(stale?.batteryMeasured).toBeNull();
   });
 });
