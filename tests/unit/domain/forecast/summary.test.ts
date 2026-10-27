@@ -17,7 +17,15 @@ describe("daySummaries", () => {
     ];
     const r = daySummaries(hours, [0.2, 0.27, 0.27], TZ);
     expect(r).toEqual([
-      { date: "2026-11-22", solarKwh: 3, loadKwh: 2, importKwh: 1, exportKwh: 2, costEur: 0.2 },
+      {
+        date: "2026-11-22",
+        solarKwh: 3,
+        loadKwh: 2,
+        importKwh: 1,
+        exportKwh: 2,
+        costEur: 0.2,
+        measured: { solarKwh: 0, loadKwh: 0, hours: 0 },
+      },
       {
         date: "2026-11-23",
         solarKwh: 0,
@@ -25,6 +33,7 @@ describe("daySummaries", () => {
         importKwh: 2,
         exportKwh: 0,
         costEur: expect.closeTo(0.54, 9),
+        measured: { solarKwh: 0, loadKwh: 0, hours: 0 },
       },
     ]);
     expect(daySummaries(hours, null, TZ)[0]?.costEur).toBeNull();

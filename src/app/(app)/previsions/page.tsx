@@ -120,6 +120,8 @@ export default async function ForecastPage() {
           importKwh: h.importKwh,
           exportKwh: h.exportKwh,
           kwhCostEur: costs?.[i]?.kwhCostEur ?? null,
+          measured: h.measured,
+          estimated: h.estimated,
         }))}
       />
 

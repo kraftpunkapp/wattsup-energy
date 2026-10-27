@@ -365,13 +365,11 @@ describe("niveau de la batterie envoyé par Home Assistant (T78)", () => {
     await hourlyHistory(ctx);
     const fresh = await householdContextFor(ctx.userId);
     // Mesurée pleine à 11 h UTC (il est midi) : la batterie couvre la soirée d'aujourd'hui.
-    await db
-      .insert(batteryState)
-      .values({
-        householdId: ctx.householdId,
-        socPercent: 100,
-        measuredAt: new Date("2026-11-21T11:00:00Z"),
-      });
+    await db.insert(batteryState).values({
+      householdId: ctx.householdId,
+      socPercent: 100,
+      measuredAt: new Date("2026-11-21T11:00:00Z"),
+    });
     const f = await getDayAheadForecast(fresh, now);
     expect(f?.batteryMeasured).toMatchObject({ percent: 100 });
     const evening = f?.hours.find((h) => h.start.getTime() === Date.UTC(2026, 10, 21, 17));
@@ -383,5 +381,37 @@ describe("niveau de la batterie envoyé par Home Assistant (T78)", () => {
       .where(eq(batteryState.householdId, ctx.householdId));
     const stale = await getDayAheadForecast(fresh, now);
     expect(stale?.batteryMeasured).toBeNull();
+  });
+});
+
+describe("aujourd'hui : le mesuré remplace la prévision des heures écoulées", () => {
+  it("heures reçues mesurées, heure en cours prévue ; part mesurée dans le bilan", async () => {
+    const { ctx, cell } = await solarHousehold();
+    await weather(cell);
+    await hourlyHistory(ctx);
+    // Aujourd'hui (21 novembre, minuit local = 23 h UTC la veille, déjà dans l'historique à
+    // 0,5 kWh) puis de 0 h à 10 h UTC : 2 kWh achetés par heure.
+    const rows = [];
+    for (let t = Date.UTC(2026, 10, 21, 0); t < Date.UTC(2026, 10, 21, 11); t += 3_600_000) {
+      rows.push({
+        householdId: ctx.householdId,
+        metric: "grid_import",
+        start: new Date(t),
+        granularity: "hour" as const,
+        kwh: 2,
+        source: "ha" as const,
+      });
+    }
+    await db.insert(energyInterval).values(rows);
+    const plan = await getForecastPlan(ctx, new Date("2026-11-21T11:30:00Z"));
+    if (plan.status !== "ok") throw new Error(plan.status);
+    const at = (h: number) =>
+      plan.hours.find((x) => x.start.getTime() === Date.UTC(2026, 10, 21, h));
+    expect(at(10)).toMatchObject({ measured: true, loadKwh: 2, importKwh: 2 });
+    expect(at(11)).toMatchObject({ measured: false, loadKwh: 0.5 }); // en cours : prévue
+    const today = plan.days[0];
+    expect(today?.measured.hours).toBe(12);
+    expect(today?.measured.loadKwh).toBeCloseTo(0.5 + 11 * 2, 6);
+    expect(plan.days[1]?.measured.hours).toBe(0);
   });
 });

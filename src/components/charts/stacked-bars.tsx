@@ -31,6 +31,8 @@ export interface Bar {
   previous?: number | null;
   /** Un repère tombe sur cette barre : petit point sous l'étiquette (texte dans `title`). */
   marked?: boolean;
+  /** Valeur de comparaison tracée en trait horizontal sur la barre (ce qui était prévu). */
+  tick?: number | null;
 }
 
 /** Courbe superposée : une valeur par barre (null : pas de point, la courbe s'interrompt). */
@@ -78,6 +80,7 @@ export function StackedBars({
       Math.max(
         b.segments.reduce((a, s) => a + s.value, 0),
         b.previous ?? 0,
+        b.tick ?? 0,
       ),
     ),
     0,
@@ -121,16 +124,26 @@ export function StackedBars({
               style={{ height: b.previous ? toHeight(b.previous) : 0 }}
             />
           );
+          const tick =
+            b.tick != null ? (
+              <div
+                aria-hidden
+                className="pointer-events-none absolute inset-x-0 h-0.5 rounded-full bg-ink"
+                style={{ bottom: toHeight(b.tick) }}
+              />
+            ) : null;
           const body =
             paired && dense ? (
               <div className="relative flex h-full items-end justify-center" style={{ opacity }}>
                 {previousBar("absolute inset-x-0 bottom-0")}
                 <div className="relative flex h-full w-[55%] items-end">{stack}</div>
+                {tick}
               </div>
             ) : (
-              <div className="flex h-full items-end gap-px" style={{ opacity }}>
+              <div className="relative flex h-full items-end gap-px" style={{ opacity }}>
                 {paired && previousBar("min-w-0 flex-1")}
                 {stack}
+                {tick}
               </div>
             );
           return b.href ? (

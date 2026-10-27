@@ -9,6 +9,7 @@ import {
   weatherDaily,
 } from "@/db/schema";
 import { compareForecast } from "@/domain/forecast/accuracy";
+import { withActuals, type MeasuredHour } from "@/domain/forecast/actuals";
 import { simulateBattery } from "@/domain/forecast/battery";
 import { forecastDayLoad, heatingSlope } from "@/domain/forecast/load";
 import { forecastSolar, learnSolarYield } from "@/domain/forecast/solar";
@@ -104,6 +105,47 @@ const LOAD_METRICS = [
   "battery_charge",
   "battery_discharge",
 ] as const;
+
+/** Relevés horaires du foyer sur [from, to) : achats, surplus, production et consommation. */
+async function measuredHours(ctx: HouseholdContext, from: Date, to: Date) {
+  const rows = await db
+    .select({ start: energyInterval.start, metric: energyInterval.metric, kwh: energyInterval.kwh })
+    .from(energyInterval)
+    .where(
+      and(
+        eq(energyInterval.householdId, ctx.householdId),
+        eq(energyInterval.granularity, "hour"),
+        inArray(energyInterval.metric, [...LOAD_METRICS]),
+        gte(energyInterval.start, from),
+        lt(energyInterval.start, to),
+      ),
+    );
+  const hours = new Map<number, Record<string, number>>();
+  for (const r of rows) {
+    const t = r.start.getTime();
+    const h = hours.get(t) ?? {};
+    h[r.metric] = (h[r.metric] ?? 0) + r.kwh;
+    hours.set(t, h);
+  }
+  const out = new Map<number, MeasuredHour>();
+  for (const [t, m] of hours) {
+    const v = (k: string) => m[k] ?? 0;
+    out.set(t, {
+      solarKwh: v("solar_production"),
+      importKwh: v("grid_import"),
+      exportKwh: v("grid_export"),
+      loadKwh: Math.max(
+        0,
+        v("grid_import") +
+          v("solar_production") +
+          v("battery_discharge") -
+          v("grid_export") -
+          v("battery_charge"),
+      ),
+    });
+  }
+  return out;
+}
 
 /** Consommation horaire du foyer = import + production + décharge − export − charge. */
 async function loadHistory(ctx: HouseholdContext, since: Date, now: Date) {
@@ -290,11 +332,34 @@ export async function getPricedForecast(ctx: HouseholdContext, now = new Date())
  */
 export async function getForecastPlan(ctx: HouseholdContext, now = new Date()) {
   if (ctx.granularity !== "hourly") return { status: "daily" as const };
-  const [forecast, appliances] = await Promise.all([
+  const window = forecastWindow(ctx.timezone, now);
+  const [forecast, appliances, actuals, frozen] = await Promise.all([
     getPricedForecast(ctx, now),
     listAppliances(ctx),
+    // Heures écoulées d'aujourd'hui : le mesuré à l'affichage, avec ce qui était estimé.
+    measuredHours(ctx, window.from, now),
+    db
+      .select({
+        start: householdForecast.start,
+        solarKwh: householdForecast.solarKwh,
+        loadKwh: householdForecast.loadKwh,
+      })
+      .from(householdForecast)
+      .where(
+        and(
+          eq(householdForecast.householdId, ctx.householdId),
+          gte(householdForecast.start, window.from),
+          lt(householdForecast.start, now),
+        ),
+      ),
   ]);
   if (!forecast) return { status: "no-data" as const };
+  const hours = withActuals(
+    forecast.hours,
+    actuals,
+    now.getTime(),
+    new Map(frozen.map((f) => [f.start.getTime(), { solarKwh: f.solarKwh, loadKwh: f.loadKwh }])),
+  );
   const priced = forecast.priced;
   const windows = priced
     ? appliances.map((appliance) => ({
@@ -304,17 +369,13 @@ export async function getForecastPlan(ctx: HouseholdContext, now = new Date()) {
     : [];
   return {
     status: "ok" as const,
-    today: forecastWindow(ctx.timezone, now).today,
-    hours: forecast.hours,
+    today: window.today,
+    hours,
     fullAt: forecast.fullAt,
     solarMethod: forecast.solarMethod,
     batteryMeasured: forecast.batteryMeasured,
     priced,
-    days: daySummaries(
-      forecast.hours,
-      priced?.hours.map((h) => h.priceEurKwh) ?? null,
-      ctx.timezone,
-    ),
+    days: daySummaries(hours, priced?.hours.map((h) => h.priceEurKwh) ?? null, ctx.timezone),
     appliances: appliances.length,
     windows,
   };

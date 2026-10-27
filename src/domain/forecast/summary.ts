@@ -10,6 +10,8 @@ export interface DaySummary {
   exportKwh: number;
   /** Électricité achetée, au prix de chaque heure (hors abonnement) ; null sans contrat. */
   costEur: number | null;
+  /** Part déjà mesurée (heures écoulées d'aujourd'hui). */
+  measured: { solarKwh: number; loadKwh: number; hours: number };
 }
 
 export function daySummaries(
@@ -19,6 +21,7 @@ export function daySummaries(
     loadKwh: number;
     importKwh: number;
     exportKwh: number;
+    measured?: boolean;
   }[],
   prices: readonly number[] | null,
   timezone: string,
@@ -33,12 +36,18 @@ export function daySummaries(
       importKwh: 0,
       exportKwh: 0,
       costEur: prices ? 0 : null,
+      measured: { solarKwh: 0, loadKwh: 0, hours: 0 },
     };
     d.solarKwh += h.solarKwh;
     d.loadKwh += h.loadKwh;
     d.importKwh += h.importKwh;
     d.exportKwh += h.exportKwh;
     if (d.costEur !== null) d.costEur += h.importKwh * (prices?.[i] ?? 0);
+    if (h.measured) {
+      d.measured.solarKwh += h.solarKwh;
+      d.measured.loadKwh += h.loadKwh;
+      d.measured.hours += 1;
+    }
     days.set(date, d);
   });
   return [...days.values()];

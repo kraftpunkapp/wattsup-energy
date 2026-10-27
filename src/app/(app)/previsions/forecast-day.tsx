@@ -9,7 +9,9 @@ import { localParts } from "@/lib/time";
 
 // Aujourd'hui ou demain heure par heure (T72, SPEC §7.14) : consommation prévue (couverte
 // sur place ou achetée), production prévue en barre claire derrière, coût d'un kWh de plus
-// en courbe. Toucher une heure affiche son détail.
+// en courbe. Toucher une heure affiche son détail. Aujourd'hui, les heures écoulées montrent
+// le mesuré, avec un trait à la consommation qui était estimée, et les heures à venir, plus
+// claires, la prévision.
 
 export interface ForecastHourView {
   /** ISO, début de l'heure. */
@@ -20,6 +22,10 @@ export interface ForecastHourView {
   exportKwh: number;
   /** Coût d'un kWh de plus (€), null sans contrat. */
   kwhCostEur: number | null;
+  /** Heure écoulée : valeurs mesurées. */
+  measured: boolean;
+  /** Heure écoulée : ce qui était estimé (prévision figée la veille, sinon le modèle). */
+  estimated: { solarKwh: number; loadKwh: number } | null;
 }
 
 export interface ForecastDayView {
@@ -31,9 +37,13 @@ export interface ForecastDayView {
   costEur: number | null;
   /** ISO de l'heure où la batterie sera pleine, null sinon. */
   fullAt: string | null;
+  /** Part déjà mesurée (aujourd'hui). */
+  measured: { solarKwh: number; loadKwh: number; hours: number };
 }
 
 const COST_LINE = "var(--color-ink-soft)";
+/** Heures encore prévues d'un jour en partie mesuré (classes écrites en entier pour Tailwind). */
+const FORECAST_TONE = { "bg-solar": "bg-solar/55", "bg-grid": "bg-grid/55" } as const;
 const kwh = (v: number) => formatKwh(v, v < 10 ? 1 : 0);
 const eur = (v: number) => formatEurFromCents(v * 100, 2);
 
@@ -58,13 +68,23 @@ export function ForecastDay({
   const list = hours.filter((h) => localParts(new Date(h.start), timezone).date === date);
   const focus = list.find((h) => h.start === picked) ?? null;
   const priced = list.some((h) => h.kwhCostEur !== null);
+  // Jour en partie mesuré : les heures prévues sont plus claires.
+  const mixed = list.some((h) => h.measured) && list.some((h) => !h.measured);
+  // Heures écoulées avec leur estimation : bilan « depuis minuit ».
+  const past = list.filter((h) => h.estimated !== null);
+  const sum = (pick: (h: ForecastHourView) => number) => past.reduce((a, h) => a + pick(h), 0);
+  const tone = (h: ForecastHourView, color: keyof typeof FORECAST_TONE) =>
+    mixed && !h.measured ? FORECAST_TONE[color] : color;
   const detail = (h: ForecastHourView) => {
     const start = new Date(h.start);
     const end = new Date(start.getTime() + 3_600_000);
     const covered = Math.max(0, h.loadKwh - h.importKwh);
-    return `${hourLabel(start, timezone)} – ${hourLabel(end, timezone)} : ${kwh(h.loadKwh)} consommés, dont ${kwh(covered)} sur place et ${kwh(h.importKwh)} achetés${
-      solar ? ` · production ${kwh(h.solarKwh)}` : ""
-    }${h.kwhCostEur !== null ? ` · ${eur(h.kwhCostEur)} le kWh de plus` : ""}`;
+    const e = h.estimated;
+    return `${hourLabel(start, timezone)} – ${hourLabel(end, timezone)}, ${h.measured ? "mesuré" : "prévu"} : ${kwh(h.loadKwh)} consommés${
+      e ? ` (${kwh(e.loadKwh)} prévus)` : ""
+    }, dont ${kwh(covered)} sur place et ${kwh(h.importKwh)} achetés${
+      solar ? ` · production ${kwh(h.solarKwh)}${e ? ` (${kwh(e.solarKwh)} prévus)` : ""}` : ""
+    }${!h.measured && h.kwhCostEur !== null ? ` · ${eur(h.kwhCostEur)} le kWh de plus` : ""}`;
   };
   if (!day) return null;
 
@@ -100,8 +120,21 @@ export function ForecastDay({
       }
     >
       <div className={tiles}>
-        {solar && <StatTile label="Production prévue" value={kwh(day.solarKwh)} dot="bg-solar" />}
-        <StatTile label="Consommation prévue" value={kwh(day.loadKwh)} />
+        {solar && (
+          <StatTile
+            label={day.measured.hours > 0 ? "Production du jour" : "Production prévue"}
+            value={kwh(day.solarKwh)}
+            sub={
+              day.measured.solarKwh > 0 ? `dont ${kwh(day.measured.solarKwh)} mesurés` : undefined
+            }
+            dot="bg-solar"
+          />
+        )}
+        <StatTile
+          label={day.measured.hours > 0 ? "Consommation du jour" : "Consommation prévue"}
+          value={kwh(day.loadKwh)}
+          sub={day.measured.hours > 0 ? `dont ${kwh(day.measured.loadKwh)} mesurés` : undefined}
+        />
         <StatTile
           label="Achats au réseau"
           value={kwh(day.importKwh)}
@@ -139,6 +172,13 @@ export function ForecastDay({
             Coût d&apos;un kWh de plus
           </span>
         )}
+        {past.length > 0 && (
+          <span className="flex items-center gap-1.5">
+            <span className="h-0.5 w-3 rounded-full bg-ink" />
+            Ce qui était prévu
+          </span>
+        )}
+        {mixed && <span>Heures écoulées : mesuré ; à venir, plus clair : prévu</span>}
       </div>
       <StackedBars
         height={150}
@@ -155,16 +195,31 @@ export function ForecastDay({
             segments: [
               {
                 value: Math.max(0, h.loadKwh - h.importKwh),
-                color: "bg-solar",
+                color: tone(h, "bg-solar"),
                 label: "Couverte sur place",
               },
-              { value: h.importKwh, color: "bg-grid", label: "Achetée" },
+              { value: h.importKwh, color: tone(h, "bg-grid"), label: "Achetée" },
             ],
             previous: solar ? h.solarKwh : undefined,
+            tick: h.estimated?.loadKwh ?? null,
           };
         })}
-        line={priced ? { values: list.map((h) => h.kwhCostEur), color: COST_LINE } : undefined}
+        line={
+          priced
+            ? // Le coût d'un kWh de plus ne concerne que les heures à venir.
+              { values: list.map((h) => (h.measured ? null : h.kwhCostEur)), color: COST_LINE }
+            : undefined
+        }
       />
+      {past.length > 0 && (
+        <p className="text-[13px] text-ink-soft tabular-nums">
+          Depuis minuit : {kwh(sum((h) => h.loadKwh))} consommés pour{" "}
+          {kwh(sum((h) => h.estimated?.loadKwh ?? 0))} prévus
+          {solar &&
+            ` · ${kwh(sum((h) => h.solarKwh))} produits pour ${kwh(sum((h) => h.estimated?.solarKwh ?? 0))} prévus`}
+          .
+        </p>
+      )}
       <p className="text-[11px] text-muted tabular-nums" aria-live="polite">
         {focus ? detail(focus) : "Touchez une heure pour son détail."}
       </p>
