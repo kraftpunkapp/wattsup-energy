@@ -1,6 +1,6 @@
 import { and, desc, eq, notInArray } from "drizzle-orm";
 import { db } from "@/db";
-import { ingestLog } from "@/db/schema";
+import { batteryState, ingestLog } from "@/db/schema";
 import type { HouseholdContext } from "../context";
 
 /** Date du dernier push ordinaire accepté (HTTP 200, hors historique et décompte), ou null. */
@@ -18,6 +18,17 @@ export async function getLastPushAt(ctx: HouseholdContext): Promise<Date | null>
     .orderBy(desc(ingestLog.receivedAt))
     .limit(1);
   return row?.at ?? null;
+}
+
+/** Dernier niveau de la batterie envoyé par Home Assistant (T78), ou null. */
+export async function getBatteryLevel(
+  ctx: HouseholdContext,
+): Promise<{ percent: number; at: Date } | null> {
+  const [row] = await db
+    .select({ percent: batteryState.socPercent, at: batteryState.measuredAt })
+    .from(batteryState)
+    .where(eq(batteryState.householdId, ctx.householdId));
+  return row ?? null;
 }
 
 /** Journal des derniers envois (accepté ou refusé), du plus récent au plus ancien. */

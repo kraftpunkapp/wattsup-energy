@@ -2,10 +2,10 @@ import { eq } from "drizzle-orm";
 import { describe, expect, it } from "vitest";
 import { POST } from "@/app/api/v1/ingest/route";
 import { db } from "@/db";
-import { household, ingestLog } from "@/db/schema";
+import { batteryState, household, ingestLog } from "@/db/schema";
 import { updateGranularity } from "@/server/household";
 import { pruneIngestLog } from "@/server/ingest/persist";
-import { getLastPushAt } from "@/server/ingest/status";
+import { getBatteryLevel, getLastPushAt } from "@/server/ingest/status";
 import { createIngestToken } from "@/server/ingest/token";
 import { createTestHousehold, describeTenantIsolation } from "../helpers/tenancy";
 
@@ -94,6 +94,19 @@ describe("journal et dernier push", () => {
     expect((await getLastPushAt(ctx))?.getTime()).toBe(first?.getTime());
   });
 
+  it("niveau de la batterie : le dernier relevé envoyé, absent sinon", async () => {
+    const { ctx, push } = await setup();
+    await push(hourly);
+    expect(await getBatteryLevel(ctx)).toBeNull();
+    await push(
+      JSON.stringify({ version: 1, ts: "2026-10-02T13:00:00Z", battery_soc_percent: 19.7 }),
+    );
+    expect(await getBatteryLevel(ctx)).toEqual({
+      percent: 19.7,
+      at: new Date("2026-10-02T13:00:00Z"),
+    });
+  });
+
   it("purge quotidienne : les entrées de plus de 30 jours sont supprimées", async () => {
     const { ctx, push } = await setup();
     await db.insert(ingestLog).values({
@@ -120,6 +133,17 @@ describeTenantIsolation("dernier push", {
     return b.householdId;
   },
   attempt: (a) => getLastPushAt(a),
+  expect: "empty",
+});
+
+describeTenantIsolation("niveau de la batterie", {
+  setup: async (b) => {
+    await db
+      .insert(batteryState)
+      .values({ householdId: b.householdId, socPercent: 50, measuredAt: new Date() });
+    return b.householdId;
+  },
+  attempt: (a) => getBatteryLevel(a),
   expect: "empty",
 });
 

@@ -6,7 +6,7 @@ import { pushConfigured } from "@/server/push";
 import { listAppliances } from "@/server/appliances";
 import { listCategories, unknownCategorySlugs } from "@/server/categories";
 import type { HouseholdContext } from "@/server/context";
-import { getLastPushAt, listIngestLog } from "@/server/ingest/status";
+import { getBatteryLevel, getLastPushAt, listIngestLog } from "@/server/ingest/status";
 import { getActiveIngestToken } from "@/server/ingest/token";
 import { getLocationStatus } from "@/server/location";
 import { dayValues, storedMetrics, suspectValues, type StoredValue } from "@/server/energy-data";
@@ -74,11 +74,12 @@ async function EquipmentTab({ ctx }: { ctx: HouseholdContext }) {
 }
 
 async function HomeAssistantTab({ ctx }: { ctx: HouseholdContext }) {
-  const [active, lastPushAt, log, categories] = await Promise.all([
+  const [active, lastPushAt, log, categories, battery] = await Promise.all([
     getActiveIngestToken(ctx),
     getLastPushAt(ctx),
     listIngestLog(ctx),
     listCategories(ctx),
+    ctx.profile.battery ? getBatteryLevel(ctx) : null,
   ]);
   const origin = await requestOrigin();
   return (
@@ -87,6 +88,7 @@ async function HomeAssistantTab({ ctx }: { ctx: HouseholdContext }) {
         endpoint={`${origin}/api/v1/ingest`}
         granularity={ctx.granularity}
         lastPushAt={lastPushAt?.toISOString() ?? null}
+        battery={battery && { percent: battery.percent, at: battery.at.toISOString() }}
         link={pushState(lastPushAt?.getTime() ?? null, Date.now(), ctx.granularity)}
         active={active && { prefix: active.prefix, createdAt: active.createdAt.toISOString() }}
       />

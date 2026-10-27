@@ -1,13 +1,6 @@
 import { and, asc, eq, gte, inArray, isNull, lt, sql } from "drizzle-orm";
 import { db } from "@/db";
-import {
-  batteryState,
-  energyInterval,
-  household,
-  householdForecast,
-  user,
-  weatherDaily,
-} from "@/db/schema";
+import { energyInterval, household, householdForecast, user, weatherDaily } from "@/db/schema";
 import { compareForecast } from "@/domain/forecast/accuracy";
 import { withActuals, type MeasuredHour } from "@/domain/forecast/actuals";
 import { simulateBattery } from "@/domain/forecast/battery";
@@ -24,6 +17,7 @@ import { listAppliances } from "./appliances";
 import { pricingDays } from "./calendars";
 import { listContracts } from "./contracts";
 import { listEquipment } from "./equipment";
+import { getBatteryLevel } from "./ingest/status";
 import { forecastHours } from "./weather/forecast";
 
 // Prévisions « Demain » du foyer (SPEC §7.14) : aujourd'hui et demain, heure par heure.
@@ -274,22 +268,17 @@ export async function getDayAheadForecast(ctx: HouseholdContext, now = new Date(
     ? (equipment.find((e) => e.kind === "battery")?.capacity ?? 0)
     : 0;
   // Niveau envoyé par Home Assistant (T78) : point de départ s'il a moins de 3 heures.
-  const [state] =
-    capacity > 0
-      ? await db.select().from(batteryState).where(eq(batteryState.householdId, ctx.householdId))
-      : [];
+  const state = capacity > 0 ? await getBatteryLevel(ctx) : null;
   const fresh =
-    state && state.measuredAt <= now && now.getTime() - state.measuredAt.getTime() <= SOC_MAX_AGE_MS
-      ? state
-      : null;
+    state && state.at <= now && now.getTime() - state.at.getTime() <= SOC_MAX_AGE_MS ? state : null;
   return {
     solarMethod: solar?.method ?? null,
-    batteryMeasured: fresh ? { percent: fresh.socPercent, at: fresh.measuredAt } : null,
+    batteryMeasured: fresh,
     ...simulateBattery(
       hours,
       capacity,
       ctx.timezone,
-      fresh ? { at: fresh.measuredAt, socKwh: (fresh.socPercent / 100) * capacity } : undefined,
+      fresh ? { at: fresh.at, socKwh: (fresh.percent / 100) * capacity } : undefined,
     ),
   };
 }

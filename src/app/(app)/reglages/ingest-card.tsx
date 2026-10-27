@@ -9,6 +9,7 @@ import {
 } from "@/server/actions/ingest-token";
 import type { PushState } from "@/domain/ingest/push-state";
 import { Badge, button, Card, CardFooter, Icon, Notice } from "@/components/ui";
+import { formatPercent } from "@/lib/format";
 
 interface ActiveToken {
   prefix: string;
@@ -25,6 +26,8 @@ interface Props {
   lastPushAt: string | null;
   active: ActiveToken | null;
   granularity: Granularity;
+  /** Dernier niveau de la batterie reçu (T78), null si aucun ou pas de batterie. */
+  battery?: { percent: number; at: string } | null;
 }
 
 const MODES: { id: Granularity; label: string; help: string }[] = [
@@ -68,7 +71,7 @@ function CopyButton({ value }: { value: string }) {
   );
 }
 
-export function IngestCard({ endpoint, active, granularity, link, lastPushAt }: Props) {
+export function IngestCard({ endpoint, active, granularity, link, lastPushAt, battery }: Props) {
   const [fresh, setFresh] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
   const [mode, setMode] = useState(granularity);
@@ -123,6 +126,11 @@ export function IngestCard({ endpoint, active, granularity, link, lastPushAt }: 
           {lastPushAt
             ? `Dernier envoi reçu le ${fmt(lastPushAt)}.`
             : "Aucun envoi reçu pour l'instant."}
+          {battery && (
+            <span className="block">
+              Niveau de la batterie : {formatPercent(battery.percent / 100)} le {fmt(battery.at)}.
+            </span>
+          )}
         </p>
       )}
 
