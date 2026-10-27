@@ -3,7 +3,8 @@ import { PeriodLink } from "@/components/period-transition";
 // Barres verticales empilées en HTML (SPEC §2 : graphiques maison). Segments séparés de
 // 2 px, extrémité arrondie, info-bulle native par barre. Une barre peut être un lien
 // (sélection d'un mois) ou un bouton (sélection d'un jour : sa valeur s'affiche à côté, au
-// toucher comme au clavier, l'info-bulle n'existant pas sur mobile). Une courbe peut se superposer aux barres, sur sa propre échelle.
+// toucher comme au clavier, l'info-bulle n'existant pas sur mobile). Des courbes peuvent se superposer aux barres, sur leur propre échelle ou sur celle des
+// barres (valeur comparable), pleines ou en pointillés.
 // Comparaison à l'année précédente : barre claire accolée, les
 // paires bien séparées ; au-delà de 20 barres (un mois en jours), barre claire plus large
 // derrière la barre de l'année, une colonne par jour reste lisible.
@@ -31,8 +32,6 @@ export interface Bar {
   previous?: number | null;
   /** Un repère tombe sur cette barre : petit point sous l'étiquette (texte dans `title`). */
   marked?: boolean;
-  /** Valeur de comparaison tracée en trait horizontal sur la barre (ce qui était prévu). */
-  tick?: number | null;
 }
 
 /** Courbe superposée : une valeur par barre (null : pas de point, la courbe s'interrompt). */
@@ -40,11 +39,15 @@ export interface BarLine {
   values: (number | null)[];
   /** Couleur du trait (CSS). */
   color: string;
+  /** Vrai : même échelle que les barres (valeur comparable) ; sinon la sienne, maximum en haut. */
+  barScale?: boolean;
+  /** Trait en pointillés (valeurs à venir). */
+  dashed?: boolean;
 }
 
 /** Tracés de la courbe en coordonnées 0–100, un par suite de valeurs connues. */
-function linePaths(values: (number | null)[]): string[] {
-  const max = Math.max(...values.map((v) => v ?? 0), 0);
+function linePaths(values: (number | null)[], scaleMax?: number): string[] {
+  const max = scaleMax ?? Math.max(...values.map((v) => v ?? 0), 0);
   if (max <= 0) return [];
   const paths: string[] = [];
   let current: string[] = [];
@@ -71,18 +74,21 @@ export function StackedBars({
   bars: Bar[];
   height?: number;
   ariaLabel: string;
-  line?: BarLine;
+  /** Une courbe, ou plusieurs (dessinées dans l'ordre). */
+  line?: BarLine | BarLine[];
   /** Couleur des barres de comparaison (année précédente). */
   previousColor?: string;
 }) {
+  const lines = line === undefined ? [] : Array.isArray(line) ? line : [line];
   const max = Math.max(
     ...bars.map((b) =>
       Math.max(
         b.segments.reduce((a, s) => a + s.value, 0),
         b.previous ?? 0,
-        b.tick ?? 0,
       ),
     ),
+    // Courbes sur l'échelle des barres : elles ne doivent pas en sortir.
+    ...lines.filter((l) => l.barScale).flatMap((l) => l.values.map((v) => v ?? 0)),
     0,
   );
   const anySelected = bars.some((b) => b.selected);
@@ -124,26 +130,16 @@ export function StackedBars({
               style={{ height: b.previous ? toHeight(b.previous) : 0 }}
             />
           );
-          const tick =
-            b.tick != null ? (
-              <div
-                aria-hidden
-                className="pointer-events-none absolute inset-x-0 h-0.5 rounded-full bg-ink"
-                style={{ bottom: toHeight(b.tick) }}
-              />
-            ) : null;
           const body =
             paired && dense ? (
               <div className="relative flex h-full items-end justify-center" style={{ opacity }}>
                 {previousBar("absolute inset-x-0 bottom-0")}
                 <div className="relative flex h-full w-[55%] items-end">{stack}</div>
-                {tick}
               </div>
             ) : (
               <div className="relative flex h-full items-end gap-px" style={{ opacity }}>
                 {paired && previousBar("min-w-0 flex-1")}
                 {stack}
-                {tick}
               </div>
             );
           return b.href ? (
@@ -175,36 +171,39 @@ export function StackedBars({
             </div>
           );
         })}
-        {line && (
+        {lines.length > 0 && (
           <svg
             aria-hidden
             viewBox="0 0 100 100"
             preserveAspectRatio="none"
             className="pointer-events-none absolute inset-0 size-full overflow-visible"
           >
-            {linePaths(line.values).map((points) => (
-              <g key={points}>
-                {/* Liseré couleur de fond : la courbe se détache des barres. */}
-                <polyline
-                  points={points}
-                  fill="none"
-                  stroke="var(--color-surface)"
-                  strokeWidth={4}
-                  strokeLinejoin="round"
-                  strokeLinecap="round"
-                  vectorEffect="non-scaling-stroke"
-                />
-                <polyline
-                  points={points}
-                  fill="none"
-                  stroke={line.color}
-                  strokeWidth={2}
-                  strokeLinejoin="round"
-                  strokeLinecap="round"
-                  vectorEffect="non-scaling-stroke"
-                />
-              </g>
-            ))}
+            {lines.flatMap((line, li) =>
+              linePaths(line.values, line.barScale ? max : undefined).map((points) => (
+                <g key={`${li}:${points}`}>
+                  {/* Liseré couleur de fond : la courbe se détache des barres. */}
+                  <polyline
+                    points={points}
+                    fill="none"
+                    stroke="var(--color-surface)"
+                    strokeWidth={4}
+                    strokeLinejoin="round"
+                    strokeLinecap="round"
+                    vectorEffect="non-scaling-stroke"
+                  />
+                  <polyline
+                    points={points}
+                    fill="none"
+                    stroke={line.color}
+                    strokeWidth={2}
+                    strokeDasharray={line.dashed ? "4 4" : undefined}
+                    strokeLinejoin="round"
+                    strokeLinecap="round"
+                    vectorEffect="non-scaling-stroke"
+                  />
+                </g>
+              )),
+            )}
           </svg>
         )}
       </div>

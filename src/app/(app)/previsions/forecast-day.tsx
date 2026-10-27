@@ -10,8 +10,8 @@ import { localParts } from "@/lib/time";
 // Aujourd'hui ou demain heure par heure (T72, SPEC §7.14) : consommation prévue (couverte
 // sur place ou achetée), production prévue en barre claire derrière, coût d'un kWh de plus
 // en courbe. Toucher une heure affiche son détail. Aujourd'hui, les heures écoulées montrent
-// le mesuré, avec un trait à la consommation qui était estimée, et les heures à venir, plus
-// claires, la prévision.
+// le mesuré et les heures à venir, plus claires, la prévision ; la consommation prévue suit
+// en courbe, pleine sur les heures écoulées (ce qui était prévu), en pointillés ensuite.
 
 export interface ForecastHourView {
   /** ISO, début de l'heure. */
@@ -41,7 +41,8 @@ export interface ForecastDayView {
   measured: { solarKwh: number; loadKwh: number; hours: number };
 }
 
-const COST_LINE = "var(--color-ink-soft)";
+const COST_LINE = "var(--color-hc)";
+const FORECAST_LINE = "var(--color-ink)";
 /** Heures encore prévues d'un jour en partie mesuré (classes écrites en entier pour Tailwind). */
 const FORECAST_TONE = { "bg-solar": "bg-solar/55", "bg-grid": "bg-grid/55" } as const;
 const kwh = (v: number) => formatKwh(v, v < 10 ? 1 : 0);
@@ -175,7 +176,8 @@ export function ForecastDay({
         {past.length > 0 && (
           <span className="flex items-center gap-1.5">
             <span className="h-0.5 w-3 rounded-full bg-ink" />
-            Ce qui était prévu
+            Consommation prévue
+            <span className="w-5 border-t-2 border-dashed border-ink" />à venir
           </span>
         )}
         {mixed && <span>Heures écoulées : mesuré ; à venir, plus clair : prévu</span>}
@@ -201,15 +203,37 @@ export function ForecastDay({
               { value: h.importKwh, color: tone(h, "bg-grid"), label: "Achetée" },
             ],
             previous: solar ? h.solarKwh : undefined,
-            tick: h.estimated?.loadKwh ?? null,
           };
         })}
-        line={
-          priced
+        line={[
+          ...(priced
             ? // Le coût d'un kWh de plus ne concerne que les heures à venir.
-              { values: list.map((h) => (h.measured ? null : h.kwhCostEur)), color: COST_LINE }
-            : undefined
-        }
+              [{ values: list.map((h) => (h.measured ? null : h.kwhCostEur)), color: COST_LINE }]
+            : []),
+          ...(past.length > 0
+            ? [
+                // Ce qui était prévu pour les heures écoulées…
+                {
+                  values: list.map((h) => h.estimated?.loadKwh ?? null),
+                  color: FORECAST_LINE,
+                  barScale: true,
+                },
+                // … puis la prévision, en pointillés, reliée à la dernière heure écoulée.
+                {
+                  values: list.map((h, i) =>
+                    !h.measured
+                      ? h.loadKwh
+                      : list[i + 1] && !list[i + 1]?.measured
+                        ? (h.estimated?.loadKwh ?? null)
+                        : null,
+                  ),
+                  color: FORECAST_LINE,
+                  barScale: true,
+                  dashed: true,
+                },
+              ]
+            : []),
+        ]}
       />
       {past.length > 0 && (
         <p className="text-[13px] text-ink-soft tabular-nums">
