@@ -249,15 +249,15 @@ export function HeatingCostCard({ view }: { view: HeatingView }) {
           suivre mois par mois.
         </Notice>
       )}
-      <div className="flex gap-2" aria-hidden>
-        <div className="relative h-[180px] w-12 flex-none text-[13px] text-muted tabular-nums">
+      <div className="flex gap-1.5 sm:gap-2" aria-hidden>
+        <div className="relative h-[180px] w-9 flex-none text-xs sm:w-12 sm:text-[13px] text-muted tabular-nums">
           <span className="absolute top-0 right-0 -translate-y-1/2">{eur(max)}</span>
           <span className="absolute top-1/2 right-0 -translate-y-1/2">{eur(max / 2)}</span>
         </div>
         <div className="relative h-[180px] flex-1 border-b border-border-strong">
           <div className="absolute inset-x-0 top-0 border-t border-track" />
           <div className="absolute inset-x-0 top-1/2 border-t border-track" />
-          <div className="absolute inset-0 flex items-end gap-2 sm:gap-4">
+          <div className="absolute inset-0 flex items-end gap-1.5 sm:gap-4">
             {seasonMonths.map((m) => {
               const f = byKey.get(m.key);
               const h = (cents: number) => `${(cents / max) * 100}%`;
@@ -277,11 +277,11 @@ export function HeatingCostCard({ view }: { view: HeatingView }) {
                       sources.map((s, i) => (
                         <span
                           key={s.key}
+                          // Filet entre deux segments en ombre : une bordure aurait une hauteur
+                          // minimale de 2 px et décollerait de l'axe un segment de quelques centimes.
                           className={`wu-grow-y block ${s.color} ${
-                            i === sources.length - 1
-                              ? "rounded-t-[4px]"
-                              : "border-t-2 border-surface"
-                          }`}
+                            i === sources.length - 1 ? "rounded-t-[4px]" : ""
+                          } ${i > 0 && centsOf(f, s.key) > 0 ? "shadow-[0_2px_0_var(--color-surface)]" : ""}`}
                           style={{ height: h(centsOf(f, s.key)) }}
                         />
                       ))}
@@ -292,7 +292,7 @@ export function HeatingCostCard({ view }: { view: HeatingView }) {
           </div>
         </div>
       </div>
-      <ol className="flex gap-2 pl-14 sm:gap-4">
+      <ol className="flex gap-1.5 pl-[42px] sm:gap-4 sm:pl-14">
         {seasonMonths.map((m) => (
           <li
             key={m.key}
@@ -300,8 +300,11 @@ export function HeatingCostCard({ view }: { view: HeatingView }) {
               m.elapsed ? "" : "text-muted"
             }`}
           >
-            <span className="text-sm font-semibold capitalize">{shortMonth(m.key)}</span>
-            <span className="text-[13px] text-ink-soft tabular-nums">
+            <span className="text-sm font-semibold capitalize">
+              <span className="sm:hidden">{shortMonth(m.key).replace(".", "").slice(0, 3)}</span>
+              <span className="hidden sm:inline">{shortMonth(m.key)}</span>
+            </span>
+            <span className="text-xs whitespace-nowrap text-ink-soft tabular-nums sm:text-[13px]">
               {m.cents === null ? "—" : eur(m.cents)}
             </span>
             {!view.noLocation && (
@@ -316,7 +319,7 @@ export function HeatingCostCard({ view }: { view: HeatingView }) {
                     style={{ width: `${((m.dju ?? 0) / maxDju) * 100}%` }}
                   />
                 </span>
-                <span className="min-h-4 text-[13px] text-ink-soft">
+                <span className="sr-only min-h-4 text-[13px] text-ink-soft sm:not-sr-only">
                   {m.dju !== null ? coldLabel(m.tMean) : ""}
                 </span>
               </>
