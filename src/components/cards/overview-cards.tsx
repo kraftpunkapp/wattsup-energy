@@ -149,8 +149,8 @@ export function BudgetCard({ overview }: { overview: Ok }) {
             : ` · du 1er janvier au ${Number(lastDay.slice(8))} ${monthLabel(lastDay.slice(0, 7)).split(" ")[0]}`)}
       </h2>
       <div className="flex flex-wrap items-end gap-x-6 gap-y-2">
-        <p className="text-[34px] leading-none font-bold tracking-[-0.03em] tabular-nums">
-          {money(budget.totalCents)}
+        <p className="text-[44px] leading-none font-bold tracking-[-0.03em] tabular-nums">
+          {formatEurFromCents(budget.totalCents, 0)}
         </p>
         <ul className="flex min-w-48 flex-col gap-2 pb-1.5 text-sm">
           <li className="flex items-center gap-2">
@@ -346,7 +346,7 @@ function OriginShell({
 
 const Big = ({ value, label }: { value: string; label: string }) => (
   <p className="flex flex-wrap items-baseline gap-x-3">
-    <span className="text-[28px] leading-none font-bold tracking-[-0.02em] tabular-nums">
+    <span className="text-[36px] leading-none font-bold tracking-[-0.02em] tabular-nums">
       {value}
     </span>
     <span className="text-[15px] text-ink-soft">{label}</span>
