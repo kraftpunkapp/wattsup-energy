@@ -25,7 +25,7 @@ const PROFILES: { name: string; profile: Profile }[] = [
 /** Textes propres à chaque module, cherchés hors Réglages (le profil y liste tout). */
 const MARKERS: Record<keyof Profile, { path: string; text: RegExp }[]> = {
   solar: [
-    { path: "/", text: /Production solaire|Production et ensoleillement/ },
+    { path: "/", text: /Solaire|Production et ensoleillement/ },
     { path: "/rentabilite", text: /Installation solaire/ },
   ],
   battery: [

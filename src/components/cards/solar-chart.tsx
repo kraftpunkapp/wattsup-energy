@@ -113,7 +113,7 @@ export function SolarChart({
       </div>
       <StackedBars
         height={140}
-        ariaLabel={`Production solaire ${byMonth ? "par mois" : "par jour"}, ${periodLabel}`}
+        ariaLabel={`Solaire ${byMonth ? "par mois" : "par jour"}, ${periodLabel}`}
         previousColor="bg-solar/35"
         bars={points.map((p, i) => ({
           key: p.key,
