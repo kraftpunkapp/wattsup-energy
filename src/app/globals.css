@@ -13,6 +13,8 @@
   --color-subtle: #5e5b55;
   --color-border: #e6e2da;
   --color-border-strong: #dcd7cd;
+  /* Bordure des champs de saisie : 3:1 au moins contre le fond (WCAG 1.4.11). */
+  --color-field-border: #8a857b;
   --color-track: #eeebe4;
   --color-chip: #eeebe4;
 
@@ -80,6 +82,7 @@
   --color-subtle: #a9a59c;
   --color-border: #3a3a3e;
   --color-border-strong: #4a4a4f;
+  --color-field-border: #8a8a90;
   --color-track: #2b2b2e;
   --color-chip: #121214;
   --color-grid: #7c9cc8;
@@ -118,6 +121,7 @@
     --color-subtle: #a9a59c;
     --color-border: #3a3a3e;
     --color-border-strong: #4a4a4f;
+    --color-field-border: #8a8a90;
     --color-track: #2b2b2e;
     --color-chip: #121214;
     --color-grid: #7c9cc8;
@@ -203,6 +207,15 @@
   a:hover {
     color: var(--color-ink);
   }
+}
+
+/* Champs de saisie : bordure à 3:1 (hors @layer pour passer devant les utilitaires de bordure),
+   encre au focus. */
+:where(input, select, textarea):not([type="checkbox"], [type="radio"], [type="range"]) {
+  border-color: var(--color-field-border);
+}
+:where(input, select, textarea):focus {
+  border-color: var(--color-ink);
 }
 
 /* Mouvement léger : apparition des blocs, croissance des barres. Neutralisé par
