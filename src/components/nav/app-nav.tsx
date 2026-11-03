@@ -1,15 +1,16 @@
 "use client";
 
-import Image from "next/image";
 import Link, { useLinkStatus } from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
+import { Logo } from "@/components/logo";
 import { Icon } from "@/components/ui";
 import { useNavigationWake } from "@/components/use-navigation-wake";
 import type { NavId, NavItem } from "@/domain/profile";
 import { HaStatus } from "./ha-status";
 import { NavIcon } from "./icons";
 import { AccountMenu } from "./account-menu";
+import { MoreMenu } from "./more-menu";
 import { VersionLine } from "./version-line";
 
 interface Props {
@@ -40,7 +41,7 @@ function PendingIcon({ children }: { children: React.ReactNode }) {
 /** Pastille d'alerte sur une entrée de menu (détail dans « À surveiller »). */
 function AlertDot({ className }: { className: string }) {
   return (
-    <span className={`size-2 flex-none rounded-full bg-pellet ${className}`}>
+    <span className={`size-2 flex-none rounded-full ring-2 ring-current ${className}`}>
       <span className="sr-only">(alerte)</span>
     </span>
   );
@@ -118,15 +119,8 @@ export function AppNav({
     <>
       {/* Desktop : barre latérale sombre (≥ 1024 px) */}
       <aside className="sticky top-0 hidden h-dvh w-[232px] flex-none flex-col border-r border-panel-edge bg-panel px-4 py-6 text-panel-ink lg:flex">
-        <div className="flex items-center gap-2.5 px-2 pb-7">
-          <Image src="/wattsup.svg" alt="" width={30} height={30} priority />
-          <span className="text-[17px] font-bold tracking-tight">
-            {/* Logotype : exempté de contraste (WCAG 1.4.3), lu comme un seul nom. */}
-            <span aria-hidden>
-              WattsUp<span className="text-solar"> Energy</span>
-            </span>
-            <span className="sr-only">WattsUp Energy</span>
-          </span>
+        <div className="px-2 pb-7">
+          <Logo onDark />
         </div>
         <nav className="flex flex-col gap-0.5" aria-label="Navigation principale">
           {items.map((n) => {
@@ -137,8 +131,8 @@ export function AppNav({
                 href={n.href}
                 aria-current={active ? "page" : undefined}
                 onClick={() => setClicked(n.href)}
-                className={`flex items-center gap-3 rounded-[9px] px-3 py-2.5 text-sm font-medium no-underline hover:bg-panel-ink/[0.08] ${
-                  active ? "bg-panel-ink/[0.12] text-panel-ink" : "text-panel-muted"
+                className={`flex min-h-11 items-center gap-3 rounded-control px-3 text-sm font-medium no-underline hover:bg-panel-active/70 hover:text-panel-ink ${
+                  active ? "bg-panel-active font-semibold text-panel-ink" : "text-panel-soft"
                 }`}
               >
                 <PendingIcon>
@@ -168,10 +162,7 @@ export function AppNav({
 
       {/* Mobile : en-tête */}
       <header className="flex items-center justify-between bg-bg px-4 pt-4 pb-3 lg:hidden">
-        <div className="flex items-center gap-2">
-          <Image src="/wattsup.svg" alt="" width={28} height={28} priority />
-          <span className="text-base font-bold">WattsUp</span>
-        </div>
+        <Logo size={28} />
         <div className="flex items-center gap-2">
           <HaStatus {...ingest} compact />
           <AccountMenu
@@ -187,7 +178,7 @@ export function AppNav({
       {/* Mobile : barre d'onglets */}
       <nav
         aria-label="Navigation principale"
-        className="fixed inset-x-0 bottom-0 z-10 flex border-t border-border bg-surface px-1.5 pt-1.5 pb-[max(6px,env(safe-area-inset-bottom))] lg:hidden"
+        className="fixed inset-x-0 bottom-0 z-10 flex border-t border-border bg-surface px-2 pt-1.5 pb-[max(6px,env(safe-area-inset-bottom))] lg:hidden"
       >
         {items
           .filter((n) => n.mobile !== false)
@@ -199,8 +190,8 @@ export function AppNav({
                 href={n.href}
                 aria-current={active ? "page" : undefined}
                 onClick={() => setClicked(n.href)}
-                className={`flex min-h-[52px] flex-1 flex-col items-center justify-center gap-1 no-underline ${
-                  active ? "text-ink" : "text-subtle"
+                className={`flex min-h-[56px] flex-1 flex-col items-center justify-center gap-1 rounded-control no-underline ${
+                  active ? "bg-track text-ink" : "text-muted"
                 }`}
               >
                 <span className="relative">
@@ -215,6 +206,11 @@ export function AppNav({
               </Link>
             );
           })}
+        <MoreMenu
+          items={items.filter((n) => n.mobile === false)}
+          pathname={pathname}
+          alertNav={alertNav}
+        />
       </nav>
     </>
   );

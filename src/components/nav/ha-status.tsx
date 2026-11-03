@@ -47,7 +47,12 @@ export function HaStatus({ lastPushAt, granularity, renderedAt, compact }: Props
 
   const last = pushedAt ? Date.parse(pushedAt) : null;
   const state = pushState(last, now, granularity);
-  const dot = { never: "bg-subtle", stale: "bg-pellet", ok: "bg-battery" }[state];
+  // Connecté : plein ; silencieux ou en attente : anneau creux (l'état est aussi écrit).
+  const dot = {
+    never: "border border-current",
+    stale: "border border-current",
+    ok: "bg-status-ok",
+  }[state];
   const since = last === null ? "" : formatAgo(now - last);
 
   if (compact) {
@@ -69,7 +74,7 @@ export function HaStatus({ lastPushAt, granularity, renderedAt, compact }: Props
             : "Home Assistant connecté"}
       </div>
       <div className="text-[11px] text-panel-muted tabular-nums">
-        {state === "never" ? "En attente du premier push" : `Dernier push ${since}`}
+        {state === "never" ? "En attente du premier envoi" : `Dernier envoi ${since}`}
       </div>
     </div>
   );

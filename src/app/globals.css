@@ -40,6 +40,8 @@
   --color-panel-muted: #a9adb8;
   --color-panel-soft: #cfcbc3;
   --color-panel-positive: #3fbf86;
+  /* Pastille « Home Assistant connecté » (plein ; l'état est aussi écrit). */
+  --color-status-ok: #3fbf86;
   --color-panel-negative: #f2f0eb;
   --color-neutral-bar: #8a857b;
   /* Pointillés des emplacements vides, jour Tempo blanc, interrupteur éteint. */
