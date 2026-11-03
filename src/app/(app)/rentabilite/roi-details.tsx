@@ -149,11 +149,9 @@ export function RoiDetails({ roi, view }: { roi: EquipmentRoi; view: RoiView }) 
       )}
 
       {hasBreakdown && (
-        <details className="text-sm">
-          <summary className="inline-flex min-h-11 cursor-pointer items-center font-semibold">
-            D&apos;où viennent ces économies
-          </summary>
-          <ul className="flex flex-col gap-1.5 pb-1 text-[13px]">
+        <div className="flex flex-col gap-2.5 border-t border-track pt-4 text-sm">
+          <h3 className="wu-label">D&apos;où viennent ces économies</h3>
+          <ul className="flex flex-col gap-1.5 text-[13px]">
             {lines.map((l) => (
               <li key={l.label} className="flex justify-between gap-2">
                 <span className="text-ink-soft">{l.label}</span>
@@ -162,11 +160,9 @@ export function RoiDetails({ roi, view }: { roi: EquipmentRoi; view: RoiView }) 
             ))}
           </ul>
           {!solar && view.settings.batteryGridCharging && (
-            <p className="pt-1 text-xs text-muted">
-              Charge depuis le réseau incluse dans le calcul.
-            </p>
+            <p className="text-xs text-muted">Charge depuis le réseau incluse dans le calcul.</p>
           )}
-        </details>
+        </div>
       )}
 
       {solar &&

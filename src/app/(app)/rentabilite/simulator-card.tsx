@@ -92,7 +92,9 @@ function Choose({
     >
       <span
         aria-hidden
-        className="flex size-10 flex-none items-center justify-center rounded-control bg-track"
+        className={`flex size-10 flex-none items-center justify-center rounded-control ${
+          icon === "sun" ? "bg-solar text-on-hc" : "bg-battery text-on-fill"
+        }`}
       >
         <Icon name={icon} size={20} />
       </span>
