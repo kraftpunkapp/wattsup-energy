@@ -114,7 +114,7 @@ export function BaseloadInsight({ overview, actions }: { overview: Ok; actions?:
       id="baseload"
       icon="plug"
       tone="neutral"
-      title="Talon de consommation"
+      title="Talon de conso."
       actions={actions}
       headline={
         b.watts === null
@@ -196,7 +196,7 @@ export function SolarInsight({ overview }: { overview: Ok }) {
         solar.kwh > 0 && delta !== null && Math.abs(delta) >= 0.005 ? (
           <DeltaChip tone={delta > 0 ? "gain" : "cost"}>
             Rendement {delta > 0 ? "+" : "−"}
-            {formatPercent(Math.abs(delta))} par rapport à l&apos;an dernier
+            {formatPercent(Math.abs(delta))} vs {Number(overview.period.key.slice(0, 4)) - 1}
           </DeltaChip>
         ) : undefined
       }

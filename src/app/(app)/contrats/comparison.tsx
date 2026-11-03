@@ -1,4 +1,3 @@
-import { CoverageBadge } from "@/components/coverage-badge";
 import { EmptyState } from "@/components/empty-state";
 import { Notice } from "@/components/ui";
 import { isOldGrid, marketContractName } from "@/domain/market/offer";
@@ -99,7 +98,6 @@ export function comparisonExtras(comparison: Ok) {
           partial: comparison.periodDays < 365,
         }
       : null,
-    coverage: <CoverageBadge ratio={comparison.coverage} granularity={comparison.granularity} />,
   };
 }
 

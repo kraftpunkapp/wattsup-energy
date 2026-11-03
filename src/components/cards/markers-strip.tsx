@@ -1,7 +1,7 @@
 "use client";
 
 import { callAction } from "@/lib/action";
-import { useState, useTransition } from "react";
+import { useState, useTransition, type ReactNode } from "react";
 import { Badge, button, Icon, type IconName } from "@/components/ui";
 import { useConfirm } from "@/components/ui/confirm";
 import {
@@ -143,11 +143,14 @@ export function MarkersStrip({
   markers,
   period,
   today,
+  lead,
 }: {
   /** Repères de l'année (saisis et automatiques). */
   markers: Marker[];
   period: Period;
   today: string;
+  /** Mobile : puce de statut des données, à gauche de « + Repère » (une seule ligne). */
+  lead?: ReactNode;
 }) {
   const shown = markersBetween(markers, period.from, period.to);
   const [open, setOpen] = useState(false);
@@ -164,11 +167,12 @@ export function MarkersStrip({
   return (
     <section aria-label="Repères" className="flex flex-col gap-2">
       <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[13px]">
+        {lead && <span className="sm:hidden">{lead}</span>}
         {editing === null && (
           <button
             type="button"
             onClick={() => setEditing("new")}
-            className="flex min-h-11 flex-none items-center gap-1.5 rounded-control border border-border-strong bg-surface px-3.5 text-[13px] font-semibold text-ink hover:bg-bg"
+            className="flex min-h-11 flex-none max-sm:ml-auto items-center gap-1.5 rounded-control border border-border-strong bg-surface px-3.5 text-[13px] font-semibold text-ink hover:bg-bg"
           >
             <Icon name="plus" size={14} />
             Repère

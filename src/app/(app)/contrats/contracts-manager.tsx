@@ -501,6 +501,7 @@ export function ContractsManager({
   today,
   paymentAnalysis,
   subtitle,
+  meta,
   diagnostic,
   beside,
   history,
@@ -513,6 +514,8 @@ export function ContractsManager({
   paymentAnalysis?: PaymentAnalysis | null;
   /** Absent (parcours d'accueil) : pas d'en-tête de page, seulement le bouton d'ajout. */
   subtitle?: string;
+  /** À côté du sous-titre : puce « Données horaires » (page serveur). */
+  meta?: ReactNode;
   /** Diagnostic sous l'en-tête (rendu par le serveur). */
   diagnostic?: ReactNode;
   /** Colonne à droite du contrat en cours : les offres les plus proches. */
@@ -550,7 +553,7 @@ export function ContractsManager({
     ) : null;
   const header =
     subtitle !== undefined ? (
-      <PageHeader title="Contrats" subtitle={subtitle}>
+      <PageHeader title="Contrats" subtitle={subtitle} meta={meta}>
         {addButton}
       </PageHeader>
     ) : (

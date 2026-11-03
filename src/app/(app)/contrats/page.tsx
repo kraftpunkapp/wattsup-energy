@@ -1,3 +1,4 @@
+import { CoverageBadge } from "@/components/coverage-badge";
 import { MarketSourceNote } from "@/components/market-source-note";
 import { tempoSeasonOf } from "@/domain/tempo-calendar";
 import { addDays, eachDay, localParts } from "@/lib/time";
@@ -88,6 +89,11 @@ export default async function ContractsPage() {
       contracts={items}
       paymentAnalysis={payment?.analysis ?? null}
       subtitle={subtitle}
+      meta={
+        comparison.status === "ok" ? (
+          <CoverageBadge ratio={comparison.coverage} granularity={comparison.granularity} />
+        ) : undefined
+      }
       diagnostic={
         comparison.status === "ok" && rows.length > 0 ? (
           <ContractsDiagnostic

@@ -305,7 +305,6 @@ function NoPowerNotice() {
 export function ComparisonCard({
   rows,
   paid,
-  coverage,
   market,
   note,
 }: {
@@ -313,8 +312,6 @@ export function ComparisonCard({
   rows: ComparedRow[];
   /** Coût réellement payé sur la période ; null sans contrat souscrit. */
   paid: { annualCents: number; unknownContractDays: number; partial: boolean } | null;
-  /** Pastille de couverture des données, rendue par le serveur. */
-  coverage: ReactNode;
   market: MarketState;
   /** Mentions des offres du marché (avertissement et source), rendues par le serveur. */
   note: ReactNode;
@@ -335,7 +332,8 @@ export function ComparisonCard({
   const past = rows.filter((r) => r.origin === "past").length;
   const shown = rows.filter((r) => r.origin !== "past" || showPast);
   const max = Math.max(...shown.map((r) => r.annualCents), 1);
-  const hasCurrent = rows.some((r) => r.origin === "current");
+  const current = rows.find((r) => r.origin === "current");
+  const hasCurrent = current !== undefined;
   const rest = candidates.length - near.length;
 
   return (
@@ -362,24 +360,30 @@ export function ComparisonCard({
           Aux prix d&apos;aujourd&apos;hui, sur votre consommation des 12 derniers mois
           {hasCurrent ? " ; écart avec votre contrat actuel." : "."}
         </p>
-        {coverage}
       </div>
 
-      {paid && (
-        <div className="flex items-center justify-between gap-2 rounded-control bg-bg px-3.5 py-3">
-          <span className="flex flex-col">
-            <span className="text-sm font-semibold">
-              Payé sur {paid.partial ? "la période" : "les 12 derniers mois"}
-            </span>
-            <span className="text-xs text-muted text-pretty">
-              avec chacun de vos contrats et ses prix de l&apos;époque, jour par jour
-              {paid.unknownContractDays > 0 &&
-                ` · ${paid.unknownContractDays} j sans contrat, estimés au tarif actuel`}
-            </span>
-          </span>
-          <span className="text-sm font-semibold whitespace-nowrap tabular-nums">
-            {eur(paid.annualCents)}/an
-          </span>
+      {(paid || current) && (
+        <div className="flex flex-col gap-1.5 rounded-control bg-bg px-3.5 py-3">
+          {current && (
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-sm font-semibold">Coût attendu · {current.name}</span>
+              <span className="text-sm font-semibold whitespace-nowrap tabular-nums">
+                {eur(current.annualCents)}/an
+              </span>
+            </div>
+          )}
+          {paid && (
+            <div className="flex items-center justify-between gap-2 text-muted">
+              <span className="text-xs text-pretty">
+                Payé sur {paid.partial ? "la période" : "12 mois"}, avec vos contrats successifs
+                {paid.unknownContractDays > 0 &&
+                  ` · ${paid.unknownContractDays} j sans contrat, estimés au tarif actuel`}
+              </span>
+              <span className="text-sm whitespace-nowrap tabular-nums">
+                {eur(paid.annualCents)}/an
+              </span>
+            </div>
+          )}
         </div>
       )}
 
@@ -406,6 +410,9 @@ export function ComparisonCard({
             className="inline-flex min-h-11 items-center text-sm font-semibold"
           >
             {all ? "Revenir aux offres les plus proches" : `Voir les ${rest} autres offres`}
+            <span aria-hidden className="ml-1.5">
+              →
+            </span>
           </button>
         )}
         {all && past > 0 && (

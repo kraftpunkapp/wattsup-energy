@@ -94,12 +94,26 @@ export default async function OverviewPage({
         }
         meta={
           overview.status === "ok" && overview.coverage !== null ? (
-            <CoverageBadge ratio={overview.coverage} granularity={overview.granularity} />
+            <span className="max-sm:hidden">
+              <CoverageBadge ratio={overview.coverage} granularity={overview.granularity} />
+            </span>
           ) : undefined
         }
       >
         {overview.status === "ok" && <PeriodSwitcher overview={overview} />}
       </PageHeader>
+      {overview.status === "ok" && (
+        <MarkersStrip
+          markers={overview.markers}
+          period={overview.period}
+          today={localParts(new Date(), ctx.timezone).date}
+          lead={
+            overview.coverage !== null ? (
+              <CoverageBadge ratio={overview.coverage} granularity={overview.granularity} />
+            ) : undefined
+          }
+        />
+      )}
       <AlertsCard alerts={alerts} />
       {overview.status === "no-data" ? (
         <EmptyState title="Aucune donnée pour l'instant.">
@@ -108,11 +122,6 @@ export default async function OverviewPage({
         </EmptyState>
       ) : (
         <PeriodContent>
-          <MarkersStrip
-            markers={overview.markers}
-            period={overview.period}
-            today={localParts(new Date(), ctx.timezone).date}
-          />
           <BatteryGapNotices gaps={overview.batteryGaps} context="overview" />
           <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,380px),1fr))] items-stretch gap-4">
             <BudgetCard overview={overview} />
