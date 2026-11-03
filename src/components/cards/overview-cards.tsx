@@ -141,7 +141,7 @@ export function BudgetCard({ overview }: { overview: Ok }) {
       className="flex flex-col gap-4 rounded-card bg-panel p-6 text-panel-ink sm:p-7"
     >
       <h2 className="wu-label !text-panel-soft">
-        <span className="capitalize">{period.label}</span>
+        <span>{period.label}</span>
         {!period.complete &&
           (period.kind === "month"
             ? ` · du 1er au ${Number(lastDay.slice(8))}`
@@ -269,7 +269,7 @@ export function PeakCard({
       title="Heures pleines et heures creuses"
       actions={actions}
       badges={<Badge tone="soft">{formatPercent(peak.hc.kwh / total)} en HC</Badge>}
-      description={<span className="capitalize">{period.label}</span>}
+      description={<span>{period.label}</span>}
     >
       <div className="flex h-9 gap-[2px] overflow-hidden rounded-[8px]" aria-hidden>
         {parts
@@ -488,7 +488,7 @@ export function OriginCard({
   return (
     <OriginShell
       title="Votre consommation"
-      aside={<span className="capitalize">{period.label}</span>}
+      aside={<span>{period.label}</span>}
     >
       <Big
         value={formatKwh(total)}
@@ -684,7 +684,7 @@ export function SolarCard({ overview, flat }: { overview: Ok; flat?: boolean }) 
       flat={flat}
       icon="sun"
       title="Production et ensoleillement"
-      description={<span className="capitalize">{period.label}</span>}
+      description={<span>{period.label}</span>}
     >
       <div className={tiles}>
         <StatTile label="Production" value={formatNumber(solar.kwh)} unit="kWh" dot="bg-solar" />
