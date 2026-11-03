@@ -89,7 +89,7 @@ function HcBar({ ranges, hp, hc }: { ranges: TimeRange[]; hp: number; hc: number
   };
   return (
     <div className="flex flex-col gap-2">
-      <h3 className="text-[15px] font-bold">Votre journée tarifaire</h3>
+      <h3 className="text-sm font-bold">Votre journée tarifaire</h3>
       <div
         role="img"
         aria-label={`Heures creuses ${label} ; heures pleines le reste de la journée`}
@@ -127,7 +127,7 @@ export function GridView({ contract }: { contract: Contract }) {
       return (
         <div className="flex flex-col gap-4">
           <HcBar ranges={contract.hcRanges} hp={contract.prices.hp} hc={contract.prices.hc} />
-          <p className="text-[15px] text-ink-soft">
+          <p className="text-sm text-ink-soft">
             Abonnement :{" "}
             <strong className="text-ink tabular-nums">
               {fmtEur(contract.subscriptionEurYear / 12)} € par mois

@@ -59,7 +59,7 @@ export function ForecastCard({
       className="flex flex-col gap-5 rounded-card border border-border bg-surface p-6 sm:p-7"
     >
       <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
-        <h2 id="appro" className="text-xl font-bold">
+        <h2 id="appro" className="text-[15px] font-bold">
           Réapprovisionnement · le détail
         </h2>
         <span className="text-sm text-muted">
@@ -197,7 +197,7 @@ function CurrentSeason({
           <Icon name="check" size={20} />
         </span>
         <div className="flex flex-col gap-0.5">
-          <p className="text-lg font-bold">
+          <p className="text-base font-bold">
             {moyen.toBuy <= 0 ? "Rien à acheter" : `À acheter : ${num(buyMoyen)} ${unit}`}
           </p>
           <p className="text-sm text-ink-soft text-pretty">
@@ -223,7 +223,7 @@ function CurrentSeason({
           const main = s === "moyen";
           return (
             <div key={s} className="flex min-h-[34px] items-center gap-3">
-              <span className={`w-[84px] flex-none text-[15px] ${main ? "font-bold" : ""}`}>
+              <span className={`w-[84px] flex-none text-sm ${main ? "font-bold" : ""}`}>
                 {SCENARIO_NAMES[s]}
               </span>
               <div className="relative h-[22px] flex-1 rounded-[6px] bg-bg">
@@ -251,7 +251,7 @@ function CurrentSeason({
                 />
               </div>
               <span
-                className={`w-14 flex-none text-right text-[15px] tabular-nums ${main ? "font-bold" : "font-semibold"}`}
+                className={`w-14 flex-none text-right text-sm tabular-nums ${main ? "font-bold" : "font-semibold"}`}
               >
                 {margin >= 0 ? "+" : "−"}
                 {num(Math.abs(margin))}
@@ -314,7 +314,7 @@ function NextSeason({
           <Icon name={pellet ? "flame" : "plus"} size={20} />
         </span>
         <div className="flex flex-col gap-0.5">
-          <p className="text-lg font-bold">
+          <p className="text-base font-bold">
             {buy <= 0
               ? "Rien à acheter pour cette saison"
               : `Prévoyez ${num(buy)} ${word(buy)} ${noun}`}
@@ -329,19 +329,19 @@ function NextSeason({
       <div className="grid grid-cols-3 gap-2.5">
         <div className="flex flex-col gap-0.5 rounded-control bg-bg px-3.5 py-3">
           <span className="text-[13px] text-ink-soft">Besoin de la saison</span>
-          <strong className="text-xl tabular-nums sm:text-[22px]">
+          <strong className="text-[15px] tabular-nums sm:text-base">
             {num(needed)} {word(needed)}
           </strong>
         </div>
         <div className="flex flex-col gap-0.5 rounded-control bg-bg px-3.5 py-3">
           <span className="text-[13px] text-ink-soft">{remainingLabel}</span>
-          <strong className="text-xl tabular-nums sm:text-[22px]">
+          <strong className="text-[15px] tabular-nums sm:text-base">
             − {num(leftover)} {word(leftover)}
           </strong>
         </div>
         <div className="flex flex-col gap-0.5 rounded-control bg-pellet/15 px-3.5 py-3">
           <span className="text-[13px] text-ink">À acheter</span>
-          <strong className="text-xl tabular-nums sm:text-[22px]">
+          <strong className="text-[15px] tabular-nums sm:text-base">
             = {num(buy)} {word(buy)}
           </strong>
         </div>

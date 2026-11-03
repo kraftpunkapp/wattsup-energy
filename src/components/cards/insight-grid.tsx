@@ -44,10 +44,10 @@ export function InsightGrid({
       <div className="flex flex-col gap-4">
         <div className="flex flex-wrap items-end justify-between gap-x-6 gap-y-1">
           <div className="flex flex-col gap-0.5">
-            <h2 id="retenir" className="text-[22px] font-bold">
+            <h2 id="retenir" className="text-base font-bold">
               {title}
             </h2>
-            <p className="text-[15px] text-muted">{subtitle}</p>
+            <p className="text-sm text-muted">{subtitle}</p>
           </div>
           {monthsLabel && (
             <button
@@ -55,7 +55,7 @@ export function InsightGrid({
               aria-expanded={open === MONTHS_PANEL}
               aria-controls={`insight-${MONTHS_PANEL}`}
               onClick={() => toggle(MONTHS_PANEL)}
-              className="inline-flex min-h-11 cursor-pointer items-center gap-1.5 text-[15px] font-semibold"
+              className="inline-flex min-h-11 cursor-pointer items-center gap-1.5 text-sm font-semibold"
             >
               {monthsLabel}
               <span className={`transition-transform ${open === MONTHS_PANEL ? "rotate-90" : ""}`}>
@@ -114,7 +114,7 @@ export function InsightTile({
           </span>
           {title}
         </span>
-        <span className="text-lg leading-snug font-bold text-pretty">{headline}</span>
+        <span className="text-base leading-snug font-bold text-pretty">{headline}</span>
         {detail && <span className="text-sm text-muted text-pretty">{detail}</span>}
         {visual}
         <span className="mt-auto inline-flex items-center gap-1 pt-1 text-[13px] font-semibold">

@@ -255,10 +255,10 @@ export function HourlyDetail({
     >
       <div className="flex flex-wrap items-start justify-between gap-x-6 gap-y-3">
         <div className="flex flex-col gap-1">
-          <h2 id="heure-titre" className="text-xl font-bold">
+          <h2 id="heure-titre" className="text-[15px] font-bold">
             Le détail heure par heure
           </h2>
-          <p className="text-[15px] text-muted">{description}</p>
+          <p className="text-sm text-muted">{description}</p>
         </div>
         <ul className="flex flex-wrap gap-x-4 gap-y-2 text-[13px] text-ink-soft">
           <li className="flex items-center gap-1.5">{swatch("bg-grid")}Réseau</li>
@@ -558,7 +558,7 @@ export function HourlyDetail({
           {focus ? (
             <div className="flex flex-col gap-4 rounded-[14px] bg-bg p-[18px]">
               <div className="flex items-center justify-between gap-2">
-                <h3 className="text-xl font-bold">{hourName(focus)}</h3>
+                <h3 className="text-[15px] font-bold">{hourName(focus)}</h3>
                 <span className="rounded-full bg-track px-2.5 py-1 text-[13px] font-bold">
                   {focus.measured ? "Mesuré" : "Prévu"}
                 </span>
@@ -589,7 +589,7 @@ export function HourlyDetail({
               )}
               {!focus.measured && focus.kwhCostEur !== null && (
                 <>
-                  <p className="flex justify-between gap-3 border-t border-border pt-3 text-[15px]">
+                  <p className="flex justify-between gap-3 border-t border-border pt-3 text-sm">
                     <span className="text-ink-soft">Lancer un appareil à cette heure</span>
                     <strong className="whitespace-nowrap tabular-nums">
                       {cents(focus.kwhCostEur)} / kWh
@@ -627,7 +627,7 @@ export function HourlyDetail({
             </div>
           ) : (
             <div className="flex flex-col gap-1.5 rounded-[14px] border border-dashed border-dash p-[18px] text-ink-soft">
-              <span className="text-[15px] font-semibold text-ink">Une heure en particulier ?</span>
+              <span className="text-sm font-semibold text-ink">Une heure en particulier ?</span>
               <span className="text-sm">Touchez une barre pour son détail.</span>
             </div>
           )}
@@ -669,10 +669,10 @@ function Figure({
       </span>
       <div className="flex flex-col gap-1">
         <span className="text-sm text-ink-soft">{label}</span>
-        <span className="text-[28px] leading-none font-bold tabular-nums">{big}</span>
+        <span className="text-xl leading-none font-bold tabular-nums">{big}</span>
         {estimate !== undefined && (
           <span
-            className={`text-[15px] font-semibold tabular-nums ${
+            className={`text-sm font-semibold tabular-nums ${
               flat ? "text-ink-soft" : good ? "text-positive" : "text-ink"
             }`}
           >

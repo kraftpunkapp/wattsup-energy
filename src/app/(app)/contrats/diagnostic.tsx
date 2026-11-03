@@ -39,7 +39,7 @@ function Row({
     >
       <IconChip icon={icon} tone={tone} size="lg" />
       <div className="flex min-w-0 flex-[1_1_220px] flex-col gap-1">
-        <h2 className="text-xl font-bold text-balance">{title}</h2>
+        <h2 className="text-[15px] font-bold text-balance">{title}</h2>
         {children}
       </div>
       {aside && <div className="basis-full pl-14 sm:basis-auto sm:pl-0">{aside}</div>}
@@ -48,7 +48,7 @@ function Row({
 }
 
 const Text = ({ children }: { children: ReactNode }) => (
-  <p className="text-[15px] text-ink-soft text-pretty">{children}</p>
+  <p className="text-sm text-ink-soft text-pretty">{children}</p>
 );
 
 export function ContractsDiagnostic({
@@ -96,9 +96,9 @@ export function ContractsDiagnostic({
           last={!showPayment && !showLever}
           aside={
             (current ?? best) && (
-              <span className="flex-none text-[28px] font-bold whitespace-nowrap tabular-nums">
+              <span className="flex-none text-xl font-bold whitespace-nowrap tabular-nums">
                 {eur((current ?? (best as ComparedRow)).annualCents)}
-                <span className="text-[15px] font-medium text-ink-soft"> / an</span>
+                <span className="text-sm font-medium text-ink-soft"> / an</span>
               </span>
             )
           }
@@ -155,7 +155,7 @@ export function ContractsDiagnostic({
           </p>
           <a
             href="#contrat-en-cours"
-            className="inline-flex min-h-11 items-center gap-1.5 self-start text-[15px] font-semibold"
+            className="inline-flex min-h-11 items-center gap-1.5 self-start text-sm font-semibold"
           >
             Voir la mensualité du contrat
             <Icon name="arrowRight" size={16} />
@@ -180,7 +180,7 @@ export function ContractsDiagnostic({
           </Text>
           <Link
             href="/previsions"
-            className="inline-flex min-h-11 items-center gap-1.5 self-start text-[15px] font-semibold"
+            className="inline-flex min-h-11 items-center gap-1.5 self-start text-sm font-semibold"
           >
             Voir les créneaux de demain
             <Icon name="arrowRight" size={16} />

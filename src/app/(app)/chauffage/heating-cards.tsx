@@ -62,7 +62,7 @@ export function SeasonSwitcher({ view }: { view: HeatingView }) {
     <div className="flex flex-wrap items-center gap-3">
       <div className="flex items-center gap-1 rounded-control border border-border bg-surface p-0.5">
         {arrow(view.nav.prev, "Saison précédente", "M15 6l-6 6 6 6")}
-        <span className="min-w-36 text-center text-[15px] font-semibold">
+        <span className="min-w-36 text-center text-sm font-semibold">
           Saison {view.season.label}
         </span>
         {arrow(view.nav.next, "Saison suivante", "M9 6l6 6-6 6")}
@@ -196,10 +196,10 @@ export function HeatingCostCard({ view }: { view: HeatingView }) {
     >
       <div className="flex flex-wrap items-start justify-between gap-x-6 gap-y-3">
         <div className="flex max-w-xl flex-col gap-1">
-          <h2 id="cout-mois" className="text-xl font-bold">
+          <h2 id="cout-mois" className="text-[15px] font-bold">
             Coût de chauffe par mois
           </h2>
-          <p className="text-[15px] text-muted text-pretty first-letter:uppercase">
+          <p className="text-sm text-muted text-pretty first-letter:uppercase">
             {tracked.length > 0 ? `${list(tracked)}${missingWood}` : "Chauffage"}
             {hasPrevious ? ", cette saison face à la précédente" : ""}.
             {!view.noLocation &&

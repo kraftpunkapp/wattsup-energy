@@ -85,7 +85,7 @@ export function AdviceCard({
               <Icon name="moon" size={20} />
             </span>
             <div className="flex flex-col gap-0.5">
-              <h2 className="text-[17px] font-bold">
+              <h2 className="text-[15px] font-bold">
                 Demain : les bons créneaux pour vos appareils
               </h2>
               {saving >= SAVING_MIN_EUR && (
@@ -110,7 +110,7 @@ export function AdviceCard({
           <div className="ml-auto flex items-center gap-2">
             <Link
               href="/previsions"
-              className="inline-flex min-h-11 items-center gap-1.5 text-[15px] font-semibold"
+              className="inline-flex min-h-11 items-center gap-1.5 text-sm font-semibold"
             >
               Prévisions
               <Icon name="arrowRight" size={16} />

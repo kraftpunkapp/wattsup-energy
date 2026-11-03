@@ -110,7 +110,7 @@ function CreateForm({
   const { errors, pending, submit } = useSubmit(onDone);
   return (
     <section className={card}>
-      <h2 className="text-[15px] font-semibold">Nouveau contrat</h2>
+      <h2 className="text-sm font-semibold">Nouveau contrat</h2>
       <label className={labelClass}>
         Nom
         <input value={name} onChange={(e) => setName(e.target.value)} className={inputClass} />
@@ -137,7 +137,7 @@ function IdentityForm({ item, onDone }: { item: ContractItem; onDone: () => void
   const { errors, pending, submit } = useSubmit(onDone);
   return (
     <section className={card}>
-      <h2 className="text-[15px] font-semibold">Nom et dates · {item.name}</h2>
+      <h2 className="text-sm font-semibold">Nom et dates · {item.name}</h2>
       <label className={labelClass}>
         Nom
         <input value={name} onChange={(e) => setName(e.target.value)} className={inputClass} />
@@ -167,7 +167,7 @@ function PeriodForm({
   const { errors, pending, submit } = useSubmit(onDone);
   return (
     <section className={card}>
-      <h2 className="text-[15px] font-semibold">
+      <h2 className="text-sm font-semibold">
         {period.id ? "Modifier les prix" : "Nouveaux prix"} · {item.name}
       </h2>
       {item.status === "subscribed" && (
@@ -520,7 +520,7 @@ export function ContractsManager({
       <button
         type="button"
         onClick={() => setEditing({ mode: "presets" })}
-        className="inline-flex min-h-11 items-center gap-2 rounded-control border border-border-strong bg-surface px-4 text-[15px] font-semibold hover:bg-bg"
+        className="inline-flex min-h-11 items-center gap-2 rounded-control border border-border-strong bg-surface px-4 text-sm font-semibold hover:bg-bg"
       >
         <Icon name="plus" size={16} />
         Ajouter un contrat
@@ -593,7 +593,7 @@ export function ContractsManager({
       <Errors errors={errors} />
       {editing?.mode === "presets" && (
         <section className="flex flex-col gap-3 rounded-card border border-border bg-surface p-5">
-          <h2 className="text-[15px] font-semibold">Partir d&apos;une offre de référence</h2>
+          <h2 className="text-sm font-semibold">Partir d&apos;une offre de référence</h2>
           <p className="text-xs text-subtle">
             Grilles TTC indicatives (9 kVA) : vérifiez les prix sur votre facture ou chez votre
             fournisseur avant d&apos;enregistrer.
@@ -640,7 +640,7 @@ export function ContractsManager({
       {extra}
       {otherCount > 0 && (
         <details className="group">
-          <summary className="inline-flex min-h-11 cursor-pointer list-none items-center gap-2 text-[15px] font-semibold [&::-webkit-details-marker]:hidden">
+          <summary className="inline-flex min-h-11 cursor-pointer list-none items-center gap-2 text-sm font-semibold [&::-webkit-details-marker]:hidden">
             Gérer mes autres contrats et offres à comparer ({otherCount})
             <span className="transition-transform group-open:rotate-90">
               <Icon name="chevron" size={14} />

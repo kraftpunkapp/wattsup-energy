@@ -54,7 +54,7 @@ export interface RefillSummary {
 const UNDO_SECONDS = 10;
 
 const inputClass =
-  "h-11 w-full rounded-[8px] border border-border-strong bg-surface px-3 text-[15px] outline-none focus:border-ink focus-visible:ring-2 focus-visible:ring-accent/30 tabular-nums";
+  "h-11 w-full rounded-[8px] border border-border-strong bg-surface px-3 text-sm outline-none focus:border-ink focus-visible:ring-2 focus-visible:ring-accent/30 tabular-nums";
 const labelClass = "flex flex-col gap-1.5 text-xs text-muted";
 
 const todayIso = () => new Date().toISOString().slice(0, 10);
@@ -175,7 +175,7 @@ function StockForm({ fuel, initial, onDone }: { fuel: Fuel; initial: number; onD
       else setErrors(res.errors);
     });
   const stepper =
-    "flex size-11 flex-none items-center justify-center rounded-[8px] border border-border-strong text-lg hover:bg-surface disabled:opacity-40";
+    "flex size-11 flex-none items-center justify-center rounded-[8px] border border-border-strong text-base hover:bg-surface disabled:opacity-40";
   return (
     <div className="flex flex-col gap-3 rounded-control bg-bg p-3">
       <h3 className="text-sm font-semibold">Corriger le stock</h3>
@@ -198,7 +198,7 @@ function StockForm({ fuel, initial, onDone }: { fuel: Fuel; initial: number; onD
             value={text}
             onChange={(e) => setText(e.target.value)}
             aria-label={`${UNIT_NAMES[unit]} restants`}
-            className="w-full rounded-[6px] bg-transparent text-center text-2xl font-semibold outline-none tabular-nums focus-visible:ring-2 focus-visible:ring-accent/30"
+            className="w-full rounded-[6px] bg-transparent text-center text-xl font-semibold outline-none tabular-nums focus-visible:ring-2 focus-visible:ring-accent/30"
           />
           <span className="text-[11px] text-subtle">{UNIT_NAMES[unit]} restants</span>
         </label>
@@ -296,7 +296,7 @@ export function FuelCard({ summary }: { summary: FuelSummary }) {
   const gaugeMax = Math.max(palette, Math.ceil(shown), refill?.need ?? 0);
   const box = "flex flex-col gap-1 rounded-[14px] bg-bg p-4";
   const action =
-    "inline-flex min-h-14 items-center justify-center gap-2 rounded-xl border border-border-strong bg-surface px-4.5 text-[15px] font-semibold hover:bg-bg disabled:opacity-60";
+    "inline-flex min-h-14 items-center justify-center gap-2 rounded-xl border border-border-strong bg-surface px-4.5 text-sm font-semibold hover:bg-bg disabled:opacity-60";
 
   return (
     <section
@@ -307,7 +307,7 @@ export function FuelCard({ summary }: { summary: FuelSummary }) {
     >
       <div className="flex min-w-0 flex-[1.2_1_420px] flex-col gap-[18px]">
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <h2 id={`fuel-${fuel}`} className="flex items-center gap-2.5 text-xl font-bold">
+          <h2 id={`fuel-${fuel}`} className="flex items-center gap-2.5 text-[15px] font-bold">
             <span
               aria-hidden
               className={`flex size-9 flex-none items-center justify-center rounded-[10px] ${
@@ -336,13 +336,13 @@ export function FuelCard({ summary }: { summary: FuelSummary }) {
           )}
         </div>
         <div className="flex flex-wrap items-end gap-x-6 gap-y-2">
-          <p className="text-[64px] leading-[0.95] font-bold tracking-[-0.03em] tabular-nums sm:text-[72px]">
+          <p className="text-[34px] leading-none font-bold tracking-[-0.03em] tabular-nums">
             <span>{formatNumber(shown, pellet ? 0 : 1)}</span>{" "}
-            <span className="text-[26px] font-semibold tracking-normal">
+            <span className="text-xl font-semibold tracking-normal">
               {pellet ? "sacs" : "stères"}
             </span>
           </p>
-          <p className="pb-2 text-[15px] text-ink-soft">
+          <p className="pb-2 text-sm text-ink-soft">
             {pellet ? `${formatNumber(stock)} kg en stock · ` : ""}stock = dernier relevé + achats −
             consommations saisies
           </p>
@@ -413,7 +413,7 @@ export function FuelCard({ summary }: { summary: FuelSummary }) {
                 (id) => id && setUndo({ id, label: pellet ? "1 sac versé" : "½ stère utilisé" }),
               )
             }
-            className="inline-flex min-h-14 flex-[1_1_220px] items-center justify-center gap-2.5 rounded-xl bg-ink px-5 text-[17px] font-semibold text-bg disabled:opacity-60"
+            className="inline-flex min-h-14 flex-[1_1_220px] items-center justify-center gap-2.5 rounded-xl bg-ink px-5 text-[15px] font-semibold text-bg disabled:opacity-60"
           >
             <Icon name="download" size={20} />
             {pellet ? "J'ai versé un sac" : "J'ai brûlé ½ stère"}
@@ -441,7 +441,7 @@ export function FuelCard({ summary }: { summary: FuelSummary }) {
             <span className="text-[13px] font-bold text-ink-soft">
               D&apos;ici {refill.currentEnd ?? "la fin de saison"} · estimation
             </span>
-            <span className="text-lg font-bold tabular-nums">
+            <span className="text-base font-bold tabular-nums">
               ≈ {formatNumber(refill.need)} sacs nécessaires pour un hiver moyen
             </span>
             <span className="text-sm text-ink-soft text-pretty">
@@ -457,7 +457,7 @@ export function FuelCard({ summary }: { summary: FuelSummary }) {
         {refill && refill.perDay !== null && refill.perDay > 0 && (
           <div className={box}>
             <span className="text-[13px] font-bold text-ink-soft">Au rythme actuel · mesuré</span>
-            <span className="text-lg font-bold tabular-nums">
+            <span className="text-base font-bold tabular-nums">
               {refill.perDay >= 1
                 ? `≈ ${formatNumber(refill.perDay, 1)} sacs par jour`
                 : `≈ 1 sac tous les ${formatNumber(Math.round(1 / refill.perDay))} jours`}
@@ -469,7 +469,7 @@ export function FuelCard({ summary }: { summary: FuelSummary }) {
         )}
         <div className={box}>
           <span className="text-[13px] font-bold text-ink-soft">Prix moyen payé</span>
-          <span className="text-lg font-bold tabular-nums">
+          <span className="text-base font-bold tabular-nums">
             {avgPrice === null
               ? "—"
               : `${formatNumber(pellet ? avgPrice * bagKg : avgPrice, 2)} ${pellet ? "€/sac" : "€/stère"}`}
@@ -487,7 +487,7 @@ export function FuelCard({ summary }: { summary: FuelSummary }) {
               <Icon name="layout" size={20} />
             </span>
             <div className="flex flex-col gap-0.5">
-              <span className="text-base font-bold">
+              <span className="text-[15px] font-bold">
                 Prochain achat : saison {refill.nextLabel}
               </span>
               <span className="text-sm text-ink-soft">

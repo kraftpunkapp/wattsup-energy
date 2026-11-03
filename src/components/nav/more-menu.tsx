@@ -55,13 +55,7 @@ export function MoreMenu({
           open || current ? "bg-track text-ink" : "text-muted"
         }`}
       >
-        <svg
-          width={22}
-          height={22}
-          viewBox="0 0 24 24"
-          fill="currentColor"
-          aria-hidden
-        >
+        <svg width={22} height={22} viewBox="0 0 24 24" fill="currentColor" aria-hidden>
           <circle cx="5" cy="12" r="1.8" />
           <circle cx="12" cy="12" r="1.8" />
           <circle cx="19" cy="12" r="1.8" />

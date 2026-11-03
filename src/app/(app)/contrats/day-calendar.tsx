@@ -70,7 +70,7 @@ export function DayCalendar<V extends string>({
   return (
     <section className="flex flex-col gap-3 rounded-card border border-border bg-surface p-5">
       <div className="flex flex-wrap items-baseline justify-between gap-2">
-        <h2 className="text-[15px] font-semibold">{title}</h2>
+        <h2 className="text-sm font-semibold">{title}</h2>
         <span className="text-[11px] text-subtle tabular-nums">{summary}</span>
       </div>
       {/* Pas de 24 px entre les cases : cible tactile suffisante sans agrandir les carrés. */}

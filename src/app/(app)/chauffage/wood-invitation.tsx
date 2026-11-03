@@ -22,7 +22,7 @@ export function WoodInvitation() {
       <span aria-hidden className="text-muted">
         <Icon name="flame" size={18} />
       </span>
-      <p className="flex-1 basis-60 text-[15px] font-semibold">Vous chauffez aussi au bois ?</p>
+      <p className="flex-1 basis-60 text-sm font-semibold">Vous chauffez aussi au bois ?</p>
       <Link href={settingsHref("profil")} className={`${button.secondary} no-underline`}>
         Suivre le bois
       </Link>

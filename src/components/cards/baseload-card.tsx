@@ -42,7 +42,7 @@ export function BaseloadCard({
       ) : (
         <div className="flex flex-col gap-1">
           <p className="flex flex-wrap items-baseline gap-x-2">
-            <span className="text-[32px] leading-none font-semibold tracking-tight tabular-nums">
+            <span className="text-2xl leading-none font-semibold tracking-tight tabular-nums">
               {formatNumber(b.watts)} W
             </span>
             <span className="text-[13px] text-muted">en permanence · {period.label}</span>

@@ -90,7 +90,7 @@ export function PeriodSwitcher({ overview }: { overview: Ok }) {
       </div>
       <div className="flex items-center gap-1 rounded-control border border-border bg-surface p-0.5">
         {arrow(nav.prev, "Période précédente", "M15 6l-6 6 6 6")}
-        <span className="min-w-24 text-center text-[15px] font-semibold capitalize">
+        <span className="min-w-24 text-center text-sm font-semibold capitalize">
           {period.label}
         </span>
         {arrow(nav.next, "Période suivante", "M9 6l6 6-6 6")}
@@ -137,7 +137,7 @@ export function BudgetCard({ overview }: { overview: Ok }) {
       aria-label={`Budget · ${period.label}`}
       className="flex flex-col gap-4 rounded-card bg-panel p-6 text-panel-ink sm:p-7"
     >
-      <h2 className="text-[15px] font-normal text-panel-soft">
+      <h2 className="text-sm font-normal text-panel-soft">
         <span className="capitalize">{period.label}</span>
         {!period.complete &&
           (period.kind === "month"
@@ -145,10 +145,10 @@ export function BudgetCard({ overview }: { overview: Ok }) {
             : ` · du 1er janvier au ${Number(lastDay.slice(8))} ${monthLabel(lastDay.slice(0, 7)).split(" ")[0]}`)}
       </h2>
       <div className="flex flex-wrap items-end gap-x-6 gap-y-2">
-        <p className="text-[64px] leading-[0.95] font-bold tracking-[-0.04em] tabular-nums sm:text-[88px]">
+        <p className="text-[34px] leading-none font-bold tracking-[-0.03em] tabular-nums">
           {eur(budget.totalCents)}
         </p>
-        <ul className="flex min-w-48 flex-col gap-2 pb-1.5 text-[15px]">
+        <ul className="flex min-w-48 flex-col gap-2 pb-1.5 text-sm">
           <li className="flex items-center gap-2">
             <span
               aria-hidden
@@ -170,7 +170,7 @@ export function BudgetCard({ overview }: { overview: Ok }) {
             less ? "bg-panel-gain text-panel-ink" : "bg-panel-active text-panel-ink"
           }`}
         >
-          <span aria-hidden className="text-base leading-none font-bold">
+          <span aria-hidden className="text-[15px] leading-none font-bold">
             {less ? "↓" : "↑"}
           </span>
           <span>
@@ -329,7 +329,7 @@ function OriginShell({
   return (
     <section className="flex flex-col gap-4 rounded-card border border-border bg-surface p-6 sm:p-7">
       <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
-        <h2 className="text-xl font-bold">{title}</h2>
+        <h2 className="text-[15px] font-bold">{title}</h2>
         <span className="text-sm text-muted tabular-nums">{aside}</span>
       </div>
       {children}
@@ -339,10 +339,10 @@ function OriginShell({
 
 const Big = ({ value, label }: { value: string; label: string }) => (
   <p className="flex flex-wrap items-baseline gap-x-3">
-    <span className="text-[52px] leading-none font-bold tracking-[-0.02em] tabular-nums">
+    <span className="text-[28px] leading-none font-bold tracking-[-0.02em] tabular-nums">
       {value}
     </span>
-    <span className="text-base text-ink-soft">{label}</span>
+    <span className="text-[15px] text-ink-soft">{label}</span>
   </p>
 );
 
@@ -416,7 +416,7 @@ export function OriginCard({
           {solar && !battery && b.gridExport > 0 && (
             <Link
               href="/rentabilite"
-              className="inline-flex min-h-11 items-center gap-1.5 text-[15px] font-semibold"
+              className="inline-flex min-h-11 items-center gap-1.5 text-sm font-semibold"
             >
               Que rapporterait une batterie ? Simuler
               <Icon name="arrowRight" size={16} />
@@ -502,7 +502,7 @@ export function OriginCard({
       )}
       <Link
         href="/contrats"
-        className="mt-auto inline-flex min-h-11 items-center gap-1.5 text-[15px] font-semibold"
+        className="mt-auto inline-flex min-h-11 items-center gap-1.5 text-sm font-semibold"
       >
         Comparer les offres
         <Icon name="arrowRight" size={16} />

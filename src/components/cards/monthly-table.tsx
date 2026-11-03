@@ -142,7 +142,7 @@ export function MonthlyTable({
   return (
     <section className="rounded-card border border-border bg-surface">
       <div className="flex flex-col gap-1 p-4 sm:p-5">
-        <h3 className="text-[15px] font-semibold">Détail mois par mois · {year}</h3>
+        <h3 className="text-sm font-semibold">Détail mois par mois · {year}</h3>
         <p className="text-xs text-muted text-pretty">
           Électricité, budget{solar ? " et solaire" : ""} de chaque mois, comparés au même mois de{" "}
           {Number(year) - 1}. Touchez un mois pour voir l&apos;année précédente.

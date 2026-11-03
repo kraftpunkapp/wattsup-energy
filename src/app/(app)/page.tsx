@@ -200,7 +200,7 @@ export default async function OverviewPage({
           <div className="flex justify-center">
             <Link
               href={settingsHref("vue-ensemble")}
-              className="inline-flex min-h-11 items-center gap-2 rounded-control border border-border-strong bg-surface px-4.5 text-[15px] font-semibold hover:bg-bg"
+              className="inline-flex min-h-11 items-center gap-2 rounded-control border border-border-strong bg-surface px-4.5 text-sm font-semibold hover:bg-bg"
             >
               <Icon name="layout" size={18} />
               Personnaliser cette vue

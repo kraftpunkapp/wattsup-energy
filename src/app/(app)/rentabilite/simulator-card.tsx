@@ -99,7 +99,7 @@ function Choose({
         <Icon name={icon} size={20} />
       </span>
       <span className="flex flex-col">
-        <strong className="text-base">{title}</strong>
+        <strong className="text-[15px]">{title}</strong>
         <span className="text-[13px] text-ink-soft">{text}</span>
       </span>
       {on && (
@@ -185,17 +185,17 @@ export function SimulatorCard({
       className="flex flex-col gap-5 rounded-card border border-border bg-surface p-6 sm:p-7"
     >
       <div className="flex flex-col gap-1">
-        <h2 id="sim-titre" className="text-xl font-bold">
+        <h2 id="sim-titre" className="text-[15px] font-bold">
           Et si vous investissiez davantage ?
         </h2>
-        <p className="text-[15px] text-muted text-pretty">
+        <p className="text-sm text-muted text-pretty">
           Vos 12 derniers mois rejoués heure par heure avec du matériel en plus, au prix de votre
           contrat actuel.
         </p>
       </div>
 
       <div className="flex flex-col gap-2">
-        <h3 className="text-[15px] font-bold">1 · Quel équipement ?</h3>
+        <h3 className="text-sm font-bold">1 · Quel équipement ?</h3>
         <div className="flex flex-wrap gap-3">
           <Choose
             icon="bolt"
@@ -221,10 +221,10 @@ export function SimulatorCard({
 
       <div className="flex flex-col gap-2">
         <div className="flex items-baseline justify-between gap-3">
-          <h3 className="text-[15px] font-bold">
+          <h3 className="text-sm font-bold">
             <label htmlFor="sim-size">2 · Quelle taille ?</label>
           </h3>
-          <output htmlFor="sim-size" className="text-lg font-bold tabular-nums">
+          <output htmlFor="sim-size" className="text-base font-bold tabular-nums">
             {formatNumber(size[choice], 1)} {o.unit}
           </output>
         </div>
@@ -249,7 +249,7 @@ export function SimulatorCard({
       </div>
 
       <div className="flex flex-col gap-2">
-        <h3 className="text-[15px] font-bold">
+        <h3 className="text-sm font-bold">
           <label htmlFor="sim-price">3 · Pour quel prix, pose comprise ?</label>
         </h3>
         <div className="flex max-w-xs items-center gap-2">
@@ -258,7 +258,7 @@ export function SimulatorCard({
             inputMode="decimal"
             value={price}
             onChange={(e) => setTyped({ ...typed, [choice]: e.target.value })}
-            className="h-11 w-full rounded-control border border-border-strong bg-surface px-3 text-[15px] tabular-nums outline-none focus:border-ink focus-visible:ring-2 focus-visible:ring-accent/30"
+            className="h-11 w-full rounded-control border border-border-strong bg-surface px-3 text-sm tabular-nums outline-none focus:border-ink focus-visible:ring-2 focus-visible:ring-accent/30"
           />
           <span aria-hidden className="text-ink-soft">
             €
@@ -291,7 +291,7 @@ export function SimulatorCard({
         <div role="status" className="flex flex-col gap-4 border-t border-track pt-5">
           <div className="flex flex-wrap items-center gap-3">
             <Badge tone={verdict.tone}>{verdict.label}</Badge>
-            <p className="text-lg font-bold text-pretty">
+            <p className="text-base font-bold text-pretty">
               {ok.paybackYears !== null
                 ? `Amorti en ≈ ${formatNumber(ok.paybackYears, ok.paybackYears < 10 ? 1 : 0)} ans, pour une durée de vie de ${life.life}`
                 : ok.costEur > 0
@@ -302,7 +302,7 @@ export function SimulatorCard({
           <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,220px),1fr))] gap-3">
             <div className="flex flex-col gap-0.5 rounded-control bg-bg px-4 py-3">
               <span className="text-sm text-ink-soft">Économie par an</span>
-              <strong className="text-[28px] leading-tight tabular-nums">
+              <strong className="text-xl leading-tight tabular-nums">
                 {ok.annual.savingsCents > 0 ? "≈ " : ""}
                 {formatEurFromCents(ok.annual.savingsCents, 0)}
               </strong>
@@ -312,7 +312,7 @@ export function SimulatorCard({
             </div>
             <div className="flex flex-col gap-0.5 rounded-control bg-bg px-4 py-3">
               <span className="text-sm text-ink-soft">Amortissement simple</span>
-              <strong className="text-[28px] leading-tight tabular-nums">
+              <strong className="text-xl leading-tight tabular-nums">
                 {ok.paybackYears !== null
                   ? `${formatNumber(ok.paybackYears, ok.paybackYears < 10 ? 1 : 0)} ans`
                   : "—"}

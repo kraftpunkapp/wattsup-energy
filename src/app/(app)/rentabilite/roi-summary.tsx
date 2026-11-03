@@ -30,10 +30,10 @@ export function RoiSummary({ view }: { view: RoiView }) {
     >
       <div className="flex min-w-0 flex-[2_1_420px] flex-col gap-3">
         <p className="flex flex-wrap items-baseline gap-x-3.5 gap-y-1">
-          <span className="text-[44px] leading-none font-bold tracking-[-0.02em] tabular-nums">
+          <span className="text-3xl leading-none font-bold tracking-[-0.02em] tabular-nums">
             {eur(saved)}
           </span>
-          <span className="text-base text-ink-soft">
+          <span className="text-[15px] text-ink-soft">
             d&apos;économies cumulées, sur {eur(invested)} investis
           </span>
         </p>
@@ -50,12 +50,12 @@ export function RoiSummary({ view }: { view: RoiView }) {
           </div>
         </div>
         {invested > saved && (
-          <p className="text-[15px] text-ink-soft">
+          <p className="text-sm text-ink-soft">
             Reste <strong className="text-ink">{eur(invested - saved)}</strong> à récupérer
           </p>
         )}
       </div>
-      <div className="flex min-w-0 flex-[1_1_280px] flex-col gap-2.5 text-[15px]">
+      <div className="flex min-w-0 flex-[1_1_280px] flex-col gap-2.5 text-sm">
         <h2 className="text-[13px] font-bold text-ink-soft">Économies actuelles</h2>
         {items.map((i) => (
           <p key={i.equipment.kind} className="flex justify-between gap-3">

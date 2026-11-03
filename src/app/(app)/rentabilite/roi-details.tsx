@@ -56,10 +56,10 @@ export function RoiDetails({ roi, view }: { roi: EquipmentRoi; view: RoiView }) 
     <div className="flex flex-col gap-4">
       <BatteryGapNotices gaps={roi.gaps} context="roi" />
       <p className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
-        <span className="text-4xl leading-none font-bold tabular-nums">
+        <span className="text-3xl leading-none font-bold tabular-nums">
           {eur(payback.cumulativeCents)}
         </span>
-        <span className="text-[15px] text-ink-soft">
+        <span className="text-sm text-ink-soft">
           économisés
           {costCents > payback.cumulativeCents &&
             ` · reste ${eur(costCents - payback.cumulativeCents)}`}
@@ -109,7 +109,7 @@ export function RoiDetails({ roi, view }: { roi: EquipmentRoi; view: RoiView }) 
               {recent.months >= 12
                 ? "Économies sur 12 mois"
                 : `Économies sur ${periodLabel(recent)}`}
-              <strong className="text-xl text-ink tabular-nums">≈ {eur(recent.cents)}</strong>
+              <strong className="text-[15px] text-ink tabular-nums">≈ {eur(recent.cents)}</strong>
               <span className="text-[13px] text-muted">
                 {monthLabel(recent.from)} → {monthLabel(recent.to)}
               </span>
@@ -118,7 +118,7 @@ export function RoiDetails({ roi, view }: { roi: EquipmentRoi; view: RoiView }) 
           {payback.status === "in-progress" && !range && paybackYear && (
             <div className="flex flex-col gap-0.5 rounded-control bg-bg px-3.5 py-3">
               Amorti vers
-              <strong className="text-xl text-ink tabular-nums">{paybackYear}</strong>
+              <strong className="text-[15px] text-ink tabular-nums">{paybackYear}</strong>
               <span className="text-[13px] text-muted">
                 estimation, à prix de l&apos;électricité constants
               </span>

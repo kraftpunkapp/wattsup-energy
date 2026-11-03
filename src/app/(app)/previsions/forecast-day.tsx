@@ -153,14 +153,14 @@ export function ForecastDay({
           aria-labelledby="achats"
           className="flex flex-col gap-4 rounded-card border border-border bg-surface p-6 sm:p-7"
         >
-          <h2 id="achats" className="text-[15px] font-semibold text-muted">
+          <h2 id="achats" className="text-sm font-semibold text-muted">
             Achats au réseau prévus demain
           </h2>
           <div className="flex flex-wrap items-baseline gap-x-5 gap-y-1">
-            <p className="text-[56px] leading-none font-bold tracking-[-0.03em] tabular-nums">
+            <p className="text-[34px] leading-none font-bold tracking-[-0.03em] tabular-nums">
               {day.costEur !== null ? `≈ ${eur(day.costEur)}` : kwh(day.importKwh)}
             </p>
-            <p className="text-base text-ink-soft tabular-nums">
+            <p className="text-[15px] text-ink-soft tabular-nums">
               {kwh(day.importKwh)} achetés
               {hasOffPeak && day.importKwh > 0
                 ? `, dont ${formatPercent(offPeakKwh / day.importKwh)} en heures creuses`
@@ -283,13 +283,10 @@ export function ForecastDay({
           aria-labelledby="verdict"
           className="flex flex-col gap-5 rounded-card border border-border bg-surface p-6 sm:p-7"
         >
-          <p className="text-[15px] font-semibold text-muted">
+          <p className="text-sm font-semibold text-muted">
             Aujourd&apos;hui, à {nowLabel} · comparé à la prévision de la veille
           </p>
-          <h2
-            id="verdict"
-            className="text-[28px] leading-tight font-bold tracking-tight text-balance"
-          >
+          <h2 id="verdict" className="text-xl leading-tight font-bold tracking-tight text-balance">
             {headline}
           </h2>
           {steps.length > 0 && (
@@ -297,13 +294,13 @@ export function ForecastDay({
               {steps.map((st) => (
                 <li key={st.label} className="flex flex-col gap-1 rounded-control bg-bg p-4">
                   <span className="text-[13px] font-semibold text-muted">{st.label}</span>
-                  <span className="text-[22px] leading-tight font-bold tabular-nums">{st.big}</span>
+                  <span className="text-base leading-tight font-bold tabular-nums">{st.big}</span>
                   <span className="text-sm text-ink-soft text-pretty">{st.line}</span>
                 </li>
               ))}
             </ol>
           )}
-          <ul className="flex flex-col gap-1.5 text-[15px] text-ink-soft">
+          <ul className="flex flex-col gap-1.5 text-sm text-ink-soft">
             {bestSlot && (
               <li>
                 <strong className="text-ink">Meilleur créneau pour vos appareils :</strong>{" "}
@@ -324,7 +321,7 @@ export function ForecastDay({
         </section>
       ) : (
         <section className="flex flex-col gap-3 rounded-card border border-border bg-surface p-6">
-          <h2 className="text-xl font-bold">Aujourd&apos;hui</h2>
+          <h2 className="text-[15px] font-bold">Aujourd&apos;hui</h2>
           <div className={tiles}>
             {solar && (
               <StatTile label="Production prévue" value={kwh(day.solarKwh)} dot="bg-solar" />

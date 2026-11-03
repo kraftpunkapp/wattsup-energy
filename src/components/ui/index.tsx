@@ -230,7 +230,7 @@ export function KpiTile({
         {label}
       </span>
       <span className="flex flex-wrap items-baseline gap-x-1.5">
-        <span className="text-[30px] leading-tight font-bold tabular-nums">{value}</span>
+        <span className="text-2xl leading-tight font-bold tabular-nums">{value}</span>
         {unit && <span className="text-lg font-semibold text-ink-soft">{unit}</span>}
       </span>
       {sub && <span className="text-[13px] text-muted tabular-nums">{sub}</span>}

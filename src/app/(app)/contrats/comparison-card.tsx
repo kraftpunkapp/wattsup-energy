@@ -225,7 +225,7 @@ function Line({ row, max }: { row: ComparedRow; max: number }) {
           {row.origin === "current" && <Badge tone="active">En cours</Badge>}
         </span>
         <span className="flex flex-none flex-col items-end">
-          <span className="text-[15px] font-semibold whitespace-nowrap tabular-nums">
+          <span className="text-sm font-semibold whitespace-nowrap tabular-nums">
             {eur(row.annualCents)}/an
           </span>
           <Delta row={row} />
@@ -257,7 +257,7 @@ function NearRow({ row }: { row: ComparedRow }) {
     <li className="flex flex-col gap-1.5 border-b border-track py-3 last:border-b-0">
       <div className="flex items-center gap-3">
         <div className="flex min-w-0 flex-1 flex-col">
-          <strong className="text-base text-pretty">{row.name}</strong>
+          <strong className="text-[15px] text-pretty">{row.name}</strong>
           <span className="text-sm text-muted text-pretty">{sub}</span>
         </div>
         <div className="flex flex-none flex-col items-end">
@@ -350,7 +350,7 @@ export function ComparisonCard({
       className="flex flex-col gap-4 rounded-card border border-border bg-surface p-6 sm:p-7"
     >
       <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
-        <h2 id="offres-titre" className="text-xl font-bold">
+        <h2 id="offres-titre" className="text-[15px] font-bold">
           {all ? "Toutes les offres comparées" : "Les offres les plus proches"}
         </h2>
         {market.status === "ok" && (
@@ -382,7 +382,7 @@ export function ComparisonCard({
                 ` · ${paid.unknownContractDays} j sans contrat, estimés au tarif actuel`}
             </span>
           </span>
-          <span className="text-[15px] font-semibold whitespace-nowrap tabular-nums">
+          <span className="text-sm font-semibold whitespace-nowrap tabular-nums">
             {eur(paid.annualCents)}/an
           </span>
         </div>
@@ -408,7 +408,7 @@ export function ComparisonCard({
             type="button"
             onClick={() => setAll(!all)}
             aria-expanded={all}
-            className="inline-flex min-h-11 items-center text-[15px] font-semibold"
+            className="inline-flex min-h-11 items-center text-sm font-semibold"
           >
             {all ? "Revenir aux offres les plus proches" : `Voir les ${rest} autres offres`}
           </button>
@@ -418,7 +418,7 @@ export function ComparisonCard({
             type="button"
             onClick={() => setShowPast(!showPast)}
             aria-expanded={showPast}
-            className="inline-flex min-h-11 items-center text-[15px] font-semibold"
+            className="inline-flex min-h-11 items-center text-sm font-semibold"
           >
             {showPast
               ? "Masquer les anciens contrats"

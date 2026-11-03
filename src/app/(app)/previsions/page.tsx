@@ -138,7 +138,7 @@ export default async function ForecastPage() {
     <section aria-labelledby="creneaux" className="flex flex-col gap-3">
       <div className="flex flex-wrap items-end justify-between gap-x-4 gap-y-1">
         <div className="flex flex-col gap-0.5">
-          <h2 id="creneaux" className="text-xl font-bold">
+          <h2 id="creneaux" className="text-[15px] font-bold">
             Meilleurs créneaux pour vos appareils
           </h2>
           {totalSaving >= SAVING_MIN_EUR && (
@@ -190,14 +190,14 @@ export default async function ForecastPage() {
                   <Icon name={appliance.icon} size={20} />
                 </span>
                 <div className="flex min-w-0 flex-1 flex-col">
-                  <h3 className="text-base font-bold">{appliance.name}</h3>
+                  <h3 className="text-[15px] font-bold">{appliance.name}</h3>
                   <p className="text-[13px] text-muted">{describeAppliance(appliance)}</p>
                 </div>
               </div>
               {window ? (
                 <>
                   <p className="flex flex-wrap items-center gap-2">
-                    <span className="text-[28px] leading-none font-bold tracking-tight tabular-nums">
+                    <span className="text-xl leading-none font-bold tracking-tight tabular-nums">
                       {hourLabel(window.start, tz)} – {hourLabel(window.end, tz)}
                     </span>
                     {window.solarShare >= 0.5 && (
@@ -206,7 +206,7 @@ export default async function ForecastPage() {
                   </p>
                   {saving(window) >= SAVING_MIN_EUR ? (
                     <>
-                      <p className="text-[15px] font-semibold text-positive tabular-nums">
+                      <p className="text-sm font-semibold text-positive tabular-nums">
                         {eur(saving(window))} économisés
                       </p>
                       <p className="text-[13px] text-ink-soft tabular-nums">
@@ -262,16 +262,16 @@ export default async function ForecastPage() {
         aria-labelledby="pourquoi"
         className="flex flex-col gap-4 rounded-card border border-border bg-surface p-6"
       >
-        <h2 id="pourquoi" className="text-xl font-bold">
+        <h2 id="pourquoi" className="text-[15px] font-bold">
           Pourquoi {bestLabel < 6 || bestLabel >= 22 ? "la nuit" : `à ${bestLabel} h`} plutôt
           qu&apos;à midi{sunnyNoon ? ", en plein soleil" : ""} ?
         </h2>
         <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,300px),1fr))] gap-4">
           <div className="flex flex-col gap-1 rounded-control bg-bg p-4">
             <p className="text-sm font-semibold text-ink-soft">Lancé à {bestLabel} h</p>
-            <p className="text-[28px] leading-none font-bold tabular-nums">
+            <p className="text-xl leading-none font-bold tabular-nums">
               {(bestHour.kwhCostEur * 100).toLocaleString("fr-FR", { maximumFractionDigits: 1 })} c€
-              <span className="text-base font-normal text-ink-soft"> par kWh</span>
+              <span className="text-[15px] font-normal text-ink-soft"> par kWh</span>
             </p>
             <p className="text-sm text-ink-soft text-pretty">
               {best.window.solarShare >= 0.5
@@ -282,9 +282,9 @@ export default async function ForecastPage() {
           </div>
           <div className="flex flex-col gap-1 rounded-control bg-bg p-4">
             <p className="text-sm font-semibold text-ink-soft">Lancé à 12 h</p>
-            <p className="text-[28px] leading-none font-bold tabular-nums">
+            <p className="text-xl leading-none font-bold tabular-nums">
               {(noonHour.kwhCostEur * 100).toLocaleString("fr-FR", { maximumFractionDigits: 1 })} c€
-              <span className="text-base font-normal text-ink-soft"> par kWh</span>
+              <span className="text-[15px] font-normal text-ink-soft"> par kWh</span>
             </p>
             <p className="text-sm text-ink-soft text-pretty">
               {ctx.profile.battery && sunnyNoon

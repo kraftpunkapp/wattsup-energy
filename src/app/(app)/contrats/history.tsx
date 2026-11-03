@@ -68,7 +68,7 @@ export function ContractHistory({ contracts }: { contracts: ContractItem[] }) {
       className="flex flex-col gap-4 rounded-card border border-border bg-surface p-6 sm:p-7"
     >
       <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
-        <h2 id="hist-titre" className="text-xl font-bold">
+        <h2 id="hist-titre" className="text-[15px] font-bold">
           Vos contrats depuis {since}
         </h2>
         {overall && (
@@ -110,7 +110,7 @@ export function ContractHistory({ contracts }: { contracts: ContractItem[] }) {
                 {end}
                 {c.isCurrent && " · en cours"}
               </span>
-              <strong className="text-base">{c.name}</strong>
+              <strong className="text-[15px]">{c.name}</strong>
               <span className="text-xs text-muted">{KIND_LABELS[c.kind]}</span>
               {contract && p ? (
                 <span className="text-sm text-ink-soft tabular-nums">

@@ -61,7 +61,7 @@ export function ComparisonBanner({
         Offre la plus économique sur{" "}
         {partial ? `${comparison.periodDays} jours de données` : "12 mois réels"}
       </span>
-      <p className="text-[22px] leading-snug font-semibold tracking-tight text-pretty">
+      <p className="text-base leading-snug font-semibold tracking-tight text-pretty">
         {!current && best ? (
           <>
             {title(best)} :{" "}
