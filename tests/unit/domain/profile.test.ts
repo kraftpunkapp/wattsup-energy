@@ -34,12 +34,12 @@ describe("visibleModules (SPEC §7.6)", () => {
       "contracts",
       "settings",
     ]);
-    // Barre d'onglets mobile : Accueil, Prévisions, Chauffage, Contrats ; le reste va dans « Plus ».
+    // Barre d'onglets mobile : Accueil, Prévisions, Chauffage, Rentabilité ; le reste va dans « Plus ».
     expect(
       visibleModules(all)
         .nav.filter((n) => n.mobile !== false)
         .map((n) => n.id),
-    ).toEqual(["overview", "forecast", "heating", "contracts"]);
+    ).toEqual(["overview", "forecast", "heating", "roi"]);
     expect(v.refillForecast).toBe(true);
     expect(v.fuelTabs).toBe(true);
     expect(v.heatingCategories).toBe(true);
