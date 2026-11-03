@@ -66,7 +66,7 @@ export function HideButton({ label }: { label: string }) {
       onClick={hide}
       aria-label={`Masquer « ${label} »`}
       title="Masquer ce bloc (réactivable dans Réglages)"
-      className={button.icon}
+      className={button.ghost}
     >
       <Icon name="eyeOff" size={15} />
     </button>

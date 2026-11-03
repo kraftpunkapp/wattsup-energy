@@ -164,6 +164,16 @@ export function MarkersStrip({
   return (
     <section aria-label="Repères" className="flex flex-col gap-2">
       <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[13px]">
+        {editing === null && (
+          <button
+            type="button"
+            onClick={() => setEditing("new")}
+            className="flex min-h-11 flex-none items-center gap-1.5 rounded-control border border-border-strong bg-surface px-3.5 text-[13px] font-semibold text-ink hover:bg-bg"
+          >
+            <Icon name="plus" size={14} />
+            Repère
+          </button>
+        )}
         {shown.length > 0 && (
           <button
             type="button"
@@ -191,16 +201,6 @@ export function MarkersStrip({
             </span>
           </button>
         )}
-        {editing === null && (
-          <button
-            type="button"
-            onClick={() => setEditing("new")}
-            className="flex items-center gap-1 text-[13px] text-ink-soft hover:text-ink"
-          >
-            <Icon name="plus" size={14} />
-            Repère
-          </button>
-        )}
       </div>
 
       {editing !== null && (
@@ -224,7 +224,7 @@ export function MarkersStrip({
               <span className="flex min-w-0 flex-1 flex-col gap-0.5">
                 <span className="text-[13px] text-pretty">{m.text}</span>
                 <span className="flex flex-wrap items-center gap-2 text-[11px] text-subtle">
-                  {markerDates(m)}
+                  <span className="wu-mono">{markerDates(m)}</span>
                   {m.id === null && <Badge>automatique</Badge>}
                 </span>
               </span>
@@ -232,7 +232,7 @@ export function MarkersStrip({
                 <>
                   <button
                     type="button"
-                    className={button.icon}
+                    className={button.ghost}
                     aria-label={`Modifier le repère « ${m.text} »`}
                     title="Modifier"
                     onClick={() => setEditing(m)}
@@ -242,7 +242,7 @@ export function MarkersStrip({
                   <button
                     type="button"
                     disabled={pending}
-                    className={button.iconDanger}
+                    className={button.ghostDanger}
                     aria-label={`Supprimer le repère « ${m.text} »`}
                     title="Supprimer"
                     onClick={async () => {

@@ -15,6 +15,7 @@ import {
   PeakInsight,
   SolarInsight,
 } from "@/components/cards/insights";
+import { CoverageBadge } from "@/components/coverage-badge";
 import { BatteryGapNotices } from "@/components/battery-gap-notice";
 import { AdviceCard, windowTips } from "@/components/cards/advice-card";
 import { AlertsCard } from "@/components/cards/alerts-card";
@@ -90,6 +91,11 @@ export default async function OverviewPage({
           measured
             ? `Mesures jusqu'au ${measured}`
             : "Budget énergie, origine de la consommation et postes"
+        }
+        meta={
+          overview.status === "ok" && overview.coverage !== null ? (
+            <CoverageBadge ratio={overview.coverage} granularity={overview.granularity} />
+          ) : undefined
         }
       >
         {overview.status === "ok" && <PeriodSwitcher overview={overview} />}

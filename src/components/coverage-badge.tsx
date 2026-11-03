@@ -1,4 +1,4 @@
-import { Badge } from "@/components/ui";
+import { StatusChip } from "@/components/ui";
 import { formatPercent } from "@/lib/format";
 
 /**
@@ -23,9 +23,9 @@ export function CoverageBadge({
           : `Seules ${formatPercent(ratio)} des ${unit} de la période ont été reçues : les totaux et les coûts sont sous-estimés.`
       }
     >
-      <Badge tone={complete ? "neutral" : "warning"}>
+      <StatusChip tone={complete ? "ok" : "estimate"}>
         Données {granularity === "hourly" ? "horaires" : "quotidiennes"} {formatPercent(ratio)}
-      </Badge>
+      </StatusChip>
     </span>
   );
 }

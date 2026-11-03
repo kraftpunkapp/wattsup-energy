@@ -1,9 +1,10 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { SolarChart } from "@/components/cards/solar-chart";
-import { CoverageBadge } from "@/components/coverage-badge";
+
 import { PeriodLink } from "@/components/period-transition";
 import {
+  ArrowLink,
   Badge,
   Banner,
   button,
@@ -95,9 +96,6 @@ export function PeriodSwitcher({ overview }: { overview: Ok }) {
         </span>
         {arrow(nav.next, "Période suivante", "M9 6l6 6-6 6")}
       </div>
-      {overview.coverage !== null && (
-        <CoverageBadge ratio={overview.coverage} granularity={overview.granularity} />
-      )}
     </div>
   );
 }
@@ -373,9 +371,9 @@ export function OriginCard({
 
   if (solar || battery) {
     const parts = [
-      { label: "Réseau", kwh: b.origin.grid, color: "bg-grid" },
-      ...(solar ? [{ label: "Panneaux, en direct", kwh: b.origin.solar, color: "bg-solar" }] : []),
+      ...(solar ? [{ label: "Solaire", kwh: b.origin.solar, color: "bg-solar" }] : []),
       ...(battery ? [{ label: "Batterie", kwh: b.origin.battery, color: "bg-battery" }] : []),
+      { label: "Réseau", kwh: b.origin.grid, color: "bg-grid" },
     ];
     const home = (b.origin.solar + b.origin.battery) / total;
     return (
@@ -791,15 +789,8 @@ export function PaymentBanner({
     <Banner
       actions={
         <>
-          <Link
-            href="/contrats"
-            className="inline-flex min-h-11 items-center gap-1.5 rounded-control border border-panel-soft/40 px-4 text-sm font-semibold text-panel-ink no-underline hover:bg-panel-active"
-          >
-            Voir le contrat
-          </Link>
-          <span className="[&_button]:border-panel-active [&_button]:text-panel-soft [&_button]:hover:bg-panel-active [&_button]:hover:text-panel-ink">
-            {hide}
-          </span>
+          <ArrowLink href="/contrats">Voir le contrat</ArrowLink>
+          {hide}
         </>
       }
     >
@@ -811,7 +802,7 @@ export function PaymentBanner({
           ` Régularisation de ${monthLabel(s.month)} estimée : environ ${eur(Math.abs(s.balanceCents))} ${
             s.balanceCents > 0 ? "à payer" : "en votre faveur"
           }.`}{" "}
-        <span className="text-panel-muted">
+        <span className="opacity-80">
           Estimation, à confirmer auprès de votre fournisseur.
         </span>
       </p>
