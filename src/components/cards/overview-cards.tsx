@@ -132,7 +132,7 @@ export function BudgetCard({ overview }: { overview: Ok }) {
       ? `que ${monthLabel(`${previousYear}${period.key.slice(4)}`)} entier`
       : `que ${previousYear} entière`;
   // Même arrondi des deux côtés de l'écart (centimes sous 10 €, sinon euros entiers).
-  const decimals = gap < 1000 ? 2 : 0;
+  const decimals = previous !== null && gap < 1000 ? 2 : 0;
   const money = (cents: number) => formatEurFromCents(cents, decimals);
   const lastDay = addDays(period.to, -1);
   return (
@@ -149,7 +149,7 @@ export function BudgetCard({ overview }: { overview: Ok }) {
       </h2>
       <div className="flex flex-wrap items-end gap-x-6 gap-y-2">
         <p className="text-[34px] leading-none font-bold tracking-[-0.03em] tabular-nums">
-          {eur(budget.totalCents)}
+          {money(budget.totalCents)}
         </p>
         <ul className="flex min-w-48 flex-col gap-2 pb-1.5 text-sm">
           <li className="flex items-center gap-2">
@@ -158,12 +158,12 @@ export function BudgetCard({ overview }: { overview: Ok }) {
               className="size-3 rounded-[3px] bg-grid shadow-[0_0_0_1px_rgba(255,255,255,0.45)]"
             />
             Électricité consommée
-            <strong className="ml-auto pl-3 tabular-nums">{eur(budget.energyCents)}</strong>
+            <strong className="ml-auto pl-3 tabular-nums">{money(budget.energyCents)}</strong>
           </li>
           <li className="flex items-center gap-2">
             <span aria-hidden className="size-3 rounded-[3px] bg-subscription" />
             Abonnement
-            <strong className="ml-auto pl-3 tabular-nums">{eur(budget.subscriptionCents)}</strong>
+            <strong className="ml-auto pl-3 tabular-nums">{money(budget.subscriptionCents)}</strong>
           </li>
         </ul>
       </div>

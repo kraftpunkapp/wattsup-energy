@@ -4,7 +4,7 @@ import { useState } from "react";
 import { button, Icon, Notice, Segmented } from "@/components/ui";
 import type { Forecast, Scenario } from "@/domain/heating/forecast";
 import type { Fuel } from "@/domain/heating/fuel";
-import { formatNumber } from "@/lib/format";
+import { formatNumber, formatRoughEur } from "@/lib/format";
 import type { FuelForecast, RefillForecastView } from "@/server/queries/heating";
 import { FUEL_LABELS } from "./labels";
 
@@ -21,7 +21,7 @@ const SCENARIO_NAMES: Record<Scenario, string> = {
 
 type Ok = Extract<Forecast, { status: "ok" }>;
 
-const eur = (n: number) => `${formatNumber(Math.round(n / 5) * 5)} €`;
+const eur = formatRoughEur;
 const eyebrow = "wu-label";
 
 export function ForecastCard({

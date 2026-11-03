@@ -13,6 +13,11 @@ export function formatNumber(value: number, digits = 0): string {
   return number(value, digits);
 }
 
+/** Estimation en euros arrondie à 5 € près (« ≈ 190 € ») : la même partout pour un même chiffre. */
+export function formatRoughEur(value: number): string {
+  return `${number(Math.round(value / 5) * 5, 0)} €`;
+}
+
 export function formatEur(value: number, digits = 0): string {
   return `${number(value, digits)} €`;
 }

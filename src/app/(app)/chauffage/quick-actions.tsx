@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState, useTransition } from "react";
 import { Badge, button, DeltaChip, Icon, Notice } from "@/components/ui";
 import { UNITS_FOR, type Fuel, type FuelUnit } from "@/domain/heating/fuel";
-import { formatNumber } from "@/lib/format";
+import { formatNumber, formatRoughEur } from "@/lib/format";
 import {
   deleteFuelEventAction,
   purchaseAction,
@@ -488,7 +488,7 @@ export function FuelCard({ summary }: { summary: FuelSummary }) {
               <span className="text-sm text-ink-soft">
                 ≈ {formatNumber(refill.nextBags)} sacs
                 {refill.nextCostEur !== null &&
-                  `, ≈ ${formatNumber(refill.nextCostEur)} € au dernier prix d'achat`}{" "}
+                  `, ≈ ${formatRoughEur(refill.nextCostEur)} au dernier prix d'achat`}{" "}
                 (hiver moyen)
               </span>
             </div>

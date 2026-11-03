@@ -95,11 +95,11 @@ export function AdviceCard({
               )}
             </div>
           </div>
-          <ul className="flex flex-wrap gap-2">
+          <ul className="flex min-w-0 max-w-full flex-wrap gap-2">
             {forecast.windows.map((w) => (
               <li
                 key={w.id}
-                className="inline-flex min-h-8 items-center gap-1.5 rounded-full bg-bg px-3 text-sm whitespace-nowrap"
+                className="inline-flex min-h-8 max-w-full flex-wrap items-center gap-x-1.5 rounded-2xl bg-bg px-3 py-1 text-sm"
               >
                 <Icon name={w.icon} size={14} />
                 <strong>{w.name}</strong>
