@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useState, type FormEvent } from "react";
+import { useHydrated } from "./use-hydrated";
 import { safeNextPath } from "@/domain/redirect";
 import { authClient } from "@/lib/auth-client";
 
@@ -71,6 +72,7 @@ export function AuthForm({
   const reset = mode === "connexion" && params.get("reinitialise") === "1";
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
+  const hydrated = useHydrated();
 
   async function onSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -162,7 +164,7 @@ export function AuthForm({
       )}
       <button
         type="submit"
-        disabled={pending}
+        disabled={pending || !hydrated}
         className="h-11 rounded-[8px] bg-ink text-sm font-medium text-bg disabled:opacity-60"
       >
         {pending ? copy.pending : copy.submit}

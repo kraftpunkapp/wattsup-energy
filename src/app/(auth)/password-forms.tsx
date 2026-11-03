@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useState, type FormEvent } from "react";
+import { useHydrated } from "./use-hydrated";
 import { authClient } from "@/lib/auth-client";
 
 // Mot de passe oublié : demande du lien par email, puis choix du nouveau mot de passe.
@@ -25,6 +26,7 @@ export function ForgotPasswordForm() {
   const [sent, setSent] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
+  const hydrated = useHydrated();
 
   async function onSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -78,7 +80,7 @@ export function ForgotPasswordForm() {
               {error}
             </p>
           )}
-          <button type="submit" disabled={pending} className={submit}>
+          <button type="submit" disabled={pending || !hydrated} className={submit}>
             {pending ? "Envoi…" : "Recevoir le lien"}
           </button>
         </>
@@ -96,6 +98,7 @@ export function ResetPasswordForm() {
   const invalid = params.get("error") === "INVALID_TOKEN" || !token;
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
+  const hydrated = useHydrated();
 
   async function onSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -165,7 +168,7 @@ export function ResetPasswordForm() {
           {error}
         </p>
       )}
-      <button type="submit" disabled={pending} className={submit}>
+      <button type="submit" disabled={pending || !hydrated} className={submit}>
         {pending ? "Enregistrement…" : "Changer le mot de passe"}
       </button>
       <BackToSignIn />
