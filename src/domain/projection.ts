@@ -22,6 +22,8 @@ export interface Projection {
   previousTotalCents: number | null;
   /** Dépense des mois terminés ÷ mêmes mois N-1 (1 sans comparaison). */
   trend: number;
+  /** Estimation de chaque mois entier à venir (après le mois en cours), pour le graphique. */
+  futureMonths: { key: string; cents: number }[];
 }
 
 const MIN_COMPARABLE = 3;
@@ -45,6 +47,7 @@ export function projectYear(
 
   let known = 0;
   let estimated = 0;
+  const futureMonths: Projection["futureMonths"] = [];
   for (const m of months) {
     if (m.key < current.key) {
       known += m.actualCents ?? 0;
@@ -58,6 +61,7 @@ export function projectYear(
     } else {
       if (full === null) return null;
       estimated += full;
+      futureMonths.push({ key: m.key, cents: Math.round(full) });
     }
   }
 
@@ -72,5 +76,6 @@ export function projectYear(
     highCents: uncertain ? Math.round(total + SPREAD * estimated) : null,
     previousTotalCents: previous,
     trend: Math.round(trend * 1000) / 1000,
+    futureMonths,
   };
 }

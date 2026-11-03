@@ -99,7 +99,7 @@ export function AdviceCard({
             {forecast.windows.map((w) => (
               <li
                 key={w.id}
-                className="inline-flex min-h-8 items-center gap-1.5 rounded-full bg-bg px-3 text-sm"
+                className="inline-flex min-h-8 items-center gap-1.5 rounded-full bg-bg px-3 text-sm whitespace-nowrap"
               >
                 <Icon name={w.icon} size={14} />
                 <strong>{w.name}</strong>
@@ -125,7 +125,8 @@ export function AdviceCard({
                   aria-hidden
                 />
                 <span className="text-ink-soft text-pretty">
-                  <strong className="text-ink">{a.title}</strong> {a.text}
+                  <strong className="block text-ink">{a.title}</strong>
+                  {a.text}
                 </span>
               </li>
             ))}

@@ -25,6 +25,7 @@ describe("projectYear", () => {
       highCents: null,
       previousTotalCents: 120_000,
       trend: 1.1,
+      futureMonths: Array.from({ length: 6 }, (_, i) => ({ key: key(i + 7), cents: 11_000 })),
     });
   });
 

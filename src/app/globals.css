@@ -227,3 +227,17 @@
   transform-origin: bottom;
   animation: wu-grow-y 0.7s cubic-bezier(0.2, 0.7, 0.2, 1) 0.2s both;
 }
+
+/* Barres de l'année précédente : hachurées, pour les distinguer de l'année en cours. */
+.wu-hatch {
+  background-image: repeating-linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--color-grid) 55%, transparent) 0 2px,
+    transparent 2px 6px
+  );
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--color-grid) 45%, transparent);
+}
+/* Mois à venir, estimés : contour en pointillés, sans remplissage. */
+.wu-estimate {
+  border: 1.5px dashed color-mix(in srgb, var(--color-grid) 60%, transparent);
+}

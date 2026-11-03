@@ -69,7 +69,7 @@ export function StackedBars({
   height = 160,
   ariaLabel,
   line,
-  previousColor = "bg-grid/25",
+  previousColor = "wu-hatch",
 }: {
   bars: Bar[];
   height?: number;

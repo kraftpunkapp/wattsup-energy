@@ -122,6 +122,11 @@ export default async function OverviewPage({
             priced={overview.budget.totalCents !== null}
             period={overview.period}
             markers={overview.markers}
+            estimates={
+              overview.period.kind === "year" && !overview.period.complete
+                ? overview.projection?.futureMonths
+                : undefined
+            }
           />
           <section aria-labelledby="retenir" className="flex flex-col gap-3">
             <div className="flex flex-col gap-0.5">

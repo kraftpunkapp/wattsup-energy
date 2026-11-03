@@ -63,6 +63,7 @@ export function MonthlyCostCard({
   period,
   markers,
   priced,
+  estimates = [],
 }: {
   months: MonthCost[];
   /** Faux : aucun contrat pour chiffrer l'électricité, le graphique reste en kWh (T63). */
@@ -72,6 +73,8 @@ export function MonthlyCostCard({
   period: Period;
   /** Repères de l'année : un point sous chaque mois concerné, texte dans l'info-bulle. */
   markers: Marker[];
+  /** Vue année, année en cours : estimation (en centimes) des mois à venir. */
+  estimates?: { key: string; cents: number }[];
 }) {
   const [unit, setUnit] = useState<Unit>("eur");
   // Jour touché, rattaché à sa période : changer de mois efface la sélection.
@@ -158,6 +161,15 @@ export function MonthlyCostCard({
     marked: marked.has(m.key),
     segments: segmentsOf(m),
   }));
+  const estimateBars =
+    isEur && !days
+      ? estimates.map((e) => ({
+          key: e.key,
+          label: shortMonth(e.key),
+          title: `${monthLabel(e.key)} : ≈ ${eur(e.cents)} (estimation)`,
+          segments: [{ value: e.cents, color: "wu-estimate", label: "Estimé" }],
+        }))
+      : [];
   const dayMarks = days ? markedDays(markers, period.from, period.to) : new Map<string, Marker[]>();
   const dayBars = (days ?? []).map((d, i) => ({
     key: d.key,
@@ -243,18 +255,24 @@ export function MonthlyCostCard({
                     {year}
                   </span>
                   <span className="flex items-center gap-1.5">
-                    <span className="size-2 rounded-[2px] bg-grid/25" />
+                    <span className="wu-hatch size-2 rounded-[2px]" />
                     {previousYear}
                   </span>
                 </span>
               )}
             </div>
           )}
+          {estimateBars.length > 0 && (
+            <p className="flex items-center gap-1.5 text-[11px] text-muted">
+              <span className="wu-estimate size-2 rounded-[2px]" />
+              Mois à venir : estimation d&apos;après {previousYear} et la tendance depuis janvier.
+            </p>
+          )}
           <StackedBars
             ariaLabel={`${isEur ? "Coût de l'électricité" : "Électricité soutirée au réseau"} par ${
               days ? `jour, ${period.label}` : `mois en ${year}`
             }`}
-            bars={days ? dayBars : monthBars}
+            bars={days ? dayBars : [...monthBars, ...estimateBars]}
           />
           {markedCount > 0 && (
             <p className="flex items-center gap-1.5 text-[11px] text-muted">
