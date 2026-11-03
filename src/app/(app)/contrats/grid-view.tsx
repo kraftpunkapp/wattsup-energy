@@ -76,14 +76,19 @@ function HcBar({ ranges, hp, hc }: { ranges: TimeRange[]; hp: number; hc: number
         }`}
         style={{ left: `${(from / 1440) * 100}%`, width: `${width}%` }}
       >
-        {width >= 12 ? (
-          <>
+        {/* Mobile : le sigle seulement (les plages sont étroites), prix en légende dessous.
+            Bureau : nom et prix dans la frise quand le segment est assez large. */}
+        {width >= 5 && (
+          <strong className={`text-sm ${width >= 12 ? "sm:hidden" : ""}`}>
+            {creuse ? "HC" : "HP"}
+          </strong>
+        )}
+        {width >= 12 && (
+          <span className="hidden flex-col items-center sm:flex">
             <strong className="text-sm">{creuse ? "Heures creuses" : "Heures pleines"}</strong>
             <span className="wu-mono text-xs">{fmtPrice(creuse ? hc : hp)} €/kWh</span>
-          </>
-        ) : width >= 5 ? (
-          <strong className="text-sm">{creuse ? "HC" : "HP"}</strong>
-        ) : null}
+          </span>
+        )}
       </div>
     );
   };
@@ -105,6 +110,16 @@ function HcBar({ ranges, hp, hc }: { ranges: TimeRange[]; hp: number; hc: number
         <span>18 h</span>
         <span>24 h</span>
       </div>
+      <ul className="flex flex-wrap gap-x-5 gap-y-1 text-[13px] sm:hidden">
+        <li className="flex items-center gap-1.5">
+          <span aria-hidden className="size-2.5 rounded-[3px] bg-grid" />
+          Heures pleines (HP) <span className="wu-mono text-xs">{fmtPrice(hp)} €/kWh</span>
+        </li>
+        <li className="flex items-center gap-1.5">
+          <span aria-hidden className="size-2.5 rounded-[3px] bg-hc" />
+          Heures creuses (HC) <span className="wu-mono text-xs">{fmtPrice(hc)} €/kWh</span>
+        </li>
+      </ul>
       <p className="text-sm text-ink-soft text-pretty">
         Creuses : {cut.map(([f, t]) => span(f, t)).join(" et ")}. Ce sont ces horaires qui guident
         vos créneaux dans Prévisions.
