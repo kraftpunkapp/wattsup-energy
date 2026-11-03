@@ -14,7 +14,7 @@ export function Legend({ items, columns }: { items: LegendItem[]; columns?: 2 | 
   return (
     <ul className={`${grid} text-[13px] text-ink-soft`}>
       {items.map((it, i) => (
-        <li key={i} className="flex flex-col gap-0.5">
+        <li key={i} className="flex flex-col justify-between gap-0.5">
           <span className="flex items-center gap-1.5">
             <span aria-hidden className={`size-2.5 flex-none rounded-[3px] ${it.color}`} />
             {it.label}
