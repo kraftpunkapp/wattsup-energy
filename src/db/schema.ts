@@ -44,6 +44,8 @@ export interface HouseholdSettings {
   alerts?: unknown;
   /** Vue d'ensemble (T50) : `{ hidden: [...] }`, blocs masqués ; absent, tout est affiché. */
   overview?: unknown;
+  /** Page Chauffage : vrai une fois l'invitation « Suivre le bois » écartée par le foyer. */
+  woodInvitationHidden?: boolean;
   /** Puissance souscrite du compteur en kVA (T55, offres du marché) ; absente tant que non saisie. */
   meterPowerKva?: number;
   /** Notification du soir « Créneaux de demain » (T74) : `{ enabled, email }` ; absente, désactivée. */

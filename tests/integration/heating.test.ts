@@ -42,6 +42,20 @@ describe("vue Chauffage sur le foyer de démo", () => {
     expect(h.nav).toEqual({ prev: 2024, next: null });
   });
 
+  it("saison entière : mois à venir vides, même mois de la saison précédente, mois en cours partiel", async () => {
+    const h = await getHeating(ctx, undefined, now);
+    const keys = h.seasonMonths.map((m) => m.key);
+    expect(keys.slice(0, 5)).toEqual(["2025-10", "2025-11", "2025-12", "2026-01", "2026-02"]);
+    expect(keys.length).toBeGreaterThan(5);
+    expect(h.seasonMonths.filter((m) => m.elapsed).map((m) => m.key)).toEqual(keys.slice(0, 5));
+    expect(h.seasonMonths.filter((m) => !m.elapsed).every((m) => m.cents === null)).toBe(true);
+    const jan = h.seasonMonths.find((m) => m.key === "2026-01");
+    expect(jan?.cents).toBeGreaterThan(0);
+    expect(jan?.previousCents).toBeGreaterThan(0);
+    expect(jan?.dju).toBeGreaterThan(0);
+    expect(h.partialMonth).toMatchObject({ key: "2026-02", day: 1 });
+  });
+
   it("saison passée demandée par l'URL, sinon la saison en cours", async () => {
     expect((await getHeating(ctx, "2024", now)).season.label).toBe("2024–2025");
     expect((await getHeating(ctx, "2031", now)).season.label).toBe("2025–2026");

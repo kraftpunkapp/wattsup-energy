@@ -37,6 +37,32 @@ export interface HeatingMonth {
   tMean: number | null;
 }
 
+/** Un mois de la saison entière (mois à venir compris), avec le même mois de la saison précédente. */
+export interface SeasonMonth {
+  key: string;
+  /** Le mois a commencé : ses chiffres sont connus (en cours ou terminé). */
+  elapsed: boolean;
+  /** Coût total du mois (électricité + combustibles) ; null pour un mois à venir. */
+  cents: number | null;
+  /** Même mois de la saison précédente, mois entier ; null sans donnée. */
+  previousCents: number | null;
+  /** Degrés-jours et température moyenne ; null sans météo. */
+  dju: number | null;
+  tMean: number | null;
+  /** Degrés-jours du même mois de la saison précédente. */
+  previousDju: number | null;
+}
+
+/** Le mois en cours n'est pas terminé : ses chiffres face à la même date de l'an dernier. */
+export interface PartialMonth {
+  key: string;
+  /** Dernier jour du mois connu (jour du mois, 1-31). */
+  day: number;
+  cents: number;
+  previousSameDateCents: number | null;
+  previousFullCents: number | null;
+}
+
 export interface SeasonFigures {
   cost: HeatingCost;
   /** Consommation en unité de base (kg, stère) et méthode de calcul. */
@@ -56,6 +82,9 @@ export interface HeatingView {
   /** Saison précédente sur la même durée ; null sans aucune donnée. */
   previous: SeasonFigures | null;
   months: HeatingMonth[];
+  /** Tous les mois de la saison, à venir compris. */
+  seasonMonths: SeasonMonth[];
+  partialMonth: PartialMonth | null;
   /** Mois sans détail pour un combustible estimé par relevés. */
   snapshotFuels: Fuel[];
   noLocation: boolean;
@@ -63,6 +92,11 @@ export interface HeatingView {
   bagKg: number;
   modules: { pellet: boolean; wood: boolean; electric: boolean };
 }
+
+const nextMonthKey = (key: string) => {
+  const [y = 0, m = 1] = key.split("-").map(Number);
+  return m === 12 ? `${y + 1}-01` : `${y}-${String(m + 1).padStart(2, "0")}`;
+};
 
 const shiftYear = (day: string, years: number) =>
   `${Number(day.slice(0, 4)) + years}${day.slice(4)}`.replace(/-02-29$/, "-02-28");
@@ -241,6 +275,76 @@ export async function getHeating(
     m.woodCents = Math.round(m.woodCents);
   }
 
+  // Saison entière : chaque mois (à venir compris) face au même mois de la saison précédente.
+  const previousFull =
+    previousTo === previousSeason.to
+      ? previous
+      : await figures(previousSeason.from, previousSeason.to);
+  const monthlyCents = (
+    fig: Awaited<ReturnType<typeof figures>>,
+    from: string,
+    until: string,
+  ): Record<string, number> => {
+    const out: Record<string, number> = {};
+    for (const [k, v] of Object.entries(fig.byMonth)) out[k] = (out[k] ?? 0) + v.energyCents;
+    const a = zonedInstant(from, 0, tz);
+    const b = zonedInstant(until, 0, tz);
+    for (const e of events) {
+      if (e.type !== "consumption" || e.at < a || e.at >= b || !fuels.includes(e.fuel)) continue;
+      if (fig.data.fuels[e.fuel]?.method !== "events") continue;
+      const k = monthOf(e.at);
+      out[k] = (out[k] ?? 0) + toBaseQty(e, ctx.settings) * (fig.avgPrice[e.fuel] ?? 0) * 100;
+    }
+    return out;
+  };
+  const monthWeather = (weather: { date: string; tMean: number | null }[], key: string) => {
+    const days = weather.filter((w) => w.date.startsWith(key) && w.tMean !== null);
+    return days.length === 0
+      ? { dju: null, tMean: null }
+      : {
+          dju: days.reduce((a, w) => a + (dju(w.tMean) ?? 0), 0),
+          tMean: days.reduce((a, w) => a + (w.tMean ?? 0), 0) / days.length,
+        };
+  };
+  const shiftMonth = (key: string, years: number) =>
+    `${Number(key.slice(0, 4)) + years}${key.slice(4)}`;
+  const nowCents = monthlyCents(current, season.from, to);
+  const prevFullCents = monthlyCents(previousFull, previousSeason.from, previousSeason.to);
+  const prevSameDate = monthlyCents(previous, previousSeason.from, previousTo);
+  const seasonMonths: SeasonMonth[] = [];
+  for (let m = season.from.slice(0, 7); `${m}-01` < season.to;) {
+    const elapsed = `${m}-01` < to;
+    const prevKey = shiftMonth(m, -1);
+    const w = elapsed ? monthWeather(current.weather, m) : { dju: null, tMean: null };
+    seasonMonths.push({
+      key: m,
+      elapsed,
+      cents: elapsed ? Math.round(nowCents[m] ?? 0) : null,
+      previousCents: previousHasData ? Math.round(prevFullCents[prevKey] ?? 0) : null,
+      dju: w.dju,
+      tMean: w.tMean,
+      previousDju: monthWeather(previousFull.weather, prevKey).dju,
+    });
+    const [y = 0, mm = 1] = m.split("-").map(Number);
+    m = mm === 12 ? `${y + 1}-01` : `${y}-${String(mm + 1).padStart(2, "0")}`;
+  }
+  const lastKnown = addDays(to, -1);
+  const lastMonth = lastKnown.slice(0, 7);
+  const partialMonth: PartialMonth | null =
+    to < season.to && nextMonthKey(lastMonth) + "-01" > to
+      ? {
+          key: lastMonth,
+          day: Number(lastKnown.slice(8)),
+          cents: Math.round(nowCents[lastMonth] ?? 0),
+          previousSameDateCents: previousHasData
+            ? Math.round(prevSameDate[shiftMonth(lastMonth, -1)] ?? 0)
+            : null,
+          previousFullCents: previousHasData
+            ? Math.round(prevFullCents[shiftMonth(lastMonth, -1)] ?? 0)
+            : null,
+        }
+      : null;
+
   return {
     season,
     to,
@@ -252,6 +356,8 @@ export async function getHeating(
     current: current.data,
     previous: previousHasData ? previous.data : null,
     months,
+    seasonMonths,
+    partialMonth,
     snapshotFuels: fuels.filter((f) => current.data.fuels[f]?.method === "snapshots"),
     noLocation: cell === null,
     bagKg: ctx.settings.pelletBagKg,

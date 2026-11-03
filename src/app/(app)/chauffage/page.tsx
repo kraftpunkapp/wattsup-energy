@@ -9,6 +9,7 @@ import {
 } from "@/domain/heating/fuel";
 import { visibleModules } from "@/domain/profile";
 import { listFuelEvents } from "@/server/fuel";
+import { woodInvitationHidden } from "@/server/heating-prefs";
 import { pageContext } from "@/server/page";
 import { getHeating, getRefillForecast } from "@/server/queries/heating";
 import { ForecastCard } from "./forecast-card";
@@ -145,7 +146,7 @@ export default async function HeatingPage({
           })}
         </div>
       )}
-      {!modules.wood && <WoodInvitation />}
+      {!modules.wood && !woodInvitationHidden(ctx) && <WoodInvitation />}
       <PeriodTransition>
         <SeasonSwitcher view={view} />
         <PeriodContent>
@@ -153,7 +154,9 @@ export default async function HeatingPage({
           <HeatingCostCard view={view} />
         </PeriodContent>
       </PeriodTransition>
-      {forecast && <ForecastCard view={forecast} />}
+      {forecast && (
+        <ForecastCard view={forecast} currentEnd={seasonEnd ? `fin ${seasonEnd}` : null} />
+      )}
       {fuels.length > 0 && (
         <FuelLog
           items={log}

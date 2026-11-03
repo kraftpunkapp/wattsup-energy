@@ -1,25 +1,18 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useState, useTransition } from "react";
 import { button, Icon } from "@/components/ui";
 import { settingsHref } from "@/lib/settings-tabs";
-
-const KEY = "wattsup:wood-invitation-hidden";
+import { hideWoodInvitationAction } from "@/server/actions/heating-prefs";
 
 /**
  * Invitation (jamais une carte vide) pour qui ne suit pas le bois : un lien vers le profil,
- * ou « Non, masquer » (mémorisé sur cet appareil).
+ * ou « Non, masquer », retenu pour tout le foyer.
  */
 export function WoodInvitation() {
-  const [hidden, setHidden] = useState(true);
-  useEffect(() => {
-    try {
-      setHidden(localStorage.getItem(KEY) === "1");
-    } catch {
-      setHidden(false);
-    }
-  }, []);
+  const [hidden, setHidden] = useState(false);
+  const [, startTransition] = useTransition();
   if (hidden) return null;
   return (
     <section
@@ -37,12 +30,11 @@ export function WoodInvitation() {
         type="button"
         className={button.link}
         onClick={() => {
-          try {
-            localStorage.setItem(KEY, "1");
-          } catch {
-            // choix non mémorisé
-          }
           setHidden(true);
+          startTransition(async () => {
+            const res = await hideWoodInvitationAction();
+            if (!res.ok) setHidden(false);
+          });
         }}
       >
         Non, masquer
