@@ -3,7 +3,7 @@ import { PageHeader } from "@/components/page-header";
 import { Badge, button, Card, Icon, Notice, StatTile, tiles } from "@/components/ui";
 import type { AccuracyDay } from "@/domain/forecast/accuracy";
 import { describeAppliance } from "@/domain/forecast/appliances";
-import { hourLabel } from "@/domain/forecast/summary";
+import { hourLabel, windowLabel } from "@/domain/forecast/summary";
 import { coveredFraction, toSegments } from "@/domain/tariff/base-hphc";
 import { formatEurFromCents, formatKwh, formatPercent } from "@/lib/format";
 import { addDays, localParts } from "@/lib/time";
@@ -304,6 +304,7 @@ export default async function ForecastPage() {
         timezone={tz}
         solar={ctx.profile.solar && plan.solarMethod !== null}
         battery={ctx.profile.battery}
+        bestSlot={best ? windowLabel(best.window.start, best.window.end, plan.today, tz) : null}
         windows={windowsSection}
         why={whySection}
         days={plan.days.map((d) => ({ ...d, fullAt: fullByDate.get(d.date) ?? null }))}
