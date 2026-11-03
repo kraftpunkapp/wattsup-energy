@@ -77,13 +77,7 @@ const STATUS_DOT: Record<StatusTone, string> = {
 };
 
 /** Puce de statut : pastille arrondie, point coloré (le sens est aussi écrit). */
-export function StatusChip({
-  tone = "ok",
-  children,
-}: {
-  tone?: StatusTone;
-  children: ReactNode;
-}) {
+export function StatusChip({ tone = "ok", children }: { tone?: StatusTone; children: ReactNode }) {
   return (
     <span className="inline-flex items-center gap-1.5 rounded-full border border-border bg-surface px-2.5 py-0.5 text-xs font-medium text-ink">
       <span aria-hidden className={`size-2 flex-none rounded-full ${STATUS_DOT[tone]}`} />
@@ -96,13 +90,7 @@ export function StatusChip({
  * Puce d'écart : « gain » (fond vert pâle, point vert) ou « cost » (surcoût, couleurs de la
  * notice). Toujours avec son signe écrit dans le texte.
  */
-export function DeltaChip({
-  tone,
-  children,
-}: {
-  tone: "gain" | "cost";
-  children: ReactNode;
-}) {
+export function DeltaChip({ tone, children }: { tone: "gain" | "cost"; children: ReactNode }) {
   return (
     <span
       className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-medium tabular-nums ${
@@ -309,6 +297,7 @@ export function KpiTile({
   value,
   unit,
   sub,
+  chip,
 }: {
   icon: IconName;
   tone?: IconTone;
@@ -316,18 +305,25 @@ export function KpiTile({
   value: string;
   unit?: string;
   sub?: string;
+  /** Écart avec la période de comparaison (puce gain ou surcoût). */
+  chip?: ReactNode;
 }) {
   return (
     <div className="flex min-w-0 flex-col gap-1.5 rounded-[18px] border border-border bg-surface p-5">
-      <span className="flex items-center gap-2.5 text-sm text-ink-soft">
+      <span className="flex items-center gap-2.5">
         <IconChip icon={icon} tone={tone} />
-        {label}
+        <span className="wu-label">{label}</span>
       </span>
       <span className="flex flex-wrap items-baseline gap-x-1.5">
-        <span className="text-2xl leading-tight font-bold tabular-nums">{value}</span>
+        <span className="wu-amount text-2xl leading-tight">{value}</span>
         {unit && <span className="text-lg font-semibold text-ink-soft">{unit}</span>}
       </span>
-      {sub && <span className="text-[13px] text-muted tabular-nums">{sub}</span>}
+      {(sub || chip) && (
+        <span className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[13px] text-muted tabular-nums">
+          {sub}
+          {chip}
+        </span>
+      )}
     </div>
   );
 }
@@ -451,9 +447,7 @@ export function Callout({
 
 /** Titre de groupe au-dessus d'une liste de cartes. */
 export function GroupTitle({ children }: { children: ReactNode }) {
-  return (
-    <h2 className="wu-label px-1">{children}</h2>
-  );
+  return <h2 className="wu-label px-1">{children}</h2>;
 }
 
 /** Ligne à interrupteur : libellé, description, pastille de couleur facultative. */

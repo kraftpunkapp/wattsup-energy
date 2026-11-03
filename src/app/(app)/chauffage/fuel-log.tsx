@@ -3,7 +3,7 @@
 import { callAction } from "@/lib/action";
 import { useRouter } from "next/navigation";
 import { useEffect, useState, useTransition } from "react";
-import { Badge, button, Card, Icon, type IconName } from "@/components/ui";
+import { ArrowButton, Badge, button, Card, Icon, type IconName } from "@/components/ui";
 import { useConfirm } from "@/components/ui/confirm";
 import {
   toBaseQty,
@@ -279,11 +279,11 @@ export function FuelLog({
                     )}
                     {showFuel && <Badge>{FUEL_LABELS[item.fuel]}</Badge>}
                   </span>
-                  <span className="text-[11px] text-subtle">{when(item)}</span>
+                  <span className="wu-mono text-[11px] text-subtle">{when(item)}</span>
                 </div>
                 <button
                   type="button"
-                  className={button.icon}
+                  className={button.ghost}
                   aria-label={`Modifier : ${EVENT_LABELS[item.type]}, ${when(item)}`}
                   title="Modifier"
                   onClick={() => setEditing(item.id)}
@@ -293,7 +293,7 @@ export function FuelLog({
                 <button
                   type="button"
                   disabled={pending}
-                  className={button.iconDanger}
+                  className={button.ghostDanger}
                   aria-label={`Supprimer : ${EVENT_LABELS[item.type]}, ${when(item)}`}
                   title="Supprimer"
                   onClick={async () => {
@@ -318,14 +318,9 @@ export function FuelLog({
         </ul>
       )}
       {items.length > 5 && (
-        <button
-          type="button"
-          aria-expanded={all}
-          onClick={() => setAll(!all)}
-          className={`${button.link} self-start`}
-        >
+        <ArrowButton aria-expanded={all} onClick={() => setAll(!all)}>
           {all ? "Réduire le journal" : `Tout le journal (${items.length})`}
-        </button>
+        </ArrowButton>
       )}
     </Card>
   );

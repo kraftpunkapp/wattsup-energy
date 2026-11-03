@@ -3,7 +3,7 @@
 import { callAction } from "@/lib/action";
 import { useRouter } from "next/navigation";
 import { useEffect, useState, useTransition } from "react";
-import { Badge, button, Icon, Notice } from "@/components/ui";
+import { Badge, button, DeltaChip, Icon, Notice } from "@/components/ui";
 import { UNITS_FOR, type Fuel, type FuelUnit } from "@/domain/heating/fuel";
 import { formatNumber } from "@/lib/format";
 import {
@@ -314,7 +314,7 @@ export function FuelCard({ summary }: { summary: FuelSummary }) {
                 pellet ? "bg-pellet/15 text-pellet" : "bg-wood/15 text-wood"
               }`}
             >
-              <Icon name="flame" size={19} />
+              <Icon name={pellet ? "bag" : "log"} size={19} />
             </span>
             {FUEL_LABELS[fuel]}
           </h2>
@@ -322,16 +322,11 @@ export function FuelCard({ summary }: { summary: FuelSummary }) {
             <Badge tone="warning">Stock à corriger</Badge>
           ) : (
             known && (
-              <span
-                className={`inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-sm font-bold ${
-                  toBuy !== null && toBuy > 0 ? "bg-track text-ink" : "bg-battery/15 text-positive"
-                }`}
-              >
-                <Icon name={toBuy !== null && toBuy > 0 ? "bulb" : "check"} size={15} />
+              <DeltaChip tone={toBuy !== null && toBuy > 0 ? "cost" : "gain"}>
                 {toBuy !== null && toBuy > 0
                   ? `Il manquera ≈ ${formatNumber(toBuy)} sac${toBuy > 1 ? "s" : ""} avant la fin de l'hiver`
                   : "Stock suffisant pour finir l'hiver"}
-              </span>
+              </DeltaChip>
             )
           )}
         </div>

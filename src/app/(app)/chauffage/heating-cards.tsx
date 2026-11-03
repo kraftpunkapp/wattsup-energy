@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { PeriodLink } from "@/components/period-transition";
-import { Badge, button, KpiTile, Notice } from "@/components/ui";
+import { button, DeltaChip, KpiTile, Notice, StatusChip } from "@/components/ui";
 import { monthLabel, shortMonth } from "@/domain/overview";
 import { formatEurFromCents, formatNumber, formatPercent } from "@/lib/format";
 import type { HeatingView } from "@/server/queries/heating";
@@ -14,12 +14,14 @@ const eur = (cents: number) => formatEurFromCents(cents, 0);
 const temp = (t: number) => `${t.toLocaleString("fr-FR", { maximumFractionDigits: 1 })} °C`;
 const delta = (current: number, previous: number | undefined | null) =>
   previous && previous > 0 ? current / previous - 1 : null;
-const deltaText = (d: number | null, label: string) =>
-  d === null
-    ? undefined
-    : Math.abs(d) < 0.005
-      ? `stable vs ${label}`
-      : `${d > 0 ? "+" : "−"}${formatPercent(Math.abs(d))} vs ${label}`;
+/** Écart de coût : en baisse = gain, en hausse = surcoût (toujours avec son signe). */
+const costChip = (d: number | null) =>
+  d === null || Math.abs(d) < 0.005 ? undefined : (
+    <DeltaChip tone={d < 0 ? "gain" : "cost"}>
+      {d > 0 ? "+" : "−"}
+      {formatPercent(Math.abs(d))}
+    </DeltaChip>
+  );
 
 const SOURCES = [
   { key: "electric", label: "Radiateurs", color: "bg-eheat" },
@@ -59,7 +61,11 @@ export function SeasonSwitcher({ view }: { view: HeatingView }) {
       </span>
     );
   return (
-    <div className="flex flex-wrap items-center gap-3">
+    <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-3">
+      <div className="flex items-center gap-3">
+        <h2 className="text-[15px] font-bold">Bilan de saison</h2>
+        {view.inProgress && <StatusChip tone="ok">En cours</StatusChip>}
+      </div>
       <div className="flex items-center gap-1 rounded-control border border-border bg-surface p-0.5">
         {arrow(view.nav.prev, "Saison précédente", "M15 6l-6 6 6 6")}
         <span className="min-w-36 text-center text-sm font-semibold">
@@ -67,15 +73,15 @@ export function SeasonSwitcher({ view }: { view: HeatingView }) {
         </span>
         {arrow(view.nav.next, "Saison suivante", "M9 6l6 6-6 6")}
       </div>
-      {view.inProgress && <Badge tone="active">En cours</Badge>}
     </div>
   );
 }
 
 /** Chiffres clés de la saison, comparés à la saison précédente sur la même durée. */
 export function HeatingKpis({ view }: { view: HeatingView }) {
-  const { current, previous, modules, inProgress } = view;
-  const previousLabel = inProgress ? "même période N-1" : "saison précédente";
+  const { current, previous, modules } = view;
+  // Saison en cours : comparée à la même durée de la saison passée.
+  const previousLabel = "Saison passée";
   return (
     <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,200px),1fr))] gap-4">
       <KpiTile
@@ -83,12 +89,13 @@ export function HeatingKpis({ view }: { view: HeatingView }) {
         label="Coût de la saison"
         value={formatNumber(current.cost.totalCents / 100)}
         unit="€"
-        sub={deltaText(delta(current.cost.totalCents, previous?.cost.totalCents), previousLabel)}
+        sub={previous ? `${previousLabel} : ${eur(previous.cost.totalCents)}` : undefined}
+        chip={costChip(delta(current.cost.totalCents, previous?.cost.totalCents))}
       />
       {modules.pellet && <PelletTile view={view} previousLabel={previousLabel} />}
       {modules.wood && (
         <KpiTile
-          icon="flame"
+          icon="log"
           tone="wood"
           label="Bois brûlé"
           value={formatNumber(current.fuels.wood?.qty ?? 0, 1)}
@@ -114,13 +121,12 @@ export function HeatingKpis({ view }: { view: HeatingView }) {
       )}
       <KpiTile
         icon="thermometer"
-        tone="grid"
         label="Température moyenne"
         value={current.tMean === null ? "—" : formatNumber(current.tMean, 1)}
         unit="°C"
         sub={
           current.dju !== null
-            ? `${formatNumber(current.dju)} degrés-jours${previous?.tMean != null ? ` · N-1 ${temp(previous.tMean)}` : ""}`
+            ? `${formatNumber(current.dju)} degrés-jours${previous?.tMean != null ? ` · ${previousLabel} : ${temp(previous.tMean)}` : ""}`
             : undefined
         }
       />
@@ -133,7 +139,7 @@ function PelletTile({ view, previousLabel }: { view: HeatingView; previousLabel:
   const bags = (kg: number) => kg / bagKg;
   return (
     <KpiTile
-      icon="flame"
+      icon="bag"
       tone="pellet"
       label="Granulés versés"
       value={formatNumber(bags(current.fuels.pellet?.qty ?? 0))}
@@ -196,7 +202,7 @@ export function HeatingCostCard({ view }: { view: HeatingView }) {
     >
       <div className="flex flex-wrap items-start justify-between gap-x-6 gap-y-3">
         <div className="flex max-w-xl flex-col gap-1">
-          <h2 id="cout-mois" className="text-[15px] font-bold">
+          <h2 id="cout-mois" className="wu-label">
             Coût de chauffe par mois
           </h2>
           <p className="text-sm text-muted text-pretty first-letter:uppercase">

@@ -20,7 +20,7 @@ export function WoodInvitation() {
       className="flex flex-wrap items-center gap-x-4 gap-y-2 rounded-card border border-dashed border-dash px-5 py-3"
     >
       <span aria-hidden className="text-muted">
-        <Icon name="flame" size={18} />
+        <Icon name="log" size={18} />
       </span>
       <p className="flex-1 basis-60 text-sm font-semibold">Vous chauffez aussi au bois ?</p>
       <Link href={settingsHref("profil")} className={`${button.secondary} no-underline`}>

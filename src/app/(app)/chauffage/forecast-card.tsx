@@ -22,7 +22,7 @@ const SCENARIO_NAMES: Record<Scenario, string> = {
 type Ok = Extract<Forecast, { status: "ok" }>;
 
 const eur = (n: number) => `${formatNumber(Math.round(n / 5) * 5)} €`;
-const eyebrow = "text-[13px] font-bold tracking-[0.06em] text-muted uppercase";
+const eyebrow = "wu-label";
 
 export function ForecastCard({
   view,
@@ -140,7 +140,7 @@ export function ForecastCard({
             {view.fuels.length === 1 && pellet && (
               <p className="flex items-center gap-3 rounded-control border border-dashed border-dash px-3.5 py-3 text-sm text-ink-soft">
                 <span aria-hidden className="text-muted">
-                  <Icon name="flame" size={16} />
+                  <Icon name="log" size={16} />
                 </span>
                 <span>
                   <strong className="text-ink">Bois</strong> : pas encore suivi. Renseignez un achat
@@ -311,7 +311,7 @@ function NextSeason({
           aria-hidden
           className="flex size-10 flex-none items-center justify-center rounded-control bg-pellet/15 text-ink"
         >
-          <Icon name={pellet ? "flame" : "plus"} size={20} />
+          <Icon name={pellet ? "bag" : "plus"} size={20} />
         </span>
         <div className="flex flex-col gap-0.5">
           <p className="text-base font-bold">
