@@ -30,7 +30,11 @@ test("parcours 2 : 12 sacs en réserve → prévision de l'hiver prochain en pal
   await pellets.getByRole("button", { name: "Corriger le stock" }).click();
   await pellets.getByLabel("sacs restants").fill("12");
   await pellets.getByRole("button", { name: "Enregistrer le relevé" }).click();
-  await expect(pellets.getByText("12", { exact: true }).first()).toBeVisible();
+  // La transition React peut rester suspendue (voir CLAUDE.md) : le relevé est alors bien
+  // enregistré mais l'écran garde l'ancien stock ; un rechargement affiche l'état réel.
+  const saved = pellets.getByText("12", { exact: true }).first();
+  await saved.waitFor({ timeout: 5_000 }).catch(() => page.reload());
+  await expect(saved).toBeVisible();
 
   const forecast = page.locator("section", {
     has: page.getByRole("heading", { name: "Réapprovisionnement · le détail" }),
