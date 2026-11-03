@@ -36,7 +36,7 @@ test("compte neuf : bienvenue, token copié, premier envoi, tableau de bord alim
   // 3. Contrat actuel : offre HP/HC de référence, souscrite.
   await expect(page.getByText("Étape 3 sur 5")).toBeVisible();
   await page.waitForLoadState("networkidle");
-  await page.getByRole("button", { name: "+ Ajouter un contrat" }).click();
+  await page.getByRole("button", { name: "Ajouter un contrat" }).click();
   await page
     .getByRole("button", { name: /Heures creuses/ })
     .first()

@@ -33,7 +33,7 @@ const MARKERS: Record<keyof Profile, { path: string; text: RegExp }[]> = {
     { path: "/rentabilite", text: /Batterie ·/ },
   ],
   pellet: [{ path: "/chauffage", text: /Granulés/ }],
-  wood: [{ path: "/chauffage", text: /\bBois\b/ }],
+  wood: [{ path: "/chauffage", text: /Bois brûlé|stères?/ }],
   electricHeating: [
     { path: "/chauffage", text: /Électricité de chauffage/ },
     { path: "/", text: /Chauffage électrique/ },
@@ -51,6 +51,9 @@ for (const { name, profile } of PROFILES) {
 
     const nav = page.getByRole("navigation").first();
     await expect(nav.getByRole("link", { name: /Chauffage/ })).toHaveCount(heating ? 1 : 0);
+    // Sur mobile, Rentabilité est dans « Plus » (barre du bas).
+    const more = page.getByRole("button", { name: "Plus", exact: true });
+    if (await more.isVisible()) await more.click();
     await expect(nav.getByRole("link", { name: /Rentabilité|ROI/ })).toHaveCount(roi ? 1 : 0);
 
     const pages = [

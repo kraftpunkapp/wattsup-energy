@@ -120,12 +120,16 @@ export default async function HeatingPage({
     seasonEnd ? `fin ${seasonEnd}` : null,
   );
 
+  const tracked =
+    [modules.pellet && "granulés", modules.wood && "bois", view.modules.electric && "radiateurs"]
+      .filter((x): x is string => Boolean(x))
+      .join(", ")
+      .replace(/, ([^,]*)$/, " et $1")
+      .replace(/^./, (c) => c.toUpperCase()) || "Le chauffage";
+
   return (
     <>
-      <PageHeader
-        title="Chauffage"
-        subtitle="Granulés, bois et radiateurs, au regard de la météo"
-      />
+      <PageHeader title="Chauffage" subtitle={`${tracked}, au regard de la météo`} />
       {fuels.length > 0 && (
         <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,340px),1fr))] items-start gap-4">
           {fuels.map((fuel) => {
