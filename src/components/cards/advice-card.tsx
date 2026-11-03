@@ -13,7 +13,7 @@ import type { ForecastPlan } from "@/server/forecast";
 // surplus solaire « habituel » cède la place à la prévision quand elle existe.
 
 const DOT: Record<Advice["tone"], string> = {
-  warning: "bg-negative",
+  warning: "bg-ink",
   positive: "bg-solar",
   info: "bg-hc",
 };
@@ -26,6 +26,8 @@ export interface WindowTip {
   when: string;
   /** « ≈ 0,12 € · 80 % solaire ». */
   detail: string;
+  /** Gain face à un lancement immédiat (€), 0 si aucun. */
+  savingEur: number;
 }
 
 /** Écart sous lequel un créneau ne fait rien gagner (€). */
@@ -51,6 +53,7 @@ export function windowTips(plan: ForecastPlan, timezone: string): WindowTip[] {
           name: appliance.name,
           when: windowLabel(window.start, window.end, plan.today, timezone),
           detail: parts.join(" · "),
+          savingEur: Math.max(0, saving),
         },
       ];
     })
@@ -69,6 +72,68 @@ export function AdviceCard({
 }) {
   const tips = forecast ? advice.filter((a) => a.id !== "surplus") : advice;
   if (tips.length === 0 && !forecast) return null;
+  if (forecast && forecast.windows.length > 0) {
+    const saving = forecast.windows.reduce((a, w) => a + w.savingEur, 0);
+    return (
+      <section className="flex flex-col gap-3 rounded-card border border-border bg-surface px-5 py-4">
+        <div className="flex flex-wrap items-center gap-x-6 gap-y-3">
+          <div className="flex min-w-0 flex-[1_1_320px] items-center gap-3">
+            <span
+              aria-hidden
+              className="flex size-10 flex-none items-center justify-center rounded-control bg-track text-ink"
+            >
+              <Icon name="sun" size={20} />
+            </span>
+            <div className="flex flex-col gap-0.5">
+              <h2 className="text-[17px] font-bold">
+                Demain : les bons créneaux pour vos appareils
+              </h2>
+              {saving >= SAVING_MIN_EUR && (
+                <p className="text-sm text-ink-soft">
+                  ≈ {eur(saving)} de moins qu&apos;en les lançant tout de suite
+                </p>
+              )}
+            </div>
+          </div>
+          <ul className="flex flex-wrap gap-2">
+            {forecast.windows.map((w) => (
+              <li
+                key={w.id}
+                className="inline-flex min-h-8 items-center gap-1.5 rounded-full bg-bg px-3 text-sm"
+              >
+                <Icon name={w.icon} size={14} />
+                <strong>{w.name}</strong>
+                {w.when.startsWith("demain, ") ? w.when.slice(8) : w.when}
+              </li>
+            ))}
+          </ul>
+          <Link
+            href="/previsions"
+            className="inline-flex min-h-11 items-center gap-1.5 text-[15px] font-semibold"
+          >
+            Prévisions
+            <Icon name="arrowRight" size={16} />
+          </Link>
+          {actions}
+        </div>
+        {tips.length > 0 && (
+          <ul className="flex flex-col gap-2 border-t border-track pt-3">
+            {tips.map((a) => (
+              <li key={a.id} className="flex gap-3 text-sm">
+                <span
+                  className={`mt-1.5 size-2 flex-none rounded-full ${DOT[a.tone]}`}
+                  aria-hidden
+                />
+                <span className="text-ink-soft text-pretty">
+                  <strong className="text-ink">{a.title}</strong> {a.text}
+                </span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+    );
+  }
   return (
     <Card
       icon="sun"

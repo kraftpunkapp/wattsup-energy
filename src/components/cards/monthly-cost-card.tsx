@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { StackedBars } from "@/components/charts/stacked-bars";
-import { button, Card, Toggle } from "@/components/ui";
+import { button, Card, Segmented, Toggle } from "@/components/ui";
 import { markedDays, markedMonths, type Marker } from "@/domain/markers";
 import { monthLabel, shortMonth, type Period } from "@/domain/overview";
 import { formatEurFromCents, formatKwh, formatPercent } from "@/lib/format";
@@ -26,31 +26,15 @@ const kwh = (value: number) => formatKwh(value);
 
 function UnitSwitch({ unit, onChange }: { unit: Unit; onChange: (u: Unit) => void }) {
   return (
-    <div
-      role="radiogroup"
-      aria-label="Unité du graphique"
-      className="flex gap-1 rounded-[10px] bg-chip p-[3px]"
-    >
-      {(
-        [
-          { id: "eur", label: "€" },
-          { id: "kwh", label: "kWh" },
-        ] as const
-      ).map((o) => (
-        <button
-          key={o.id}
-          type="button"
-          role="radio"
-          aria-checked={unit === o.id}
-          onClick={() => onChange(o.id)}
-          className={`rounded-[8px] px-3 py-1 text-[13px] font-medium ${
-            unit === o.id ? "bg-surface shadow-[0_1px_2px_rgba(0,0,0,0.08)]" : "text-ink-soft"
-          }`}
-        >
-          {o.label}
-        </button>
-      ))}
-    </div>
+    <Segmented
+      label="Unité du graphique"
+      value={unit}
+      onChange={onChange}
+      options={[
+        { value: "eur", label: "€" },
+        { value: "kwh", label: "kWh" },
+      ]}
+    />
   );
 }
 

@@ -3,7 +3,19 @@ import type { ReactNode } from "react";
 import { SolarChart } from "@/components/cards/solar-chart";
 import { CoverageBadge } from "@/components/coverage-badge";
 import { PeriodLink } from "@/components/period-transition";
-import { Badge, button, Card, Icon, Notice, StatTile, tiles } from "@/components/ui";
+import {
+  Badge,
+  Banner,
+  button,
+  Card,
+  Gauge,
+  Icon,
+  Legend,
+  Notice,
+  segmented,
+  StatTile,
+  tiles,
+} from "@/components/ui";
 import { CATEGORY_SWATCH, CategoryTile, categoryColor } from "@/components/ui/category";
 import { monthLabel } from "@/domain/overview";
 import { PAYMENT_NOTICE_GAP, type PaymentAnalysis } from "@/domain/tariff/payment";
@@ -19,34 +31,49 @@ type Ok = Extract<Overview, { status: "ok" }>;
 
 const eur = (cents: number) => formatEurFromCents(cents, 0);
 
+const chevron = (d: string) => (
+  <svg
+    width="18"
+    height="18"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    aria-hidden
+  >
+    <path d={d} />
+  </svg>
+);
+
 /** Sélecteur mois / année et navigation ‹ › (liens : la période est dans l'URL). */
 export function PeriodSwitcher({ overview }: { overview: Ok }) {
   const { period, nav } = overview;
-  const segment = {
-    className: "rounded-[8px] px-3.5 py-1.5 text-[13px] font-medium",
-    activeClassName: "bg-surface shadow-[0_1px_2px_rgba(0,0,0,0.08)]",
-    inactiveClassName: "text-ink-soft",
-  };
   const arrow = (key: string | null, label: string, path: string) =>
     key ? (
-      <PeriodLink href={`/?p=${key}`} aria-label={label} className={button.icon}>
-        <span aria-hidden className="text-base leading-none">
-          {path}
-        </span>
+      <PeriodLink
+        href={`/?p=${key}`}
+        aria-label={label}
+        className="flex size-11 items-center justify-center rounded-control text-ink hover:bg-track"
+      >
+        {chevron(path)}
       </PeriodLink>
     ) : (
-      <span className={`${button.icon} opacity-40`} aria-hidden>
-        <span className="text-base leading-none">{path}</span>
+      <span className="flex size-11 items-center justify-center text-dash" aria-hidden>
+        {chevron(path)}
       </span>
     );
   return (
     <div className="flex flex-wrap items-center gap-3">
-      <div role="tablist" className="flex gap-1 rounded-[10px] bg-chip p-[3px]">
+      <div role="tablist" aria-label="Période" className={segmented.group}>
         <PeriodLink
           role="tab"
           selected={period.kind === "month"}
           href={`/?p=${period.kind === "month" ? period.key : addDays(period.to, -1).slice(0, 7)}`}
-          {...segment}
+          className={segmented.base}
+          activeClassName={segmented.on}
+          inactiveClassName={segmented.off}
         >
           Mois
         </PeriodLink>
@@ -54,17 +81,19 @@ export function PeriodSwitcher({ overview }: { overview: Ok }) {
           role="tab"
           selected={period.kind === "year"}
           href={`/?p=${period.key.slice(0, 4)}`}
-          {...segment}
+          className={segmented.base}
+          activeClassName={segmented.on}
+          inactiveClassName={segmented.off}
         >
           Année
         </PeriodLink>
       </div>
-      <div className="flex items-center gap-2">
-        {arrow(nav.prev, "Période précédente", "‹")}
-        <span className="min-w-32 text-center text-sm font-semibold capitalize">
+      <div className="flex items-center gap-1 rounded-control border border-border bg-surface p-0.5">
+        {arrow(nav.prev, "Période précédente", "M15 6l-6 6 6 6")}
+        <span className="min-w-24 text-center text-[15px] font-semibold capitalize">
           {period.label}
         </span>
-        {arrow(nav.next, "Période suivante", "›")}
+        {arrow(nav.next, "Période suivante", "M9 6l6 6-6 6")}
       </div>
       {overview.coverage !== null && (
         <CoverageBadge ratio={overview.coverage} granularity={overview.granularity} />
@@ -91,59 +120,73 @@ export function BudgetCard({ overview }: { overview: Ok }) {
       </Notice>
     );
   }
-  const delta =
-    budget.previousCents && budget.previousCents > 0
-      ? budget.totalCents / budget.previousCents - 1
-      : null;
-  // Écart en euros ; les centimes seulement sous 10 €, sinon « +0 € » pour un petit écart.
-  const gap = Math.abs(budget.totalCents - (budget.previousCents ?? 0));
+  const previous = budget.previousCents;
+  const less = previous !== null && previous > 0 ? budget.totalCents <= previous : null;
+  const gap = Math.abs(budget.totalCents - (previous ?? 0));
+  const ratio = previous && previous > 0 ? budget.totalCents / previous - 1 : null;
   // Période en cours : comparée aux mêmes jours de l'année précédente.
   const previousYear = Number(period.key.slice(0, 4)) - 1;
-  const previousLabel = !period.complete
-    ? `même période ${previousYear}`
+  const against = !period.complete
+    ? "qu'à la même date l'an dernier"
     : period.kind === "month"
-      ? monthLabel(`${previousYear}${period.key.slice(4)}`)
-      : String(previousYear);
+      ? `qu'en ${monthLabel(`${previousYear}${period.key.slice(4)}`)}`
+      : `qu'en ${previousYear}`;
+  const lastDay = addDays(period.to, -1);
   return (
-    <section className="flex flex-col gap-4 rounded-card border border-panel-edge bg-panel p-5 text-panel-ink sm:p-6">
-      <div className="flex flex-wrap items-baseline justify-between gap-2">
-        <h2 className="text-[13px] text-panel-muted">
-          Budget énergie · <span className="capitalize">{period.label}</span>
-        </h2>
-        {delta !== null && (
-          <span
-            className={`text-xs font-medium tabular-nums ${delta <= 0 ? "text-panel-positive" : "text-panel-negative"}`}
-          >
-            {delta <= 0 ? "−" : "+"}
-            {formatEurFromCents(gap, gap < 1000 ? 2 : 0)} · {delta <= 0 ? "−" : "+"}
-            {formatPercent(Math.abs(delta))} vs {previousLabel}
-          </span>
-        )}
+    <section
+      aria-label={`Budget · ${period.label}`}
+      className="flex flex-col gap-4 rounded-card bg-panel p-6 text-panel-ink sm:p-7"
+    >
+      <h2 className="text-[15px] font-normal text-panel-soft">
+        <span className="capitalize">{period.label}</span>
+        {!period.complete &&
+          (period.kind === "month"
+            ? ` · du 1er au ${Number(lastDay.slice(8))}`
+            : ` · du 1er janvier au ${Number(lastDay.slice(8))} ${monthLabel(lastDay.slice(0, 7)).split(" ")[0]}`)}
+      </h2>
+      <div className="flex flex-wrap items-end gap-x-6 gap-y-2">
+        <p className="text-[64px] leading-[0.95] font-bold tracking-[-0.04em] tabular-nums sm:text-[88px]">
+          {eur(budget.totalCents)}
+        </p>
+        <ul className="flex min-w-48 flex-col gap-2 pb-1.5 text-[15px]">
+          <li className="flex items-center gap-2">
+            <span
+              aria-hidden
+              className="size-3 rounded-[3px] bg-grid shadow-[0_0_0_1px_rgba(255,255,255,0.45)]"
+            />
+            Électricité consommée
+            <strong className="ml-auto pl-3 tabular-nums">{eur(budget.energyCents)}</strong>
+          </li>
+          <li className="flex items-center gap-2">
+            <span aria-hidden className="size-3 rounded-[3px] bg-subscription" />
+            Abonnement
+            <strong className="ml-auto pl-3 tabular-nums">{eur(budget.subscriptionCents)}</strong>
+          </li>
+        </ul>
       </div>
-      <p className="text-[40px] leading-none font-semibold tracking-tight tabular-nums">
-        {eur(budget.totalCents)}
-      </p>
-      <div className="flex flex-wrap gap-x-5 gap-y-1.5 text-xs text-panel-soft">
-        <span className="flex items-center gap-1.5">
-          <span className="size-2 rounded-[2px] bg-hc" />
-          Électricité consommée
-          <span className="font-semibold text-panel-ink tabular-nums">
-            {eur(budget.energyCents)}
+      {less !== null && ratio !== null && previous !== null && (
+        <p
+          className={`flex items-center gap-3 rounded-control px-3.5 py-3 text-base ${
+            less ? "bg-panel-gain text-panel-ink" : "bg-panel-active text-panel-ink"
+          }`}
+        >
+          <span aria-hidden className="text-lg leading-none font-bold">
+            {less ? "↓" : "↑"}
           </span>
-        </span>
-        <span className="flex items-center gap-1.5">
-          <span className="size-2 rounded-[2px] bg-neutral-bar" />
-          Abonnement
-          <span className="font-semibold text-panel-ink tabular-nums">
-            {eur(budget.subscriptionCents)}
+          <span>
+            <strong>
+              {formatEurFromCents(gap, gap < 1000 ? 2 : 0)} de {less ? "moins" : "plus"}
+            </strong>{" "}
+            {against} ({eur(previous)}), soit {less ? "−" : "+"}
+            {formatPercent(Math.abs(ratio))}
           </span>
-        </span>
-      </div>
+        </p>
+      )}
       {overview.projection && !period.complete && (
         <Projection projection={overview.projection} year={period.key.slice(0, 4)} />
       )}
       {budget.unknownContractDays > 0 && (
-        <p className="text-[11px] text-panel-muted">
+        <p className="text-[13px] text-panel-muted">
           {budget.unknownContractDays} jour{budget.unknownContractDays > 1 ? "s" : ""} sans contrat
           souscrit, estimé{budget.unknownContractDays > 1 ? "s" : ""} au tarif de votre contrat
           actuel.
@@ -153,7 +196,7 @@ export function BudgetCard({ overview }: { overview: Ok }) {
   );
 }
 
-/** « À ce rythme » : dépense projetée de l'année en cours, sur la carte Budget (fond sombre). */
+/** Estimation de l'année en cours, en pied de la carte Budget (fond sombre). */
 function Projection({
   projection: p,
   year,
@@ -164,27 +207,27 @@ function Projection({
   const previousYear = Number(year) - 1;
   const trend = p.trend - 1;
   return (
-    <div className="flex flex-col gap-1 border-t border-panel-ink/10 pt-3">
-      <p className="text-[13px] text-panel-soft">
-        À ce rythme :{" "}
-        <span className="font-semibold whitespace-nowrap text-panel-ink tabular-nums">
-          ≈ {eur(p.totalCents)}
-        </span>{" "}
-        sur {year}
-        {p.lowCents !== null && p.highCents !== null && (
-          <span className="whitespace-nowrap tabular-nums">
-            {" "}
-            (entre {eur(p.lowCents)} et {eur(p.highCents)})
+    <div className="flex flex-col gap-1 border-t border-panel-active pt-3.5 text-sm text-panel-muted">
+      <p className="flex flex-wrap justify-between gap-x-6 gap-y-1">
+        <span>
+          Estimation pour {year} :{" "}
+          <span className="font-semibold whitespace-nowrap text-panel-ink tabular-nums">
+            ≈ {eur(p.totalCents)}
           </span>
-        )}
+          {p.lowCents !== null && p.highCents !== null && (
+            <span className="whitespace-nowrap tabular-nums">
+              {" "}
+              (entre {eur(p.lowCents)} et {eur(p.highCents)})
+            </span>
+          )}
+        </span>
         {p.previousTotalCents !== null && (
-          <span className="whitespace-nowrap tabular-nums">
-            {" "}
-            · {previousYear} : {eur(p.previousTotalCents)}
+          <span className="tabular-nums">
+            {previousYear} : {eur(p.previousTotalCents)}
           </span>
         )}
       </p>
-      <p className="text-[11px] text-panel-muted text-pretty">
+      <p className="text-[13px] text-pretty">
         Mois restants estimés sur {previousYear}
         {Math.abs(trend) >= 0.005
           ? `, ${trend > 0 ? "+" : "−"}${formatPercent(Math.abs(trend))} comme depuis janvier`
@@ -195,69 +238,18 @@ function Projection({
   );
 }
 
-/** Chiffres clés de la période, selon le profil. */
-export function KpiTiles({
-  overview,
-  solar,
-  battery,
-}: {
-  overview: Ok;
-  solar: boolean;
-  battery: boolean;
-}) {
-  const b = overview.balance;
-  return (
-    <div className="grid grid-cols-2 gap-2 sm:auto-rows-fr">
-      <StatTile
-        standalone
-        label="Consommation du foyer"
-        value={formatNumber(b.consumption)}
-        unit="kWh"
-      />
-      <StatTile
-        standalone
-        label="Soutiré au réseau"
-        value={formatNumber(b.gridImport)}
-        unit="kWh"
-        dot="bg-grid"
-        sub={
-          b.consumption > 0
-            ? `${formatPercent(b.origin.grid / b.consumption)} de la conso`
-            : undefined
-        }
-      />
-      {solar && (
-        <StatTile
-          standalone
-          label="Production solaire"
-          value={formatNumber(b.solar)}
-          unit="kWh"
-          dot="bg-solar"
-          sub={
-            b.selfConsumptionRate !== null
-              ? `${formatPercent(b.selfConsumptionRate)} consommée sur place`
-              : undefined
-          }
-        />
-      )}
-      {battery && (
-        <StatTile
-          standalone
-          label="Restitué par la batterie"
-          value={formatNumber(b.batteryDischarge)}
-          unit="kWh"
-          dot="bg-battery"
-          sub={`chargée ${formatKwh(b.batteryCharge)}`}
-        />
-      )}
-    </div>
-  );
-}
-
 const HC_COLOR = "bg-hc";
 
 /** Part de l'électricité soutirée en heures creuses et en heures pleines (contrat HP/HC ou Tempo). */
-export function PeakCard({ overview, actions }: { overview: Ok; actions?: ReactNode }) {
+export function PeakCard({
+  overview,
+  actions,
+  flat,
+}: {
+  overview: Ok;
+  actions?: ReactNode;
+  flat?: boolean;
+}) {
   const { peak, period } = overview;
   if (!peak) return null;
   const total = peak.hp.kwh + peak.hc.kwh;
@@ -267,6 +259,7 @@ export function PeakCard({ overview, actions }: { overview: Ok; actions?: ReactN
   ];
   return (
     <Card
+      flat={flat}
       title="Heures pleines et heures creuses"
       actions={actions}
       badges={<Badge tone="soft">{formatPercent(peak.hc.kwh / total)} en HC</Badge>}
@@ -317,7 +310,47 @@ export function PeakCard({ overview, actions }: { overview: Ok; actions?: ReactN
   );
 }
 
-/** D'où vient l'énergie consommée : réseau, solaire direct, batterie. */
+const days = (from: string, to: string) =>
+  Math.max(
+    1,
+    Math.round((Date.parse(`${to}T00:00:00Z`) - Date.parse(`${from}T00:00:00Z`)) / 864e5),
+  );
+
+/** Bloc d'origine : trois présentations selon l'équipement (installation, heures creuses, Base). */
+function OriginShell({
+  title,
+  aside,
+  children,
+}: {
+  title: string;
+  aside: ReactNode;
+  children: ReactNode;
+}) {
+  return (
+    <section className="flex flex-col gap-4 rounded-card border border-border bg-surface p-6 sm:p-7">
+      <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
+        <h2 className="text-xl font-bold">{title}</h2>
+        <span className="text-sm text-muted tabular-nums">{aside}</span>
+      </div>
+      {children}
+    </section>
+  );
+}
+
+const Big = ({ value, label }: { value: string; label: string }) => (
+  <p className="flex flex-wrap items-baseline gap-x-3">
+    <span className="text-[52px] leading-none font-bold tracking-[-0.02em] tabular-nums">
+      {value}
+    </span>
+    <span className="text-base text-ink-soft">{label}</span>
+  </p>
+);
+
+const Note = ({ children }: { children: ReactNode }) => (
+  <p className="rounded-control bg-bg px-3.5 py-3 text-sm text-ink-soft text-pretty">{children}</p>
+);
+
+/** D'où vient l'énergie consommée : réseau, solaire direct, batterie, ou à défaut quand on consomme. */
 export function OriginCard({
   overview,
   solar,
@@ -327,52 +360,154 @@ export function OriginCard({
   solar: boolean;
   battery: boolean;
 }) {
-  const b = overview.balance;
-  const parts = [
-    { label: "Réseau", kwh: b.origin.grid, color: "bg-grid" },
-    ...(solar ? [{ label: "Solaire autoconsommé", kwh: b.origin.solar, color: "bg-solar" }] : []),
-    ...(battery ? [{ label: "Batterie", kwh: b.origin.battery, color: "bg-battery" }] : []),
-  ];
+  const { balance: b, peak, budget, period } = overview;
   const total = b.consumption;
-  return (
-    <Card
-      title="Origine de la consommation"
-      badges={<Badge>{formatKwh(total)}</Badge>}
-      description={overview.period.label}
-    >
-      {total > 0 ? (
-        <>
-          <div className="flex h-9 gap-[2px] overflow-hidden rounded-[8px]" aria-hidden>
-            {parts
-              .filter((p) => p.kwh > 0)
-              .map((p) => (
-                <div
-                  key={p.label}
-                  className={p.color}
-                  style={{ width: `${(p.kwh / total) * 100}%` }}
-                  title={`${p.label} : ${formatPercent(p.kwh / total)}`}
-                />
-              ))}
-          </div>
-          <ul className="flex flex-col gap-2.5 text-[13px]">
-            {parts.map((p) => (
-              <li key={p.label} className="flex items-center justify-between gap-2">
-                <span className="flex items-center gap-2 text-ink-soft">
-                  <span className={`size-2 rounded-[2px] ${p.color}`} />
-                  {p.label}
-                </span>
-                <span className="tabular-nums">
-                  <span className="font-semibold">{formatPercent(p.kwh / total)}</span>
-                  <span className="text-subtle"> · {formatKwh(p.kwh)}</span>
-                </span>
-              </li>
-            ))}
-          </ul>
-        </>
-      ) : (
+  if (total <= 0) {
+    return (
+      <OriginShell title="D'où vient votre électricité" aside={period.label}>
         <p className="text-sm text-muted">Aucune consommation sur cette période.</p>
+      </OriginShell>
+    );
+  }
+  const share = (kwh: number) => formatPercent(kwh / total);
+
+  if (solar || battery) {
+    const parts = [
+      { label: "Réseau", kwh: b.origin.grid, color: "bg-grid" },
+      ...(solar ? [{ label: "Panneaux, en direct", kwh: b.origin.solar, color: "bg-solar" }] : []),
+      ...(battery ? [{ label: "Batterie", kwh: b.origin.battery, color: "bg-battery" }] : []),
+    ];
+    const home = (b.origin.solar + b.origin.battery) / total;
+    return (
+      <OriginShell title="D'où vient votre électricité" aside={`${formatKwh(total)} consommés`}>
+        <Big value={formatPercent(home)} label="produits chez vous" />
+        <Gauge
+          parts={parts.map((p) => ({ value: p.kwh, color: p.color }))}
+          label={parts.map((p) => `${p.label} ${share(p.kwh)}`).join(", ")}
+        />
+        <Legend
+          columns={parts.length === 3 ? 3 : 2}
+          items={parts.map((p) => ({ color: p.color, label: p.label, value: formatKwh(p.kwh) }))}
+        />
+        <div className="mt-auto flex flex-col gap-2">
+          {solar && b.solar > 0 && (
+            <Note>
+              <strong className="text-ink">{formatKwh(b.solar)} produits</strong>
+              {b.selfConsumptionRate !== null &&
+                `, dont ${formatPercent(b.selfConsumptionRate)} utilisés sur place`}
+              {!battery && b.gridExport > 0 && (
+                <>
+                  {" "}
+                  ·{" "}
+                  <strong className="text-ink">
+                    {formatKwh(b.gridExport)} partis sur le réseau
+                  </strong>{" "}
+                  sans être utilisés ({formatPercent(b.gridExport / b.solar)} de la production)
+                </>
+              )}
+            </Note>
+          )}
+          {battery && (
+            <Note>
+              La batterie ne produit rien : elle rend plus tard ce qu&apos;elle a stocké.
+              {b.batteryCharge > 0 && ` Chargée de ${formatKwh(b.batteryCharge)} sur la période.`}
+            </Note>
+          )}
+          {solar && !battery && b.gridExport > 0 && (
+            <Link
+              href="/rentabilite"
+              className="inline-flex min-h-11 items-center gap-1.5 text-[15px] font-semibold"
+            >
+              Que rapporterait une batterie ? Simuler
+              <Icon name="arrowRight" size={16} />
+            </Link>
+          )}
+        </div>
+      </OriginShell>
+    );
+  }
+
+  const pricePerKwh = budget.energyCents > 0 ? budget.energyCents / total : null;
+  if (peak) {
+    const sum = peak.hp.kwh + peak.hc.kwh;
+    const rate = (p: { kwh: number; energyCents: number }) =>
+      p.kwh > 0 ? formatEurFromCents(p.energyCents / p.kwh, 3) : null;
+    const hpRate = peak.hp.kwh > 0 ? peak.hp.energyCents / peak.hp.kwh : null;
+    const hcRate = peak.hc.kwh > 0 ? peak.hc.energyCents / peak.hc.kwh : null;
+    const shifted =
+      hpRate !== null && hcRate !== null ? peak.hp.kwh * 0.1 * (hpRate - hcRate) : null;
+    return (
+      <OriginShell title="Quand vous consommez" aside={`${formatKwh(sum)} achetés`}>
+        <Big value={formatPercent(peak.hc.kwh / sum)} label="en heures creuses" />
+        <Gauge
+          parts={[
+            { value: peak.hc.kwh, color: "bg-hc" },
+            { value: peak.hp.kwh, color: "bg-grid" },
+          ]}
+          label={`Heures creuses ${formatPercent(peak.hc.kwh / sum)}, heures pleines ${formatPercent(peak.hp.kwh / sum)}`}
+        />
+        <Legend
+          columns={2}
+          items={[
+            {
+              color: "bg-hc",
+              label: `Heures creuses${rate(peak.hc) ? ` · ${rate(peak.hc)} €` : ""}`,
+              value: `${formatKwh(peak.hc.kwh)} · ${eur(peak.hc.energyCents)}`,
+            },
+            {
+              color: "bg-grid",
+              label: `Heures pleines${rate(peak.hp) ? ` · ${rate(peak.hp)} €` : ""}`,
+              value: `${formatKwh(peak.hp.kwh)} · ${eur(peak.hp.energyCents)}`,
+            },
+          ]}
+        />
+        <div className="mt-auto flex flex-col gap-2">
+          {pricePerKwh !== null && (
+            <Note>
+              Prix moyen payé :{" "}
+              <strong className="text-ink">{formatEurFromCents(pricePerKwh, 3)} €/kWh</strong>
+            </Note>
+          )}
+          {shifted !== null && shifted >= 50 && (
+            <Note>
+              Passer 10 % de vos heures pleines en heures creuses :{" "}
+              <strong className="text-ink">≈ {eur(shifted)} de moins</strong> sur cette période
+            </Note>
+          )}
+        </div>
+      </OriginShell>
+    );
+  }
+
+  return (
+    <OriginShell
+      title="Votre consommation"
+      aside={<span className="capitalize">{period.label}</span>}
+    >
+      <Big
+        value={formatKwh(total)}
+        label={`soit ${formatNumber(total / days(period.from, period.to), 1)} kWh par jour`}
+      />
+      {pricePerKwh !== null && (
+        <Legend
+          columns={2}
+          items={[
+            {
+              color: "bg-grid",
+              label: "Prix du kWh",
+              value: `${formatEurFromCents(pricePerKwh, 3)} €`,
+            },
+          ]}
+        />
       )}
-    </Card>
+      <Link
+        href="/contrats"
+        className="mt-auto inline-flex min-h-11 items-center gap-1.5 text-[15px] font-semibold"
+      >
+        Comparer les offres
+        <Icon name="arrowRight" size={16} />
+      </Link>
+    </OriginShell>
   );
 }
 
@@ -427,7 +562,7 @@ function CategoryLine({
  * Postes de consommation : kWh de la période et part de la consommation du foyer. Les
  * postes de chauffage (au moins deux) sont additionnés sur une ligne repliée, à déplier.
  */
-export function CategoriesOverviewCard({ overview }: { overview: Ok }) {
+export function CategoriesOverviewCard({ overview, flat }: { overview: Ok; flat?: boolean }) {
   const { categories, balance, period } = overview;
   const heating = categories.filter((c) => c.isHeating);
   const grouped = heating.length >= 2;
@@ -440,6 +575,7 @@ export function CategoriesOverviewCard({ overview }: { overview: Ok }) {
   const consumption = balance.consumption;
   return (
     <Card
+      flat={flat}
       title="Postes de consommation"
       description={period.label}
       actions={
@@ -510,6 +646,11 @@ export function CategoriesOverviewCard({ overview }: { overview: Ok }) {
           )}
         </ul>
       )}
+      {flat && (
+        <Link href={settingsHref("postes")} className={`${button.link} self-start`}>
+          Gérer les postes
+        </Link>
+      )}
     </Card>
   );
 }
@@ -525,7 +666,7 @@ const SUNSHINE_DOT = "bg-ink-soft";
  * valeurs dans l'info-bulle), et le rendement kWh produits
  * par kWh/m² reçu, comparé à N-1.
  */
-export function SolarCard({ overview }: { overview: Ok }) {
+export function SolarCard({ overview, flat }: { overview: Ok; flat?: boolean }) {
   const { solar, period } = overview;
   if (!solar) return null;
   const byMonth = period.kind === "year";
@@ -534,6 +675,7 @@ export function SolarCard({ overview }: { overview: Ok }) {
     solar.yield !== null && solar.previousYield ? solar.yield / solar.previousYield - 1 : null;
   return (
     <Card
+      flat={flat}
       icon="sun"
       title="Production et ensoleillement"
       description={<span className="capitalize">{period.label}</span>}
@@ -632,10 +774,10 @@ export function CheaperContractNotice({
 }
 
 /**
- * Mensualité à revoir (T59, SPEC §7.13) : seulement si le prélevé sur l'année s'écarte de plus
- * de 10 % du coût attendu ; le détail est sur la carte du contrat en cours.
+ * Mensualité à revoir (T59, SPEC §7.13), en bandeau : seulement si le prélevé sur l'année
+ * s'écarte de plus de 10 % du coût attendu ; le détail est sur la carte du contrat en cours.
  */
-export function PaymentNotice({
+export function PaymentBanner({
   payment,
   hide,
 }: {
@@ -646,23 +788,33 @@ export function PaymentNotice({
   if (!payment || a?.status !== "ok" || Math.abs(a.gap) <= PAYMENT_NOTICE_GAP) return null;
   const s = a.settlement;
   return (
-    <Notice
-      tone="info"
-      title={`Votre mensualité de ${eur(payment.amountCents)} semble trop ${a.gap > 0 ? "élevée" : "basse"}`}
-      action={
+    <Banner
+      actions={
         <>
-          <Link href="/contrats" className={`${button.secondary} bg-surface text-ink no-underline`}>
+          <Link
+            href="/contrats"
+            className="inline-flex min-h-11 items-center gap-1.5 rounded-control border border-panel-soft/40 px-4 text-sm font-semibold text-panel-ink no-underline hover:bg-panel-active"
+          >
             Voir le contrat
           </Link>
-          {hide}
+          <span className="[&_button]:border-panel-active [&_button]:text-panel-soft [&_button]:hover:bg-panel-active [&_button]:hover:text-panel-ink">
+            {hide}
+          </span>
         </>
       }
     >
-      : environ {eur(a.advisedCents)} par mois couvriraient votre consommation des 12 derniers mois.
-      {s &&
-        ` Régularisation de ${monthLabel(s.month)} estimée : environ ${eur(Math.abs(s.balanceCents))} ${
-          s.balanceCents > 0 ? "à payer" : "en votre faveur"
-        }.`}
-    </Notice>
+      <p>
+        <strong>Mensualité :</strong> ≈ {eur(a.advisedCents)} par mois{" "}
+        {a.gap > 0 ? "suffiraient" : "seraient nécessaires"} au lieu de {eur(payment.amountCents)},
+        d&apos;après vos 12 derniers mois.
+        {s &&
+          ` Régularisation de ${monthLabel(s.month)} estimée : environ ${eur(Math.abs(s.balanceCents))} ${
+            s.balanceCents > 0 ? "à payer" : "en votre faveur"
+          }.`}{" "}
+        <span className="text-panel-muted">
+          Estimation, à confirmer auprès de votre fournisseur.
+        </span>
+      </p>
+    </Banner>
   );
 }

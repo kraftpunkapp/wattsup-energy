@@ -56,6 +56,7 @@ export function Card({
   actions,
   highlight = false,
   danger = false,
+  flat = false,
   as: Tag = "section",
   children,
 }: {
@@ -67,11 +68,21 @@ export function Card({
   highlight?: boolean;
   /** Action irréversible (suppression du compte) : fond et bordure rouges. */
   danger?: boolean;
+  /** Sans cadre ni en-tête (détail déplié d'une carte « À retenir ») : description puis contenu. */
+  flat?: boolean;
   as?: "section" | "li";
   children?: ReactNode;
 }) {
   // Dans une liste, la carte est sous un titre de groupe (h2) : son titre devient h3.
   const Heading = Tag === "li" ? "h3" : "h2";
+  if (flat) {
+    return (
+      <Tag className="flex flex-col gap-4">
+        {description && <div className="text-[13px] text-muted text-pretty">{description}</div>}
+        {children}
+      </Tag>
+    );
+  }
   return (
     <Tag
       className={`flex flex-col gap-4 rounded-card border p-4 sm:p-5 ${

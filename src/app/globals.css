@@ -40,6 +40,8 @@
   --color-panel-muted: #a9adb8;
   --color-panel-soft: #cfcbc3;
   --color-panel-positive: #3fbf86;
+  /* Fond du bandeau « moins cher que l'an dernier » sur la carte Budget. */
+  --color-panel-gain: #1f3a2e;
   /* Pastille « Home Assistant connecté » (plein ; l'état est aussi écrit). */
   --color-status-ok: #3fbf86;
   --color-panel-negative: #f2f0eb;

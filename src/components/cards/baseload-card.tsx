@@ -12,7 +12,15 @@ import type { Overview } from "@/server/queries/overview";
 
 type Ok = Extract<Overview, { status: "ok" }>;
 
-export function BaseloadCard({ overview, actions }: { overview: Ok; actions?: ReactNode }) {
+export function BaseloadCard({
+  overview,
+  actions,
+  flat,
+}: {
+  overview: Ok;
+  actions?: ReactNode;
+  flat?: boolean;
+}) {
   const b = overview.baseload;
   if (!b) return null;
   const { period } = overview;
@@ -20,6 +28,7 @@ export function BaseloadCard({ overview, actions }: { overview: Ok; actions?: Re
   const shown = b.months.filter((m) => m.watts !== null);
   return (
     <Card
+      flat={flat}
       icon="plug"
       title="Talon de consommation"
       actions={actions}

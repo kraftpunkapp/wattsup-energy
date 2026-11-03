@@ -29,7 +29,7 @@ const MARKERS: Record<keyof Profile, { path: string; text: RegExp }[]> = {
     { path: "/rentabilite", text: /Installation solaire/ },
   ],
   battery: [
-    { path: "/", text: /Restitué par la batterie/ },
+    { path: "/", text: /La batterie ne produit rien/ },
     { path: "/rentabilite", text: /Batterie ·/ },
   ],
   pellet: [{ path: "/chauffage", text: /Granulés/ }],

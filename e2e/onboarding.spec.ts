@@ -79,6 +79,10 @@ test("compte neuf : bienvenue, token copié, premier envoi, tableau de bord alim
   await page.waitForLoadState("networkidle");
   await page.getByRole("button", { name: "Terminer" }).click();
   await expect(page).toHaveURL(/\/$/);
-  await expect(page.getByText(/Budget énergie ·/)).toBeVisible();
-  await expect(page.getByRole("heading", { name: "Origine de la consommation" })).toBeVisible();
+  await expect(page.getByRole("region", { name: /^Budget ·/ })).toBeVisible();
+  await expect(
+    page.getByRole("heading", {
+      name: /Votre consommation|Quand vous consommez|D'où vient votre électricité/,
+    }),
+  ).toBeVisible();
 });
