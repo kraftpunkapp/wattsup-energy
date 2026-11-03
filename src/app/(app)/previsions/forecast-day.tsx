@@ -4,7 +4,7 @@ import { useState, type ReactNode } from "react";
 import { StackedBars } from "@/components/charts/stacked-bars";
 import { Card, Gauge, Legend, Segmented, StatTile, tiles } from "@/components/ui";
 import { hourLabel } from "@/domain/forecast/summary";
-import { formatEurFromCents, formatKwh } from "@/lib/format";
+import { formatEurFromCents, formatKwh, formatPercent } from "@/lib/format";
 import { localParts } from "@/lib/time";
 
 // Aujourd'hui ou demain heure par heure (T72, SPEC §7.14) : consommation prévue (couverte
@@ -24,6 +24,8 @@ export interface ForecastHourView {
   kwhCostEur: number | null;
   /** Prix du kWh acheté à cette heure (€), null sans contrat. */
   priceEur: number | null;
+  /** Part de l'heure en heures creuses (0–1), null sans heures creuses au contrat. */
+  offPeakShare: number | null;
   /** Heure écoulée : valeurs mesurées. */
   measured: boolean;
   /** Heure écoulée : ce qui était estimé (prévision figée la veille, sinon le modèle). */
@@ -216,6 +218,8 @@ export function ForecastDay({
     const covered = (h: ForecastHourView) => Math.max(0, h.loadKwh - h.importKwh);
     const direct = dayHours.reduce((a, h) => a + Math.min(h.solarKwh, covered(h)), 0);
     const stored = dayHours.reduce((a, h) => a + covered(h) - Math.min(h.solarKwh, covered(h)), 0);
+    const offPeakKwh = dayHours.reduce((a, h) => a + h.importKwh * (h.offPeakShare ?? 0), 0);
+    const hasOffPeak = dayHours.some((h) => h.offPeakShare !== null);
     const avoided = dayHours.reduce((a, h) => a + covered(h) * (h.priceEur ?? 0), 0);
     const parts = [
       { label: "Réseau", kwh: day.importKwh, color: "bg-grid" },
@@ -237,7 +241,11 @@ export function ForecastDay({
               {day.costEur !== null ? `≈ ${eur(day.costEur)}` : kwh(day.importKwh)}
             </p>
             <p className="text-base text-ink-soft tabular-nums">
-              {kwh(day.importKwh)} achetés{day.costEur !== null ? " · hors abonnement" : ""}
+              {kwh(day.importKwh)} achetés
+              {hasOffPeak && day.importKwh > 0
+                ? `, dont ${formatPercent(offPeakKwh / day.importKwh)} en heures creuses`
+                : ""}
+              {day.costEur !== null ? " · hors abonnement" : ""}
             </p>
           </div>
           <p className="text-sm text-ink-soft tabular-nums">

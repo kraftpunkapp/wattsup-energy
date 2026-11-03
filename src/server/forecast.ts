@@ -9,6 +9,7 @@ import { forecastSolar, learnSolarYield } from "@/domain/forecast/solar";
 import { daySummaries } from "@/domain/forecast/summary";
 import { bestWindow, marginalCosts } from "@/domain/forecast/windows";
 import { hourlyKwhPrices } from "@/domain/tariff/engine";
+import { householdOffPeak } from "@/domain/market/compare";
 import { currentContract, gridAt } from "@/domain/tariff/timeline";
 import { cellOf, dju, type Cell } from "@/domain/weather";
 import { addDays, localParts, zonedInstant } from "@/lib/time";
@@ -311,6 +312,8 @@ export async function getPricedForecast(ctx: HouseholdContext, now = new Date())
       hours: marginalCosts(forecast.hours, prices, exportPriceEur),
       exportPriceEur,
       assumedTempoDays,
+      /** Plages creuses du compteur (HP/HC, Tempo) ; null sans heures creuses. */
+      offPeak: householdOffPeak(gridAt(current, window.today)),
     },
   };
 }
