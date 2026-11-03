@@ -26,7 +26,16 @@ import {
   SubscriptionFields,
   type SubscriptionValue,
 } from "./contract-editor";
-import { Badge, button, Card, CardFooter, GroupTitle, Icon, Notice } from "@/components/ui";
+import {
+  Badge,
+  button,
+  Card,
+  CardFooter,
+  GroupTitle,
+  Icon,
+  Notice,
+  StatusChip,
+} from "@/components/ui";
 import { useConfirm } from "@/components/ui/confirm";
 import { PageHeader } from "@/components/page-header";
 import { GridView, gridSummary } from "./grid-view";
@@ -216,23 +225,23 @@ function PriceHistory({
   const confirm = useConfirm();
   return (
     <div className="flex flex-col rounded-control border border-border">
-      <h4 className="px-3 pt-2.5 pb-2 text-[11px] font-medium tracking-wide text-muted uppercase">
-        Historique des prix
-      </h4>
+      <h4 className="wu-label px-3 pt-2.5 pb-2">Historique des prix</h4>
       <ul>
         {[...item.periods].reverse().map((p) => (
           <li key={p.id} className="flex items-center gap-3 border-t border-track px-3 py-2.5">
             <div className="flex min-w-0 flex-1 flex-col gap-0.5">
               <span className="flex flex-wrap items-center gap-2 text-[13px] font-medium">
                 Depuis le {fmtDate(p.validFrom)}
-                {item.isCurrent && p.id === shownId && <Badge tone="soft">en vigueur</Badge>}
+                {item.isCurrent && p.id === shownId && (
+                  <StatusChip tone="ok">en vigueur</StatusChip>
+                )}
                 {p.validFrom > today && <Badge>à venir</Badge>}
               </span>
               <span className="text-xs text-muted tabular-nums">{gridSummary(p.contract)}</span>
             </div>
             <button
               type="button"
-              className={button.icon}
+              className={button.ghost}
               aria-label={`Modifier les prix du ${fmtDate(p.validFrom)}`}
               title="Modifier ces prix"
               onClick={() => onEdit({ mode: "period", item, period: p })}
@@ -243,7 +252,7 @@ function PriceHistory({
               <button
                 type="button"
                 disabled={pending}
-                className={button.iconDanger}
+                className={button.ghostDanger}
                 aria-label={`Supprimer les prix du ${fmtDate(p.validFrom)}`}
                 title="Supprimer ces prix"
                 onClick={async () => {
@@ -323,7 +332,12 @@ function ContractCard(props: CardProps) {
       badges={
         <>
           <Badge>{KIND_LABELS[item.kind]}</Badge>
-          {status && <Badge tone={status.tone}>{status.label}</Badge>}
+          {status &&
+            (status.tone === "active" ? (
+              <StatusChip tone="ok">{status.label}</StatusChip>
+            ) : (
+              <Badge tone={status.tone}>{status.label}</Badge>
+            ))}
         </>
       }
       description={dates(item, today)}
@@ -331,7 +345,7 @@ function ContractCard(props: CardProps) {
         <>
           <button
             type="button"
-            className={button.icon}
+            className={button.ghost}
             aria-label={`Modifier le nom et les dates de « ${item.name} »`}
             title="Nom et dates"
             onClick={() => onEdit({ mode: "identity", item })}
@@ -341,7 +355,7 @@ function ContractCard(props: CardProps) {
           <button
             type="button"
             disabled={pending}
-            className={button.icon}
+            className={button.ghost}
             aria-label={`Dupliquer « ${item.name} » en offre à comparer`}
             title="Dupliquer en offre à comparer"
             onClick={() => onAct(() => duplicateContractAction(item.id))}
@@ -351,7 +365,7 @@ function ContractCard(props: CardProps) {
           <button
             type="button"
             disabled={pending}
-            className={button.iconDanger}
+            className={button.ghostDanger}
             aria-label={`Supprimer « ${item.name} »`}
             title="Supprimer"
             onClick={async () => {
@@ -650,8 +664,8 @@ export function ContractsManager({
         <details className="group">
           <summary className="inline-flex min-h-11 cursor-pointer list-none items-center gap-2 text-sm font-semibold [&::-webkit-details-marker]:hidden">
             Gérer mes autres contrats et offres à comparer ({otherCount})
-            <span className="transition-transform group-open:rotate-90">
-              <Icon name="chevron" size={14} />
+            <span aria-hidden className="transition-transform group-open:rotate-90">
+              →
             </span>
           </summary>
           <div className="flex flex-col gap-5 pt-2">

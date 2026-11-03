@@ -3,7 +3,7 @@
 import { callAction } from "@/lib/action";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
-import { Badge, button, Icon } from "@/components/ui";
+import { button, DeltaChip, Icon } from "@/components/ui";
 import { monthLabel } from "@/domain/overview";
 import {
   PAYMENTS_PER_YEAR,
@@ -24,9 +24,9 @@ const eur = (cents: number) => formatEurFromCents(cents, 0);
 const BALANCED_CENTS = 1000;
 
 const VERDICTS = {
-  ok: { label: "Bien ajustée", tone: "positive" },
-  high: { label: "Trop élevée", tone: "warning" },
-  low: { label: "Trop basse", tone: "warning" },
+  ok: { label: "Bien ajustée", tone: "gain" },
+  high: { label: "Trop élevée", tone: "cost" },
+  low: { label: "Trop basse", tone: "cost" },
 } as const;
 
 function PaymentForm({
@@ -152,10 +152,11 @@ function Verdict({ analysis }: { analysis: PaymentAnalysis }) {
   return (
     <div className="flex flex-col gap-2 text-[13px]">
       <p className="flex flex-wrap items-center gap-x-2 gap-y-1">
-        <Badge tone={v.tone}>{v.label}</Badge>
+        <DeltaChip tone={v.tone}>{v.label}</DeltaChip>
         <span className="text-ink-soft tabular-nums">
-          ≈ {eur(analysis.paidAnnualCents)} prélevés par an pour ≈{" "}
-          {eur(analysis.expectedAnnualCents)} de coût attendu
+          Payé sur 12 mois : <strong className="text-ink">≈ {eur(analysis.paidAnnualCents)}</strong>{" "}
+          · Coût attendu sur 12 mois :{" "}
+          <strong className="text-ink">≈ {eur(analysis.expectedAnnualCents)}</strong>
         </span>
       </p>
       {analysis.verdict !== "ok" && (
@@ -170,11 +171,9 @@ function Verdict({ analysis }: { analysis: PaymentAnalysis }) {
           {Math.abs(s.balanceCents) < BALANCED_CENTS ? (
             "à peu près à l'équilibre"
           ) : s.balanceCents > 0 ? (
-            <span className="font-medium text-negative">environ {eur(s.balanceCents)} à payer</span>
+            <DeltaChip tone="cost">environ {eur(s.balanceCents)} à payer</DeltaChip>
           ) : (
-            <span className="font-medium text-positive">
-              environ {eur(-s.balanceCents)} en votre faveur
-            </span>
+            <DeltaChip tone="gain">environ {eur(-s.balanceCents)} en votre faveur</DeltaChip>
           )}
         </p>
       )}
@@ -231,7 +230,7 @@ export function PaymentSection({
         </p>
         <button
           type="button"
-          className={button.icon}
+          className={button.ghost}
           aria-label="Modifier la mensualité"
           title="Modifier la mensualité"
           onClick={() => setEditing(true)}

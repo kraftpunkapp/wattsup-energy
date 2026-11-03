@@ -79,7 +79,7 @@ function HcBar({ ranges, hp, hc }: { ranges: TimeRange[]; hp: number; hc: number
         {width >= 12 ? (
           <>
             <strong className="text-sm">{creuse ? "Heures creuses" : "Heures pleines"}</strong>
-            <span className="text-[13px]">{fmtPrice(creuse ? hc : hp)} €</span>
+            <span className="wu-mono text-xs">{fmtPrice(creuse ? hc : hp)} €/kWh</span>
           </>
         ) : width >= 5 ? (
           <strong className="text-sm">{creuse ? "HC" : "HP"}</strong>

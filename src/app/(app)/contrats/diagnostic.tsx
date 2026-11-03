@@ -1,7 +1,5 @@
-import Link from "next/link";
 import type { ReactNode } from "react";
-import { Icon, IconChip, type IconName, type IconTone } from "@/components/ui";
-import { monthLabel } from "@/domain/overview";
+import { ArrowLink, IconChip, type IconName } from "@/components/ui";
 import { PAYMENT_NOTICE_GAP, type PaymentAnalysis } from "@/domain/tariff/payment";
 import { formatEurFromCents, formatNumber, formatPercent } from "@/lib/format";
 import type { ContractComparison } from "@/server/queries/contracts";
@@ -20,14 +18,12 @@ const label = (r: ComparedRow) => (r.provider ? `${r.provider} ${r.name}` : r.na
 
 function Row({
   icon,
-  tone,
   title,
   last,
   aside,
   children,
 }: {
   icon: IconName;
-  tone: IconTone;
   title: string;
   last?: boolean;
   aside?: ReactNode;
@@ -37,7 +33,7 @@ function Row({
     <div
       className={`flex flex-wrap items-start gap-x-4 gap-y-2 py-5 sm:flex-nowrap ${last ? "" : "border-b border-track"}`}
     >
-      <IconChip icon={icon} tone={tone} size="lg" />
+      <IconChip icon={icon} size="lg" />
       <div className="flex min-w-0 flex-[1_1_220px] flex-col gap-1">
         <h2 className="text-[15px] font-bold text-balance">{title}</h2>
         {children}
@@ -85,7 +81,6 @@ export function ContractsDiagnostic({
       {(current || best) && (
         <Row
           icon="check"
-          tone={cheapest || !current ? "battery" : "solar"}
           title={
             !current && best
               ? `${label(best)} est l'offre la plus économique`
@@ -96,9 +91,12 @@ export function ContractsDiagnostic({
           last={!showPayment && !showLever}
           aside={
             (current ?? best) && (
-              <span className="flex-none text-xl font-bold whitespace-nowrap tabular-nums">
-                {eur((current ?? (best as ComparedRow)).annualCents)}
-                <span className="text-sm font-medium text-ink-soft"> / an</span>
+              <span className="flex flex-none flex-col sm:items-end">
+                <span className="wu-amount text-xl whitespace-nowrap">
+                  {eur((current ?? (best as ComparedRow)).annualCents)}
+                  <span className="text-sm font-medium text-ink-soft"> / an</span>
+                </span>
+                <span className="wu-label">Coût attendu sur 12 mois</span>
               </span>
             )
           }
@@ -137,35 +135,19 @@ export function ContractsDiagnostic({
       {showPayment && payment && a?.status === "ok" && (
         <Row
           icon="tag"
-          tone="solar"
           title={`Votre mensualité pourrait ${a.gap > 0 ? "baisser" : "augmenter"}`}
           last={!showLever}
         >
           <Text>
             ≈ {formatEurFromCents(a.advisedCents, 0)} par mois au lieu de{" "}
             {formatEurFromCents(payment.amountCents, 0)}.
-            {a.settlement &&
-              ` Sans changement, la régularisation de ${monthLabel(a.settlement.month)} ${
-                a.settlement.balanceCents > 0 ? "vous coûterait" : "vous rendrait"
-              } ≈ ${formatEurFromCents(Math.abs(a.settlement.balanceCents), 0)}.`}
           </Text>
-          <p className="text-[13px] text-muted">
-            Estimation à confirmer : elle dépend des règles de votre fournisseur et de votre date de
-            régularisation.
-          </p>
-          <a
-            href="#contrat-en-cours"
-            className="inline-flex min-h-11 items-center gap-1.5 self-start text-sm font-semibold"
-          >
-            Voir la mensualité du contrat
-            <Icon name="arrowRight" size={16} />
-          </a>
+          <ArrowLink href="#contrat-en-cours">Voir le détail de la mensualité</ArrowLink>
         </Row>
       )}
       {showLever && peak && gapCents !== null && (
         <Row
           icon="bulb"
-          tone="grid"
           title={
             cheapest
               ? "Votre levier n'est pas le fournisseur, c'est l'horaire"
@@ -176,15 +158,9 @@ export function ContractsDiagnostic({
           <Text>
             Vous consommez déjà {formatPercent(peak.hcShare)} en heures creuses. Chaque kWh déplacé
             des heures pleines vers les heures creuses économise{" "}
-            {formatNumber(gapCents, gapCents < 10 ? 1 : 0)} centimes.
+            {formatNumber(gapCents, gapCents < 10 ? 1 : 0)} c€/kWh.
           </Text>
-          <Link
-            href="/previsions"
-            className="inline-flex min-h-11 items-center gap-1.5 self-start text-sm font-semibold"
-          >
-            Voir les créneaux de demain
-            <Icon name="arrowRight" size={16} />
-          </Link>
+          <ArrowLink href="/previsions">Voir les créneaux de demain</ArrowLink>
         </Row>
       )}
     </section>

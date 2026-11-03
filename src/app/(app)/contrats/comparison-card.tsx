@@ -2,7 +2,7 @@
 
 import { callAction } from "@/lib/action";
 import { useState, useTransition, type ReactNode } from "react";
-import { Badge, button, Icon, Notice } from "@/components/ui";
+import { Badge, button, DeltaChip, Icon, Notice, StatusChip } from "@/components/ui";
 import { METER_POWERS } from "@/domain/market/compare";
 import { DAY_NAMES } from "@/domain/market/offer";
 import { addMarketOfferAction, saveMeterPowerAction } from "@/server/actions/market";
@@ -54,7 +54,6 @@ export type MarketState =
     };
 
 /** Hausse annuelle à partir de laquelle l'écart se signale en couleur (5 €). */
-const NOTABLE_CENTS = 500;
 
 /** En dessous d'un euro par an, deux offres coûtent la même chose. */
 const SAME_CENTS = 100;
@@ -145,14 +144,10 @@ function Delta({ row }: { row: ComparedRow }) {
     return <span className="text-xs font-medium text-muted">≈ même coût</span>;
   }
   return (
-    <span
-      className={`text-sm font-semibold tabular-nums ${
-        d < 0 ? "text-positive" : d >= NOTABLE_CENTS ? "text-increase" : "text-ink-soft"
-      }`}
-    >
+    <DeltaChip tone={d < 0 ? "gain" : "cost"}>
       {d < 0 ? "−" : "+"}
       {eur(Math.abs(d))} par an
-    </span>
+    </DeltaChip>
   );
 }
 
@@ -222,7 +217,7 @@ function Line({ row, max }: { row: ComparedRow; max: number }) {
           {origin && <span className="text-xs text-muted">{origin}</span>}
           <Badge>{row.kind}</Badge>
           {row.regulated && <Badge tone="soft">Tarif réglementé</Badge>}
-          {row.origin === "current" && <Badge tone="active">En cours</Badge>}
+          {row.origin === "current" && <StatusChip tone="ok">En cours</StatusChip>}
         </span>
         <span className="flex flex-none flex-col items-end">
           <span className="text-sm font-semibold whitespace-nowrap tabular-nums">

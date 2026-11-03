@@ -1,3 +1,4 @@
+import { DeltaChip } from "@/components/ui";
 import { formatPercent } from "@/lib/format";
 import type { ContractItem } from "./contracts-manager";
 import { fmtPrice, gridSummary } from "./grid-view";
@@ -30,20 +31,15 @@ const variation = (now: number, before: number | undefined) => {
   return `${v > 0 ? "+" : "−"}${formatPercent(Math.abs(v))}`;
 };
 
-/** Variation de prix : baisse en vert, hausse en brun-rouge, toujours avec son signe. */
-const Variation = ({ label, value }: { label: string; value: string }) => (
-  <span
-    className={
-      value.startsWith("+")
-        ? "text-increase"
-        : value.startsWith("−")
-          ? "text-positive"
-          : "text-muted"
-    }
-  >
-    {label} {value}
-  </span>
-);
+/** Variation de prix en puce : baisse = gain, hausse = surcoût, toujours avec son signe. */
+const Variation = ({ label, value }: { label?: string; value: string }) =>
+  value === "stable" ? (
+    <span className="text-xs text-muted">{label} stable</span>
+  ) : (
+    <DeltaChip tone={value.startsWith("−") ? "gain" : "cost"}>
+      {label} {value}
+    </DeltaChip>
+  );
 
 export function ContractHistory({ contracts }: { contracts: ContractItem[] }) {
   const list = contracts
@@ -73,19 +69,7 @@ export function ContractHistory({ contracts }: { contracts: ContractItem[] }) {
         </h2>
         {overall && (
           <span className="text-sm text-ink-soft">
-            Prix du kWh en heures pleines :{" "}
-            <strong
-              className={
-                overall.startsWith("−")
-                  ? "text-positive"
-                  : overall.startsWith("+")
-                    ? "text-increase"
-                    : "text-ink"
-              }
-            >
-              {overall}
-            </strong>{" "}
-            depuis {since}
+            Prix du kWh en heures pleines : <Variation value={overall} /> depuis {since}
           </span>
         )}
       </div>
@@ -114,8 +98,10 @@ export function ContractHistory({ contracts }: { contracts: ContractItem[] }) {
               <span className="text-xs text-muted">{KIND_LABELS[c.kind]}</span>
               {contract && p ? (
                 <span className="text-sm text-ink-soft tabular-nums">
-                  HP {fmtPrice(p.hp)}
-                  {p.hc !== null && <> · HC {fmtPrice(p.hc)}</>}
+                  <span className="wu-mono text-[13px]">
+                    HP {fmtPrice(p.hp)} €/kWh
+                    {p.hc !== null && <> · HC {fmtPrice(p.hc)} €/kWh</>}
+                  </span>
                   <br />
                   abonnement {eur2(contract.subscriptionEurYear / 12)} €/mois
                 </span>
@@ -123,9 +109,8 @@ export function ContractHistory({ contracts }: { contracts: ContractItem[] }) {
                 contract && <span className="text-sm text-ink-soft">{gridSummary(contract)}</span>
               )}
               {(hpVar || hcVar) && (
-                <span className="text-[13px] font-semibold tabular-nums">
+                <span className="flex flex-wrap gap-1.5">
                   {hpVar && <Variation label="HP" value={hpVar} />}
-                  {hpVar && hcVar && ", "}
                   {hcVar && <Variation label="HC" value={hcVar} />}
                 </span>
               )}
