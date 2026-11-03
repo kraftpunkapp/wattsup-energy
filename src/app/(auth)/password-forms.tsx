@@ -8,7 +8,7 @@ import { authClient } from "@/lib/auth-client";
 // Mot de passe oublié : demande du lien par email, puis choix du nouveau mot de passe.
 
 const inputClass =
-  "h-11 w-full rounded-[8px] border border-border-strong bg-surface px-3 text-sm outline-none focus:border-ink focus-visible:ring-2 focus-visible:ring-grid/30";
+  "h-11 w-full rounded-[8px] border border-border-strong bg-surface px-3 text-sm outline-none focus:border-ink focus-visible:ring-2 focus-visible:ring-accent/30";
 const card = "flex flex-col gap-4 rounded-card border border-border bg-surface p-6";
 const submit = "h-11 rounded-[8px] bg-ink text-sm font-medium text-bg disabled:opacity-60";
 

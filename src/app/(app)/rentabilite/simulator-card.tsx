@@ -12,7 +12,7 @@ import type { SimulationView } from "@/server/simulation";
 // an), détail dessous, hypothèses en pied.
 
 const inputClass =
-  "h-9 w-full rounded-[8px] border border-border-strong bg-surface px-2.5 text-[14px] tabular-nums outline-none focus:border-ink focus-visible:ring-2 focus-visible:ring-grid/30";
+  "h-9 w-full rounded-[8px] border border-border-strong bg-surface px-2.5 text-[14px] tabular-nums outline-none focus:border-ink focus-visible:ring-2 focus-visible:ring-accent/30";
 const labelClass = "flex min-w-0 flex-col gap-1 text-xs text-muted";
 const toNumber = (t: string) => Number(t.replace(",", ".").trim() || "NaN");
 const fmtDate = (iso: string) =>

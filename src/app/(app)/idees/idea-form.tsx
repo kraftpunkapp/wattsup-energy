@@ -7,7 +7,7 @@ import { IDEA_DESCRIPTION_MAX, IDEA_TITLE_MAX } from "@/domain/ideas";
 import { proposeIdeaAction } from "@/server/actions/ideas";
 
 const inputClass =
-  "w-full rounded-[8px] border border-border-strong bg-surface px-3 text-[14px] text-ink outline-none focus:border-ink focus-visible:ring-2 focus-visible:ring-grid/30";
+  "w-full rounded-[8px] border border-border-strong bg-surface px-3 text-[14px] text-ink outline-none focus:border-ink focus-visible:ring-2 focus-visible:ring-accent/30";
 
 /** Compteur de caractères sous un champ, en rouge à l'approche de la limite. */
 function Counter({ value, max }: { value: string; max: number }) {

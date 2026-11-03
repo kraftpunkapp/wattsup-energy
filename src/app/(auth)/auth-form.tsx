@@ -48,7 +48,7 @@ const ERRORS: Record<string, string> = {
 };
 
 const inputClass =
-  "h-11 w-full rounded-[8px] border border-border-strong bg-surface px-3 text-sm outline-none focus:border-ink focus-visible:ring-2 focus-visible:ring-grid/30";
+  "h-11 w-full rounded-[8px] border border-border-strong bg-surface px-3 text-sm outline-none focus:border-ink focus-visible:ring-2 focus-visible:ring-accent/30";
 
 export function AuthForm({
   mode,

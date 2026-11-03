@@ -32,7 +32,7 @@ const DURATIONS = Array.from({ length: 48 }, (_, i) => (i + 1) * 15);
 const HOURS = Array.from({ length: 24 }, (_, h) => h);
 
 const inputClass =
-  "h-10 w-full rounded-[8px] border border-border-strong bg-surface px-3 text-[13px] outline-none focus:border-ink focus-visible:ring-2 focus-visible:ring-grid/30";
+  "h-10 w-full rounded-[8px] border border-border-strong bg-surface px-3 text-[13px] outline-none focus:border-ink focus-visible:ring-2 focus-visible:ring-accent/30";
 const labelClass = "flex flex-col gap-1.5 text-xs text-muted";
 
 type Draft = Omit<ApplianceInput, "powerKw"> & { powerKw: string };

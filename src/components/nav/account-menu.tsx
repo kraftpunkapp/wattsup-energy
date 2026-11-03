@@ -130,7 +130,7 @@ export function AccountMenu({
           open || onAccount ? "bg-panel-ink/[0.12]" : ""
         }`}
       >
-        <span className="flex size-8 flex-none items-center justify-center rounded-full bg-grid text-[13px] font-semibold text-on-grid">
+        <span className="flex size-8 flex-none items-center justify-center rounded-full bg-accent text-[13px] font-semibold text-on-accent">
           {initial}
         </span>
         <span className="flex min-w-0 flex-1 flex-col">
@@ -157,7 +157,7 @@ export function AccountMenu({
         aria-expanded={open}
         aria-label={`Menu du compte (${userName})`}
         onClick={() => setOpen(!open)}
-        className={`flex size-9 items-center justify-center rounded-full bg-grid text-[13px] font-semibold text-on-grid ${
+        className={`flex size-9 items-center justify-center rounded-full bg-accent text-[13px] font-semibold text-on-accent ${
           open || onAccount ? "ring-2 ring-ink ring-offset-2 ring-offset-bg" : ""
         }`}
       >

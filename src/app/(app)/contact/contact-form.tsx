@@ -12,7 +12,7 @@ import {
 import { sendContactAction } from "@/server/actions/contact";
 
 const fieldClass =
-  "w-full rounded-[8px] border border-border-strong bg-surface px-3 text-[14px] text-ink outline-none focus:border-ink focus-visible:ring-2 focus-visible:ring-grid/30";
+  "w-full rounded-[8px] border border-border-strong bg-surface px-3 text-[14px] text-ink outline-none focus:border-ink focus-visible:ring-2 focus-visible:ring-accent/30";
 
 const PLACEHOLDER: Record<ContactKind, string> = {
   contact: "Votre question ou votre remarque…",

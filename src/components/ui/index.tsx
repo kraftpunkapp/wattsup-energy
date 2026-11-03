@@ -22,12 +22,12 @@ export const button = {
 export type BadgeTone = "active" | "neutral" | "soft" | "positive" | "warning";
 
 const BADGE: Record<BadgeTone, string> = {
-  active: "bg-grid text-on-grid",
+  active: "bg-accent text-on-accent",
   neutral: "bg-track text-ink-soft",
-  soft: "bg-grid/10 text-grid",
+  soft: "bg-accent/10 text-ink",
   positive: "bg-battery/15 text-positive",
   // Texte plus foncé que le token : 4,8:1 sur le fond teinté (texte de 11 px).
-  warning: "bg-pellet/15 text-warning-ink",
+  warning: "bg-track text-warning-ink",
 };
 
 /** Pastille de type ou de statut (« En cours », « Terminé », « HP/HC »…). */
@@ -73,7 +73,7 @@ export function Card({
         danger
           ? "border-negative/40 bg-danger-bg"
           : highlight
-            ? "border-grid bg-surface shadow-[0_0_0_3px_rgba(61,90,128,0.12)]"
+            ? "border-accent bg-surface shadow-[0_0_0_3px_rgba(26,26,26,0.10)]"
             : "border-border bg-surface"
       }`}
     >
@@ -84,7 +84,7 @@ export function Card({
               danger
                 ? "bg-negative/10 text-negative"
                 : highlight
-                  ? "bg-grid text-on-grid"
+                  ? "bg-accent text-on-accent"
                   : "bg-bg text-subtle"
             }`}
           >
@@ -221,7 +221,7 @@ export function Notice({
     <div
       role="status"
       className={`flex flex-col gap-3 rounded-card border p-4 text-[13px] text-pretty ${
-        tone === "warning" ? "border-pellet/40 bg-warning-bg" : "border-grid/25 bg-grid/[0.05]"
+        tone === "warning" ? "border-border-strong bg-warning-bg" : "border-border-strong bg-track"
       }`}
     >
       <p>

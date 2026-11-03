@@ -33,7 +33,7 @@ const ICONS: Record<FuelEventType, IconName> = {
 };
 
 const inputClass =
-  "h-10 w-full rounded-[8px] border border-border-strong bg-surface px-3 text-[14px] outline-none focus:border-ink focus-visible:ring-2 focus-visible:ring-grid/30 tabular-nums";
+  "h-10 w-full rounded-[8px] border border-border-strong bg-surface px-3 text-[14px] outline-none focus:border-ink focus-visible:ring-2 focus-visible:ring-accent/30 tabular-nums";
 const labelClass = "flex flex-col gap-1.5 text-xs text-muted";
 const toNumber = (text: string) => Number(text.replace(",", ".").trim() || "NaN");
 const eur = (n: number) =>

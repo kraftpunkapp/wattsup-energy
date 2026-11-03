@@ -213,7 +213,7 @@ function Line({ row, max }: { row: ComparedRow; max: number }) {
         row.approximate ||
         row.assumedTempoDays > 0 ||
         row.assumedSpotHours > 0) && (
-        <span className="text-[11px] text-pellet text-pretty">
+        <span className="text-[11px] text-warning-ink text-pretty">
           {row.assumedOffPeak &&
             "Heures creuses supposées de 22 h à 6 h (celles de votre compteur sont inconnues). "}
           {row.approximate &&

@@ -1,125 +1,138 @@
 @import "tailwindcss";
 
-/* Tokens de design : couleurs, rayons et ombres de l'interface */
+/* Tokens de design : couleurs, rayons et ombres de l'interface (refonte V2).
+   Une couleur = un sens, partout : réseau (grid), solaire, batterie, granulés, chauffage
+   électrique (eheat), heures creuses (hc), abonnement, économie (positive). Ne jamais en
+   réutiliser une pour autre chose : actions, lien actif et focus passent par « accent ». */
 @theme {
-  --color-bg: #f4f2ec;
+  --color-bg: #f2f0eb;
   --color-surface: #ffffff;
-  --color-ink: #16181a;
-  --color-muted: #676b63;
-  --color-subtle: #686c64;
-  --color-border: #e4e0d6;
-  --color-border-strong: #ddd8cc;
-  --color-track: #efece4;
-  --color-chip: #e9e5dc;
+  --color-ink: #1a1a1a;
+  --color-ink-soft: #3d3a35;
+  --color-muted: #5e5b55;
+  --color-subtle: #5e5b55;
+  --color-border: #e6e2da;
+  --color-border-strong: #dcd7cd;
+  --color-track: #eeebe4;
+  --color-chip: #eeebe4;
 
-  --color-grid: #3d5a80;
+  --color-grid: #2f4e78;
   --color-solar: #e0a21b;
-  --color-battery: #2a9d74;
-  --color-pellet: #b5652b;
+  --color-battery: #1f8a64;
+  --color-pellet: #b5622a;
   --color-wood: #6f4a2e;
-  --color-eheat: #c8442f;
+  --color-eheat: #7a1f17;
+  --color-hc: #9db4d3;
+  --color-subscription: #cfc7b8;
+  --color-positive: #146b4c;
 
-  --color-positive: #1f7a59;
-  --color-negative: #c8442f;
+  /* Actions, élément actif, lien et focus : l'encre, jamais une couleur de sens. */
+  --color-accent: #1a1a1a;
+  --color-on-accent: #ffffff;
+  /* Hausse, erreur : l'encre, avec signe, flèche ou texte ; jamais la couleur seule. */
+  --color-negative: #1a1a1a;
 
-  /* Texte secondaire plus marqué que muted (légendes, onglets inactifs). */
-  --color-ink-soft: #5e625c;
-  /* Panneaux sombres dans les deux thèmes : barre latérale, carte Budget, toasts. */
-  --color-panel: #16181a;
+  /* Panneaux sombres dans les deux thèmes : barre latérale, bandeaux, toasts. */
+  --color-panel: #18181a;
   --color-panel-edge: transparent;
-  --color-panel-ink: #f4f2ec;
-  --color-panel-muted: #a9ada6;
-  --color-panel-soft: #c9ccc5;
-  --color-panel-positive: #7fd1b0;
-  --color-panel-negative: #f2a091;
-  /* Heures creuses (bleu clair), abonnement et degrés-jours dans les graphiques. */
-  --color-hc: #7e9cc4;
-  --color-subscription: #c9c2b4;
-  --color-neutral-bar: #8a8e86;
+  --color-panel-active: #2b2b2e;
+  --color-panel-ink: #f2f0eb;
+  --color-panel-muted: #a9adb8;
+  --color-panel-soft: #cfcbc3;
+  --color-panel-positive: #3fbf86;
+  --color-panel-negative: #f2f0eb;
+  --color-neutral-bar: #8a857b;
   /* Pointillés des emplacements vides, jour Tempo blanc, interrupteur éteint. */
-  --color-dash: #cfc9bb;
-  --color-tempo-white: #e4e0d6;
-  --color-switch-off: #d6d1c5;
-  /* Fonds d'encarts et textes teintés lisibles sur ces fonds. */
-  --color-warning-bg: #fbf3ea;
-  --color-danger-bg: #fbeae7;
-  --color-warning-ink: #9a5322;
-  --color-solar-ink: #8a6210;
-  /* Texte posé sur le bleu grid (pastille active, avatar). */
+  --color-dash: #cfcbc3;
+  --color-tempo-white: #e6e2da;
+  --color-switch-off: #cfcbc3;
+  /* Fonds d'encarts neutres et textes lisibles sur ces fonds. */
+  --color-warning-bg: #f6f4ef;
+  --color-danger-bg: #eeebe4;
+  --color-warning-ink: #3d3a35;
+  --color-solar-ink: #7a5200;
+  /* Texte posé sur le bleu grid (pastille de légende). */
   --color-on-grid: #ffffff;
 
   --font-sans: var(--font-instrument-sans), system-ui, sans-serif;
   --font-mono: var(--font-jetbrains-mono), ui-monospace, monospace;
 
-  --radius-card: 14px;
+  --radius-card: 20px;
   --radius-control: 10px;
 }
 
 /* Thème sombre (T43) : mêmes tokens, autres valeurs. « dark » : choisi dans Mon compte ;
    « auto » : suit le réglage de l'appareil. Clair par défaut. */
 :root[data-theme="dark"] {
-  --color-bg: #121416;
-  --color-surface: #1b1e21;
-  --color-ink: #ecebe6;
-  --color-muted: #a3a79f;
-  --color-subtle: #9a9e96;
-  --color-border: #2c3034;
-  --color-border-strong: #3a3f44;
-  --color-track: #25292c;
-  --color-chip: #0f1113;
-  --color-grid: #6f8fb8;
+  --color-bg: #18181a;
+  --color-surface: #232326;
+  --color-ink: #f2f0eb;
+  --color-ink-soft: #cfcbc3;
+  --color-muted: #a9a59c;
+  --color-subtle: #a9a59c;
+  --color-border: #3a3a3e;
+  --color-border-strong: #4a4a4f;
+  --color-track: #2b2b2e;
+  --color-chip: #121214;
+  --color-grid: #7c9cc8;
   --color-solar: #e3a92a;
   --color-battery: #34b388;
-  --color-pellet: #cf8148;
+  --color-pellet: #d2854f;
   --color-wood: #a9805d;
-  --color-eheat: #e3664f;
+  --color-eheat: #d4685c;
+  --color-hc: #9db4d3;
   --color-positive: #52c79d;
-  --color-negative: #f07d69;
-  --color-ink-soft: #b9bcb4;
-  --color-panel: #0b0c0d;
-  --color-panel-edge: #2c3034;
-  --color-subscription: #656963;
-  --color-dash: #4b5056;
+  --color-accent: #f2f0eb;
+  --color-on-accent: #18181a;
+  --color-negative: #f2f0eb;
+  --color-panel: #121214;
+  --color-panel-edge: #3a3a3e;
+  --color-subscription: #6a665e;
+  --color-dash: #55555a;
   --color-tempo-white: #d6d1c5;
-  --color-switch-off: #3d4247;
-  --color-warning-bg: #2b2219;
-  --color-danger-bg: #301c19;
-  --color-warning-ink: #e9a670;
+  --color-switch-off: #4a4a4f;
+  --color-warning-bg: #2b2b2e;
+  --color-danger-bg: #2b2b2e;
+  --color-warning-ink: #cfcbc3;
   --color-solar-ink: #e9bd57;
-  --color-on-grid: #0b0c0d;
+  --color-on-grid: #18181a;
   color-scheme: dark;
 }
 
 @media (prefers-color-scheme: dark) {
   :root[data-theme="auto"] {
-    --color-bg: #121416;
-    --color-surface: #1b1e21;
-    --color-ink: #ecebe6;
-    --color-muted: #a3a79f;
-    --color-subtle: #9a9e96;
-    --color-border: #2c3034;
-    --color-border-strong: #3a3f44;
-    --color-track: #25292c;
-    --color-chip: #0f1113;
-    --color-grid: #6f8fb8;
+    --color-bg: #18181a;
+    --color-surface: #232326;
+    --color-ink: #f2f0eb;
+    --color-ink-soft: #cfcbc3;
+    --color-muted: #a9a59c;
+    --color-subtle: #a9a59c;
+    --color-border: #3a3a3e;
+    --color-border-strong: #4a4a4f;
+    --color-track: #2b2b2e;
+    --color-chip: #121214;
+    --color-grid: #7c9cc8;
     --color-solar: #e3a92a;
     --color-battery: #34b388;
-    --color-pellet: #cf8148;
+    --color-pellet: #d2854f;
     --color-wood: #a9805d;
-    --color-eheat: #e3664f;
+    --color-eheat: #d4685c;
+    --color-hc: #9db4d3;
     --color-positive: #52c79d;
-    --color-negative: #f07d69;
-    --color-ink-soft: #b9bcb4;
-    --color-panel: #0b0c0d;
-    --color-panel-edge: #2c3034;
-    --color-subscription: #656963;
-    --color-dash: #4b5056;
+    --color-accent: #f2f0eb;
+    --color-on-accent: #18181a;
+    --color-negative: #f2f0eb;
+    --color-panel: #121214;
+    --color-panel-edge: #3a3a3e;
+    --color-subscription: #6a665e;
+    --color-dash: #55555a;
     --color-tempo-white: #d6d1c5;
-    --color-switch-off: #3d4247;
-    --color-warning-bg: #2b2219;
-    --color-danger-bg: #301c19;
-    --color-warning-ink: #e9a670;
+    --color-switch-off: #4a4a4f;
+    --color-warning-bg: #2b2b2e;
+    --color-danger-bg: #2b2b2e;
+    --color-warning-ink: #cfcbc3;
     --color-solar-ink: #e9bd57;
+    --color-on-grid: #18181a;
     color-scheme: dark;
   }
 }
@@ -139,7 +152,7 @@
 
   /* Focus clavier visible partout, à la couleur de la charte. */
   :focus-visible {
-    outline: 2px solid var(--color-grid);
+    outline: 2px solid var(--color-accent);
     outline-offset: 2px;
   }
 
@@ -172,7 +185,8 @@
   }
 
   a {
-    color: var(--color-grid);
+    color: var(--color-ink);
+    text-underline-offset: 3px;
   }
 
   a:hover {

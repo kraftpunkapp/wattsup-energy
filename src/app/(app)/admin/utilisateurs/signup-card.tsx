@@ -25,7 +25,7 @@ const MODES: { id: SignupMode; label: string; hint: string }[] = [
 ];
 
 const inputClass =
-  "h-10 w-full rounded-[8px] border border-border-strong bg-surface px-3 text-[14px] outline-none focus:border-ink focus-visible:ring-2 focus-visible:ring-grid/30";
+  "h-10 w-full rounded-[8px] border border-border-strong bg-surface px-3 text-[14px] outline-none focus:border-ink focus-visible:ring-2 focus-visible:ring-accent/30";
 
 export function SignupCard({
   mode: savedMode,

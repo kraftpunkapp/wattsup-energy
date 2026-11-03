@@ -28,7 +28,7 @@ const COLORS: { id: TempoColor; label: string; dot: string }[] = [
 ];
 
 const inputClass =
-  "h-10 w-full rounded-[8px] border border-border-strong bg-surface px-3 text-[13px] outline-none focus:border-ink focus-visible:ring-2 focus-visible:ring-grid/30";
+  "h-10 w-full rounded-[8px] border border-border-strong bg-surface px-3 text-[13px] outline-none focus:border-ink focus-visible:ring-2 focus-visible:ring-accent/30";
 const labelClass = "flex flex-col gap-1.5 text-xs text-muted";
 const smallButton =
   "rounded-[8px] border border-border-strong px-2.5 py-1.5 text-xs text-ink-soft hover:bg-bg";
@@ -255,7 +255,7 @@ function RuleEditor({
             if (!e.target.checked) delete (next as { onlySobrietyDays?: true }).onlySobrietyDays;
             onChange(next);
           }}
-          className="size-4 accent-[var(--color-grid)]"
+          className="size-4 accent-accent"
         />
         Seulement les jours de sobriété EDF (Zen Flex)
       </label>
@@ -330,7 +330,7 @@ function SpotFields({
           type="checkbox"
           checked={f.cap !== null}
           onChange={(e) => set({ cap: e.target.checked ? { winter: 0.25, summer: 0.15 } : null })}
-          className="size-4 accent-[var(--color-grid)]"
+          className="size-4 accent-accent"
         />
         Prix plafonné (spot + acheminement + accise)
       </label>
@@ -496,7 +496,7 @@ export function GridFields({
                   if (!e.target.checked) delete (next as { dayStartHour?: 6 }).dayStartHour;
                   onChange(next);
                 }}
-                className="mt-0.5 size-4 accent-[var(--color-grid)]"
+                className="mt-0.5 size-4 accent-accent"
               />
               <span className="flex flex-col gap-0.5">
                 La journée commence à 6 h
@@ -658,7 +658,7 @@ export function SubscriptionFields({
               type="checkbox"
               checked={value.endDate === null}
               onChange={(e) => onChange({ ...value, endDate: e.target.checked ? null : today })}
-              className="size-4 accent-[var(--color-grid)]"
+              className="size-4 accent-accent"
             />
             Toujours en cours
           </label>

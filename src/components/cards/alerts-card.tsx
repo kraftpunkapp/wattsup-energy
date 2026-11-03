@@ -42,7 +42,7 @@ export function AlertsCard({ alerts }: { alerts: Alert[] }) {
           <li
             key={a.key}
             className={`flex flex-col gap-3 rounded-card border p-4 text-[13px] text-pretty sm:flex-row sm:items-center ${
-              a.level === 2 ? "border-negative/40 bg-danger-bg" : "border-pellet/40 bg-warning-bg"
+              a.level === 2 ? "border-negative/40 bg-danger-bg" : "border-border-strong bg-warning-bg"
             }`}
           >
             <p className="flex-1">

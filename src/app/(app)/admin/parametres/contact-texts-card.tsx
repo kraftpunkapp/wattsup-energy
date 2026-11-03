@@ -19,7 +19,7 @@ import { saveContactTextsAction } from "@/server/actions/admin";
 // (hébergement, confidentialité…). Vides : textes neutres.
 
 const inputClass =
-  "w-full rounded-[8px] border border-border-strong bg-surface px-3 text-[14px] text-ink outline-none focus:border-ink focus-visible:ring-2 focus-visible:ring-grid/30";
+  "w-full rounded-[8px] border border-border-strong bg-surface px-3 text-[14px] text-ink outline-none focus:border-ink focus-visible:ring-2 focus-visible:ring-accent/30";
 
 export function ContactTextsCard({
   label: savedLabel,

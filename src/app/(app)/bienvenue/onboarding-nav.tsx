@@ -29,7 +29,7 @@ export function OnboardingNav({ step, position }: { step: number; position: "top
               aria-current={i === step ? "step" : undefined}
               className="flex w-full flex-col gap-1.5 text-left"
             >
-              <span className={`h-1.5 rounded-full ${i <= step ? "bg-grid" : "bg-track"}`} />
+              <span className={`h-1.5 rounded-full ${i <= step ? "bg-accent" : "bg-track"}`} />
               <span
                 className={`hidden text-[11px] sm:block ${i === step ? "font-semibold text-ink" : "text-muted"}`}
               >

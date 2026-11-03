@@ -27,7 +27,7 @@ const KINDS: Record<Marker["kind"], { label: string; icon: IconName }> = {
 };
 
 const inputClass =
-  "h-10 w-full rounded-[8px] border border-border-strong bg-surface px-3 text-[14px] outline-none focus:border-ink focus-visible:ring-2 focus-visible:ring-grid/30";
+  "h-10 w-full rounded-[8px] border border-border-strong bg-surface px-3 text-[14px] outline-none focus:border-ink focus-visible:ring-2 focus-visible:ring-accent/30";
 const labelClass = "flex flex-col gap-1.5 text-xs text-muted";
 
 function MarkerForm({
@@ -117,7 +117,7 @@ function MarkerForm({
           type="checkbox"
           checked={end !== null}
           onChange={(e) => setEnd(e.target.checked ? start : null)}
-          className="size-4 accent-[var(--color-grid)]"
+          className="size-4 accent-accent"
         />
         Sur plusieurs jours
       </label>

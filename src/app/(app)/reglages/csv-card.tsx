@@ -219,7 +219,7 @@ export function CsvCard({
               void choose(e.dataTransfer.files[0]);
             }}
             className={`flex cursor-pointer flex-col items-center gap-2 rounded-control border border-dashed px-4 py-6 text-center text-[13px] ${
-              dragging ? "border-grid bg-grid/[0.05]" : "border-dash hover:bg-bg"
+              dragging ? "border-accent bg-track" : "border-dash hover:bg-bg"
             }`}
           >
             <Icon name="upload" size={20} />
@@ -288,7 +288,7 @@ export function CsvCard({
         <div className="flex flex-col gap-2" role="status">
           <div className="h-2 overflow-hidden rounded-full bg-track">
             <div
-              className="h-2 rounded-full bg-grid transition-[width]"
+              className="h-2 rounded-full bg-accent transition-[width]"
               style={{ width: `${Math.min(100, (phase.sent / phase.file.size) * 100)}%` }}
             />
           </div>

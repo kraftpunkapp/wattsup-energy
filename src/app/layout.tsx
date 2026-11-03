@@ -28,8 +28,8 @@ export const metadata: Metadata = {
   appleWebApp: { capable: true, title: "WattsUp", statusBarStyle: "default" },
 };
 
-const LIGHT_BG = "#F4F2EC";
-const DARK_BG = "#121416";
+const LIGHT_BG = "#F2F0EB";
+const DARK_BG = "#18181A";
 
 /** Barre du navigateur mobile : couleur du fond de page, selon le thème du compte. */
 export async function generateViewport(): Promise<Viewport> {
