@@ -25,6 +25,28 @@ export interface FuelSummary {
   priceNote: string | null;
   /** Poids d'un sac de granulés (Réglages). */
   bagKg: number;
+  /** Prévision de réapprovisionnement (granulés), null sans assez de données. */
+  refill?: RefillSummary | null;
+}
+
+/** Ce que la prévision dit du stock, déjà calculé côté serveur (sacs entiers). */
+export interface RefillSummary {
+  /** Fin de la saison en cours (« fin mai »), null hors saison. */
+  currentEnd: string | null;
+  /** Besoin jusqu'à la fin de saison, hiver moyen, et marge restante (peut être négative). */
+  need: number | null;
+  spare: number | null;
+  /** Besoin d'un hiver rigoureux et s'il passerait avec le stock. */
+  rigorousNeed: number | null;
+  rigorousOk: boolean | null;
+  /** Sacs à acheter avant la fin de la saison en cours (hiver moyen). */
+  toBuy: number | null;
+  /** Rythme mesuré sur 30 jours : sacs par jour, null sans consommation saisie. */
+  perDay: number | null;
+  /** Saison prochaine, hiver moyen : sacs et coût (€) au dernier prix connu. */
+  nextLabel: string;
+  nextBags: number;
+  nextCostEur: number | null;
 }
 
 const UNDO_SECONDS = 10;
@@ -244,7 +266,7 @@ export function FuelCard({ summary }: { summary: FuelSummary }) {
   const [undo, setUndo] = useState<{ id: string; label: string } | null>(null);
   const [errors, setErrors] = useState<string[]>([]);
   const [pending, startTransition] = useTransition();
-  const { fuel, stock, avgPrice, priceNote, bagKg } = summary;
+  const { fuel, stock, avgPrice, priceNote, bagKg, refill } = summary;
   const pellet = fuel === "pellet";
   // Le stock arrive en unité de base ; on l'affiche en sacs (granulés) ou stères (bois).
   const shown = pellet ? stock / bagKg : stock;
@@ -272,6 +294,13 @@ export function FuelCard({ summary }: { summary: FuelSummary }) {
       badges={stock < 0 ? <Badge tone="warning">Stock à corriger</Badge> : undefined}
       description="Stock = dernier relevé + achats − consommations saisies."
     >
+      {refill && refill.need !== null && refill.spare !== null && (
+        <p className="text-[22px] leading-snug font-bold text-balance">
+          {refill.toBuy !== null && refill.toBuy > 0
+            ? `Il manquera ≈ ${formatNumber(refill.toBuy)} sac${refill.toBuy > 1 ? "s" : ""} avant la fin de l'hiver`
+            : "Stock suffisant pour finir l'hiver"}
+        </p>
+      )}
       <div className={tiles}>
         <StatTile
           label="Stock restant"
@@ -287,6 +316,50 @@ export function FuelCard({ summary }: { summary: FuelSummary }) {
           sub={avgPrice === null ? "aucun achat chiffré" : (priceNote ?? undefined)}
         />
       </div>
+      {refill && refill.need !== null && refill.spare !== null && (
+        <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,240px),1fr))] gap-3">
+          <div className="flex flex-col gap-1 rounded-control bg-bg p-4">
+            <span className="text-[13px] font-semibold text-muted">
+              D&apos;ici {refill.currentEnd ?? "la fin de saison"} · estimation
+            </span>
+            <span className="text-lg font-bold tabular-nums">
+              ≈ {formatNumber(refill.need)} sacs nécessaires pour un hiver moyen
+            </span>
+            <span className="text-sm text-ink-soft text-pretty">
+              {refill.spare >= 0
+                ? `Il vous en resterait ≈ ${formatNumber(refill.spare)}.`
+                : `Il en manquerait ≈ ${formatNumber(-refill.spare)}.`}
+              {refill.rigorousNeed !== null &&
+                refill.rigorousOk !== null &&
+                ` ${refill.rigorousOk ? "Même un" : "Un"} hiver rigoureux (${formatNumber(refill.rigorousNeed)} sacs) ${refill.rigorousOk ? "passerait" : "ne passerait pas"}.`}
+            </span>
+          </div>
+          {refill.perDay !== null && refill.perDay > 0 && (
+            <div className="flex flex-col gap-1 rounded-control bg-bg p-4">
+              <span className="text-[13px] font-semibold text-muted">
+                Au rythme actuel · mesuré
+              </span>
+              <span className="text-lg font-bold tabular-nums">
+                {refill.perDay >= 1
+                  ? `≈ ${formatNumber(refill.perDay, 1)} sacs par jour`
+                  : `≈ 1 sac tous les ${formatNumber(Math.round(1 / refill.perDay))} jours`}
+              </span>
+              <span className="text-sm text-ink-soft text-pretty">
+                Calculé sur les sacs versés ces 30 derniers jours ; le rythme change avec le froid.
+              </span>
+            </div>
+          )}
+        </div>
+      )}
+      {refill && (
+        <p className="text-sm text-ink-soft text-pretty">
+          <strong className="text-ink">Saison {refill.nextLabel} :</strong> prévoyez ≈{" "}
+          {formatNumber(refill.nextBags)} sacs
+          {refill.nextCostEur !== null &&
+            `, ≈ ${formatNumber(refill.nextCostEur)} € au dernier prix d'achat`}{" "}
+          (hiver moyen).
+        </p>
+      )}
 
       {stock < 0 && (
         <Notice
@@ -314,7 +387,7 @@ export function FuelCard({ summary }: { summary: FuelSummary }) {
         className={`${button.primary} h-12 w-full text-[15px]`}
       >
         <Icon name="plus" size={18} />
-        {pellet ? "Sac versé" : "½ stère utilisé"}
+        {pellet ? "J'ai versé un sac" : "J'ai brûlé ½ stère"}
       </button>
 
       {form === "purchase" && <PurchaseForm fuel={fuel} onDone={close} />}

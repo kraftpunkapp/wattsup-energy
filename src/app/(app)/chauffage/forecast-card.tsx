@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { button, Card, Figures, Notice } from "@/components/ui";
+import { button, Card, Figures, Notice, Segmented } from "@/components/ui";
 import type { Forecast, Scenario } from "@/domain/heating/forecast";
 import type { Fuel } from "@/domain/heating/fuel";
 import { formatNumber } from "@/lib/format";
@@ -21,41 +21,6 @@ const SCENARIO_FACTOR: Record<Scenario, string> = {
   moyen: "1,00",
   rigoureux: "1,15",
 };
-
-function Segmented<T extends string>({
-  label,
-  options,
-  value,
-  onChange,
-}: {
-  label: string;
-  options: { id: T; label: string }[];
-  value: T;
-  onChange: (v: T) => void;
-}) {
-  return (
-    <div
-      role="radiogroup"
-      aria-label={label}
-      className="inline-flex gap-0.5 rounded-[9px] bg-chip p-[2px]"
-    >
-      {options.map((o) => (
-        <button
-          key={o.id}
-          type="button"
-          role="radio"
-          aria-checked={value === o.id}
-          onClick={() => onChange(o.id)}
-          className={`rounded-[7px] px-2.5 py-1 text-[12px] font-medium whitespace-nowrap ${
-            value === o.id ? "bg-surface shadow-[0_1px_2px_rgba(0,0,0,0.08)]" : "text-ink-soft"
-          }`}
-        >
-          {o.label}
-        </button>
-      ))}
-    </div>
-  );
-}
 
 const eur = (n: number) => `${formatNumber(Math.round(n / 5) * 5)} €`;
 
@@ -131,8 +96,8 @@ export function ForecastCard({ view }: { view: RefillForecastView }) {
   return (
     <Card
       icon="sliders"
-      title="Prévision de réapprovisionnement"
-      description="D'après vos deux dernières saisons, corrigées du froid (degrés-jours), et votre stock actuel."
+      title="Réapprovisionnement · le détail"
+      description="D'après vos deux dernières saisons, ajustées au froid, et votre stock actuel."
     >
       {/* Réglages de la prévision : compacts, sur une ligne, au-dessus de la réponse. */}
       <div className="flex flex-wrap gap-2">
@@ -141,7 +106,7 @@ export function ForecastCard({ view }: { view: RefillForecastView }) {
             label="Combustible"
             value={fuel}
             onChange={setFuel}
-            options={view.fuels.map((x) => ({ id: x.fuel, label: FUEL_LABELS[x.fuel] }))}
+            options={view.fuels.map((x) => ({ value: x.fuel, label: FUEL_LABELS[x.fuel] }))}
           />
         )}
         {f.current && (
@@ -150,8 +115,8 @@ export function ForecastCard({ view }: { view: RefillForecastView }) {
             value={effectiveTarget}
             onChange={setTarget}
             options={[
-              { id: "current", label: "Fin de cette saison" },
-              { id: "next", label: "Saison prochaine" },
+              { value: "current", label: "Fin de cette saison" },
+              { value: "next", label: "Saison prochaine" },
             ]}
           />
         )}
@@ -164,7 +129,7 @@ export function ForecastCard({ view }: { view: RefillForecastView }) {
               value={scenario}
               onChange={setScenario}
               options={(Object.keys(SCENARIO_LABELS) as Scenario[]).map((s) => ({
-                id: s,
+                value: s,
                 label: SCENARIO_LABELS[s].replace("Hiver ", ""),
               }))}
             />
@@ -192,6 +157,65 @@ export function ForecastCard({ view }: { view: RefillForecastView }) {
             target={effectiveTarget}
             bagsPerPallet={view.bagsPerPallet}
           />
+          {effectiveTarget === "current" && f.current && (
+            <table className="w-full max-w-md text-sm tabular-nums">
+              <caption className="pb-1 text-left text-[13px] font-semibold text-muted">
+                Si l&apos;hiver est…
+              </caption>
+              <thead>
+                <tr className="text-left text-xs text-muted">
+                  <th scope="col" className="py-1 font-medium">
+                    Scénario
+                  </th>
+                  <th scope="col" className="py-1 text-right font-medium">
+                    Besoin
+                  </th>
+                  <th scope="col" className="py-1 text-right font-medium">
+                    Marge
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {(Object.keys(SCENARIO_LABELS) as Scenario[]).map((sc) => {
+                  const fc = f.current?.[sc];
+                  if (!fc || fc.status !== "ok") return null;
+                  const margin = fc.stock - fc.remaining;
+                  const unit = f.fuel === "pellet" ? "sacs" : "stères";
+                  const conv = (kg: number) => (f.fuel === "pellet" ? kg / bagKg : kg);
+                  const dig = f.fuel === "pellet" ? 0 : 1;
+                  return (
+                    <tr
+                      key={sc}
+                      className={`border-t border-track ${sc === scenario ? "font-semibold" : ""}`}
+                    >
+                      <th scope="row" className="py-2 text-left font-normal">
+                        {SCENARIO_LABELS[sc].replace("Hiver ", "")}
+                      </th>
+                      <td className="py-2 text-right">
+                        {formatNumber(
+                          Math.max(
+                            0,
+                            f.fuel === "pellet"
+                              ? Math.ceil(conv(fc.remaining) - 1e-9)
+                              : conv(fc.remaining),
+                          ),
+                          dig,
+                        )}{" "}
+                        {unit}
+                      </td>
+                      <td className="py-2 text-right">
+                        {margin >= 0 ? "+" : "−"}
+                        {formatNumber(
+                          Math.abs(f.fuel === "pellet" ? Math.floor(conv(margin)) : conv(margin)),
+                          dig,
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          )}
           {/* Le calcul derrière la réponse, en ligne et sans fond. */}
           <Figures
             ops={["−", "="]}

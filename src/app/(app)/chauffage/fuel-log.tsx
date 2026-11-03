@@ -153,6 +153,7 @@ export function FuelLog({
   const router = useRouter();
   const [editing, setEditing] = useState<string | null>(null);
   const [pastOpen, setPastOpen] = useState(false);
+  const [all, setAll] = useState(false);
   const [pending, startTransition] = useTransition();
   const showFuel = fuels.length > 1;
   // Le lien de la prévision (« Saisir une consommation passée ») ouvre le formulaire.
@@ -203,8 +204,8 @@ export function FuelLog({
 
   return (
     <Card
-      title="Journal des combustibles"
-      description="Vos 20 dernières saisies : achats, relevés et consommations."
+      title="Dernières opérations"
+      description="Achats, relevés et consommations saisis, du plus récent au plus ancien."
     >
       {!pastOpen && (
         <button
@@ -233,7 +234,7 @@ export function FuelLog({
         </p>
       ) : (
         <ul className="flex flex-col gap-1">
-          {items.map((item) =>
+          {(all ? items : items.slice(0, 5)).map((item) =>
             editing === item.id ? (
               <EditRow
                 key={item.id}
@@ -295,6 +296,16 @@ export function FuelLog({
             ),
           )}
         </ul>
+      )}
+      {items.length > 5 && (
+        <button
+          type="button"
+          aria-expanded={all}
+          onClick={() => setAll(!all)}
+          className={`${button.link} self-start`}
+        >
+          {all ? "Réduire le journal" : `Tout le journal (${items.length})`}
+        </button>
       )}
     </Card>
   );

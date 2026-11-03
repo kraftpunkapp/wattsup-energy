@@ -23,32 +23,50 @@ const deltaText = (d: number | null, label: string) =>
       : `${d > 0 ? "+" : "−"}${formatPercent(Math.abs(d))} vs ${label}`;
 
 const SOURCES = [
-  { key: "electric", label: "Électricité", color: "bg-grid" },
+  { key: "electric", label: "Radiateurs", color: "bg-eheat" },
   { key: "pellet", label: FUEL_LABELS.pellet, color: "bg-pellet" },
   { key: "wood", label: FUEL_LABELS.wood, color: "bg-wood" },
 ] as const;
 
+const chevron = (d: string) => (
+  <svg
+    width="18"
+    height="18"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    aria-hidden
+  >
+    <path d={d} />
+  </svg>
+);
+
 export function SeasonSwitcher({ view }: { view: HeatingView }) {
-  const arrow = (year: number | null, label: string, glyph: string) =>
+  const arrow = (year: number | null, label: string, path: string) =>
     year !== null ? (
-      <PeriodLink href={`/chauffage?s=${year}`} aria-label={label} className={button.icon}>
-        <span aria-hidden className="text-base leading-none">
-          {glyph}
-        </span>
+      <PeriodLink
+        href={`/chauffage?s=${year}`}
+        aria-label={label}
+        className="flex size-11 items-center justify-center rounded-control text-ink hover:bg-track"
+      >
+        {chevron(path)}
       </PeriodLink>
     ) : (
-      <span className={`${button.icon} opacity-40`} aria-hidden>
-        <span className="text-base leading-none">{glyph}</span>
+      <span className="flex size-11 items-center justify-center text-dash" aria-hidden>
+        {chevron(path)}
       </span>
     );
   return (
     <div className="flex flex-wrap items-center gap-3">
-      <div className="flex items-center gap-2">
-        {arrow(view.nav.prev, "Saison précédente", "‹")}
-        <span className="min-w-36 text-center text-sm font-semibold">
+      <div className="flex items-center gap-1 rounded-control border border-border bg-surface p-0.5">
+        {arrow(view.nav.prev, "Saison précédente", "M15 6l-6 6 6 6")}
+        <span className="min-w-36 text-center text-[15px] font-semibold">
           Saison {view.season.label}
         </span>
-        {arrow(view.nav.next, "Saison suivante", "›")}
+        {arrow(view.nav.next, "Saison suivante", "M9 6l6 6-6 6")}
       </div>
       {view.inProgress && <Badge tone="active">En cours</Badge>}
     </div>
@@ -86,10 +104,10 @@ export function HeatingKpis({ view }: { view: HeatingView }) {
       {modules.electric && (
         <StatTile
           standalone
-          label="Électricité de chauffage"
+          label="Radiateurs"
           value={formatNumber(current.electricKwh)}
           unit="kWh"
-          dot="bg-grid"
+          dot="bg-eheat"
           sub={
             previous ? `${previousLabel} : ${formatNumber(previous.electricKwh)} kWh` : undefined
           }
@@ -185,8 +203,8 @@ export function HeatingCostCard({ view }: { view: HeatingView }) {
       />
       {!view.noLocation ? (
         <div className="flex flex-col gap-1">
-          <span className="text-[11px] text-muted">
-            Degrés-jours (plus la barre est haute, plus il a fait froid)
+          <span className="text-xs text-muted">
+            Froid du mois : plus la barre est haute, plus il a fait froid
           </span>
           <StackedBars
             height={64}
