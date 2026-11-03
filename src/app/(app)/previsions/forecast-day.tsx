@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, type ReactNode } from "react";
-import { Gauge, Legend, Segmented, StatTile, tiles } from "@/components/ui";
+import { PageHeader } from "@/components/page-header";
+import { Gauge, Legend, Segmented, StatTile, StatusChip, tiles } from "@/components/ui";
 import { hourLabel } from "@/domain/forecast/summary";
 import { formatEurFromCents, formatKwh, formatPercent } from "@/lib/format";
 import { localParts } from "@/lib/time";
@@ -55,16 +56,17 @@ export function ForecastDay({
   timezone,
   solar,
   battery,
-  windows,
+  windowsByDay,
   why,
-  bestSlot,
+  batteryNote,
   appliances,
 }: {
   /** Créneaux conseillés des appareils (tous jours confondus). */
   appliances: DayAppliance[];
-  /** « cette nuit, de 1 h à 5 h » : le créneau d'appareil le plus économe, null sans. */
-  bestSlot: string | null;
-  windows: ReactNode;
+  /** Section « Meilleurs créneaux », une version par jour affiché (clé : date). */
+  windowsByDay: Record<string, ReactNode>;
+  /** « Batterie : 15 % mesurés à 14 h, simulée ensuite » : affiché en puce « Estimé » dans le résumé. */
+  batteryNote: string | null;
   why: ReactNode;
   days: ForecastDayView[];
   hours: ForecastHourView[];
@@ -117,6 +119,13 @@ export function ForecastDay({
     />
   );
   const tomorrow = date !== today;
+  const windows = windowsByDay[date] ?? null;
+  const estimateNote = batteryNote && (
+    <p className="flex flex-wrap items-center gap-2 text-[13px] text-ink-soft">
+      <StatusChip tone="estimate">Estimé</StatusChip>
+      {batteryNote}
+    </p>
+  );
   const switcher = (
     <Segmented
       label="Jour"
@@ -132,8 +141,17 @@ export function ForecastDay({
     />
   );
 
+  const header = (
+    <PageHeader
+      title="Prévisions"
+      subtitle="Aujourd'hui et demain heure par heure, et quand lancer vos appareils"
+    >
+      {switcher}
+    </PageHeader>
+  );
+
   if (tomorrow) {
-    // Origine de l'électricité consommée : réseau, panneaux en direct, batterie.
+    // Origine de l'électricité consommée : solaire en direct, batterie, réseau.
     const dayHours = list;
     const covered = (h: ForecastHourView) => Math.max(0, h.loadKwh - h.importKwh);
     const direct = dayHours.reduce((a, h) => a + Math.min(h.solarKwh, covered(h)), 0);
@@ -142,13 +160,13 @@ export function ForecastDay({
     const hasOffPeak = dayHours.some((h) => h.offPeakShare !== null);
     const avoided = dayHours.reduce((a, h) => a + covered(h) * (h.priceEur ?? 0), 0);
     const parts = [
-      { label: "Réseau", kwh: day.importKwh, color: "bg-grid" },
-      ...(solar ? [{ label: "Panneaux", kwh: direct, color: "bg-solar" }] : []),
+      ...(solar ? [{ label: "Solaire", kwh: direct, color: "bg-solar" }] : []),
       ...(battery ? [{ label: "Batterie", kwh: stored, color: "bg-battery" }] : []),
+      { label: "Réseau", kwh: day.importKwh, color: "bg-grid" },
     ];
     return (
       <>
-        <div className="flex">{switcher}</div>
+        {header}
         <section
           aria-labelledby="achats"
           className="flex flex-col gap-4 rounded-card border border-border bg-surface p-6 sm:p-7"
@@ -174,6 +192,7 @@ export function ForecastDay({
               day.fullAt &&
               ` · batterie pleine vers ${hourLabel(new Date(day.fullAt), timezone)}`}
           </p>
+          {estimateNote}
           {parts.length > 1 && (
             <>
               <Gauge
@@ -277,7 +296,7 @@ export function ForecastDay({
 
   return (
     <>
-      <div className="flex">{switcher}</div>
+      {header}
       {hasPast ? (
         <section
           aria-labelledby="verdict"
@@ -301,12 +320,6 @@ export function ForecastDay({
             </ol>
           )}
           <ul className="flex flex-col gap-1.5 text-sm text-ink-soft">
-            {bestSlot && (
-              <li>
-                <strong className="text-ink">Meilleur créneau pour vos appareils :</strong>{" "}
-                {bestSlot}
-              </li>
-            )}
             {loadGap !== null && Math.abs(loadGap) >= 0.1 && (
               <li>
                 <strong className="text-ink">Aussi :</strong>{" "}
@@ -318,6 +331,7 @@ export function ForecastDay({
               </li>
             )}
           </ul>
+          {estimateNote}
         </section>
       ) : (
         <section className="flex flex-col gap-3 rounded-card border border-border bg-surface p-6">
@@ -334,14 +348,15 @@ export function ForecastDay({
               dot="bg-grid"
             />
           </div>
+          {estimateNote}
         </section>
       )}
+      {windows}
       {hourly(
         hasPast
           ? `Avant ${nowLabel} : mesuré, avec ce qui était prévu en trait noir. Après : la prévision mise à jour.`
           : "D'après vos habitudes, la météo et votre contrat.",
       )}
-      {windows}
     </>
   );
 }

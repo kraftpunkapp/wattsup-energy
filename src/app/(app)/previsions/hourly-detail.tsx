@@ -23,7 +23,7 @@ export interface DayAppliance {
   end: string;
 }
 
-const AXIS_WIDTH = "w-[92px]";
+const AXIS_WIDTH = "w-10";
 const kwh = (v: number) => formatKwh(v, v < 10 ? 1 : 0);
 const cents = (v: number) =>
   `${(v * 100).toLocaleString("fr-FR", { maximumFractionDigits: 1 })} c€`;
@@ -31,7 +31,7 @@ const cents = (v: number) =>
 const covered = (h: ForecastHourView) => Math.max(0, h.loadKwh - h.importKwh);
 const direct = (h: ForecastHourView) => Math.min(h.solarKwh, covered(h));
 const fromBattery = (h: ForecastHourView) => covered(h) - direct(h);
-/** Soleil produit puis mis en batterie (le reste est revendu). */
+/** Solaire produit puis mis en batterie (le reste est revendu). */
 const stored = (h: ForecastHourView) => Math.max(0, h.solarKwh - direct(h) - h.exportKwh);
 
 /** Graduations « rondes » sous le maximum : 1 à 3 repères, de la plus grande à la plus petite. */
@@ -108,35 +108,21 @@ function Lines({
   );
 }
 
-/** Colonne de repères à gauche d'un graphique : titre, puis graduations alignées sur les lignes. */
-function Axis({
-  title,
-  height,
-  scale,
-  max,
-  unit,
-}: {
-  title: string;
-  height: number;
-  scale: number;
-  max: number;
-  unit?: boolean;
-}) {
+/** Colonne de repères à gauche d'un graphique : graduations alignées sur les lignes (le titre est au-dessus). */
+function Axis({ height, scale, max }: { height: number; scale: number; max: number }) {
   return (
     <div
       className={`relative flex-none ${AXIS_WIDTH} text-[13px] text-muted`}
       style={{ height }}
       aria-hidden
     >
-      <span className="absolute top-0 left-0 font-semibold text-ink-soft">{title}</span>
-      {ticks(max).map((t, i, all) => (
+      {ticks(max).map((t) => (
         <span
           key={t}
           className="absolute right-0 translate-y-1/2 tabular-nums"
           style={{ bottom: `${(t / scale) * height}px` }}
         >
           {t.toLocaleString("fr-FR")}
-          {(unit || i === all.length - 1) && " kWh"}
         </span>
       ))}
     </div>
@@ -262,11 +248,11 @@ export function HourlyDetail({
         </div>
         <ul className="flex flex-wrap gap-x-4 gap-y-2 text-[13px] text-ink-soft">
           <li className="flex items-center gap-1.5">{swatch("bg-grid")}Réseau</li>
-          {showProd && <li className="flex items-center gap-1.5">{swatch("bg-solar")}Soleil</li>}
+          {showProd && <li className="flex items-center gap-1.5">{swatch("bg-solar")}Solaire</li>}
           {battery && <li className="flex items-center gap-1.5">{swatch("bg-battery")}Batterie</li>}
           {showProd && battery && (
             <li className="flex items-center gap-1.5">
-              {swatch("wu-hatch-solar border border-solar")}Soleil mis en batterie
+              {swatch("wu-hatch-solar border border-solar")}Solaire mis en batterie
             </li>
           )}
           {mixed && (
@@ -285,8 +271,11 @@ export function HourlyDetail({
 
       <div className="flex flex-wrap gap-7">
         <div className="flex min-w-0 flex-[3_1_560px] flex-col gap-1.5">
+          <p className="wu-label">
+            Consommé · <span className="normal-case">kWh</span>
+          </p>
           <div className="flex gap-2">
-            <Axis title="Consommé" height={LOAD_H} scale={loadScale} max={loadMax} />
+            <Axis height={LOAD_H} scale={loadScale} max={loadMax} />
             <div
               className="relative min-w-0 flex-1 border-b border-border-strong"
               style={{ height: LOAD_H }}
@@ -360,58 +349,63 @@ export function HourlyDetail({
           </div>
 
           {showProd && (
-            <div className="mt-5 flex gap-2">
-              <Axis title="Produit" height={PROD_H} scale={prodScale} max={prodMax} />
-              <div
-                className="relative min-w-0 flex-1 border-b border-border-strong"
-                style={{ height: PROD_H }}
-              >
-                {ticks(prodMax).map((t) => (
-                  <div
-                    key={t}
-                    className="absolute inset-x-0 border-t border-track"
-                    style={{ bottom: `${(t / prodScale) * 100}%` }}
-                  />
-                ))}
-                {nowIndex >= 0 && (
-                  <div
-                    className="absolute inset-y-0 right-0 bg-bg/60"
-                    style={{ left: `${(nowIndex / n) * 100}%` }}
-                  />
-                )}
-                <div className="absolute inset-0 flex items-end gap-[3px]">
-                  {list.map((h) => {
-                    const light = isLight(h);
-                    return (
-                      <div
-                        key={h.start}
-                        className={`flex h-full min-w-0 flex-1 flex-col justify-end rounded-t-[4px] ${columnBg(h)}`}
-                      >
-                        {battery && (
+            <>
+              <p className="wu-label mt-5">
+                Produit · <span className="normal-case">kWh</span>
+              </p>
+              <div className="flex gap-2">
+                <Axis height={PROD_H} scale={prodScale} max={prodMax} />
+                <div
+                  className="relative min-w-0 flex-1 border-b border-border-strong"
+                  style={{ height: PROD_H }}
+                >
+                  {ticks(prodMax).map((t) => (
+                    <div
+                      key={t}
+                      className="absolute inset-x-0 border-t border-track"
+                      style={{ bottom: `${(t / prodScale) * 100}%` }}
+                    />
+                  ))}
+                  {nowIndex >= 0 && (
+                    <div
+                      className="absolute inset-y-0 right-0 bg-bg/60"
+                      style={{ left: `${(nowIndex / n) * 100}%` }}
+                    />
+                  )}
+                  <div className="absolute inset-0 flex items-end gap-[3px]">
+                    {list.map((h) => {
+                      const light = isLight(h);
+                      return (
+                        <div
+                          key={h.start}
+                          className={`flex h-full min-w-0 flex-1 flex-col justify-end rounded-t-[4px] ${columnBg(h)}`}
+                        >
+                          {battery && (
+                            <span
+                              className={`wu-hatch-solar rounded-t-[3px] ${light ? "opacity-55" : ""}`}
+                              style={{ height: `${(stored(h) / prodScale) * 100}%` }}
+                            />
+                          )}
                           <span
-                            className={`wu-hatch-solar rounded-t-[3px] ${light ? "opacity-55" : ""}`}
-                            style={{ height: `${(stored(h) / prodScale) * 100}%` }}
+                            className={light ? "bg-solar/45" : "bg-solar"}
+                            style={{
+                              height: `${(Math.max(0, h.solarKwh - (battery ? stored(h) : 0)) / prodScale) * 100}%`,
+                            }}
                           />
-                        )}
-                        <span
-                          className={light ? "bg-solar/45" : "bg-solar"}
-                          style={{
-                            height: `${(Math.max(0, h.solarKwh - (battery ? stored(h) : 0)) / prodScale) * 100}%`,
-                          }}
-                        />
-                      </div>
-                    );
-                  })}
+                        </div>
+                      );
+                    })}
+                  </div>
+                  <Lines count={n} scale={prodScale} past={pastSolar} future={futureSolar} />
+                  {nowIndex > 0 && (
+                    <div
+                      className="absolute -bottom-1.5 top-0 w-0.5 bg-ink"
+                      style={{ left: `${(nowIndex / n) * 100}%` }}
+                    />
+                  )}
                 </div>
-                <Lines count={n} scale={prodScale} past={pastSolar} future={futureSolar} />
-                {nowIndex > 0 && (
-                  <div
-                    className="absolute -bottom-1.5 top-0 w-0.5 bg-ink"
-                    style={{ left: `${(nowIndex / n) * 100}%` }}
-                  />
-                )}
               </div>
-            </div>
+            </>
           )}
 
           {showTariff && (

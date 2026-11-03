@@ -1,9 +1,9 @@
 import Link from "next/link";
 import { PageHeader } from "@/components/page-header";
-import { Badge, button, Card, Icon, Notice, StatTile, tiles } from "@/components/ui";
+import { ArrowLink, button, Card, DeltaChip, Icon, Notice, StatTile, tiles } from "@/components/ui";
 import type { AccuracyDay } from "@/domain/forecast/accuracy";
 import { describeAppliance } from "@/domain/forecast/appliances";
-import { hourLabel, windowLabel } from "@/domain/forecast/summary";
+import { hourLabel } from "@/domain/forecast/summary";
 import { coveredFraction, toSegments } from "@/domain/tariff/base-hphc";
 import { formatEurFromCents, formatKwh, formatPercent } from "@/lib/format";
 import { addDays, localParts } from "@/lib/time";
@@ -60,6 +60,7 @@ function LastDay({ day, today }: { day: AccuracyDay; today: string }) {
         label={`Consommation ${when}`}
         value={kwh(day.load.actual)}
         sub={`prévue : ${kwh(day.load.forecast)}`}
+        dot="bg-neutral-bar"
       />
     </div>
   );
@@ -120,12 +121,15 @@ export default async function ForecastPage() {
     plan.priced && plan.priced.assumedTempoDays > 0
       ? "Couleur Tempo de demain pas encore publiée (vers 11 h) : jour bleu supposé."
       : null,
-    ctx.profile.battery
-      ? plan.batteryMeasured
-        ? `Batterie : ${formatPercent(plan.batteryMeasured.percent / 100)} mesurés à ${hourLabel(plan.batteryMeasured.at, tz)}, simulée ensuite.`
-        : "Batterie supposée vide à minuit : envoyez son niveau depuis Home Assistant (blueprint, « Niveau de la batterie ») pour une simulation plus juste."
+    ctx.profile.battery && !plan.batteryMeasured
+      ? "Batterie supposée vide à minuit : envoyez son niveau depuis Home Assistant (blueprint, « Niveau de la batterie ») pour une simulation plus juste."
       : null,
   ].filter((n): n is string => n !== null);
+  // Niveau mesuré puis simulé : présenté en puce « Estimé » dans le résumé du jour.
+  const batteryNote =
+    ctx.profile.battery && plan.batteryMeasured
+      ? `Batterie : ${formatPercent(plan.batteryMeasured.percent / 100)} mesurés à ${hourLabel(plan.batteryMeasured.at, tz)}, simulée ensuite.`
+      : null;
 
   const found = plan.windows.flatMap(({ appliance, window }) =>
     window ? [{ appliance, window }] : [],
@@ -134,12 +138,18 @@ export default async function ForecastPage() {
     Math.max(0, w.nowCostEur - w.costEur);
   const totalSaving = found.reduce((a, f) => a + saving(f.window), 0);
 
-  const windowsSection = (
+  // `tabDate` : le jour affiché par le sélecteur ; la mention du jour n'est gardée que sur une
+  // fiche dont le créneau tombe un autre jour.
+  const windowsSection = (tabDate: string) => (
     <section aria-labelledby="creneaux" className="flex flex-col gap-3">
       <div className="flex flex-wrap items-end justify-between gap-x-4 gap-y-1">
         <div className="flex flex-col gap-0.5">
           <h2 id="creneaux" className="text-[15px] font-bold">
             Meilleurs créneaux pour vos appareils
+            <span className="font-normal text-muted">
+              {" "}
+              · {tabDate === plan.today ? "aujourd'hui" : "demain"}
+            </span>
           </h2>
           {totalSaving >= SAVING_MIN_EUR && (
             <p className="text-sm text-ink-soft">
@@ -148,9 +158,7 @@ export default async function ForecastPage() {
             </p>
           )}
         </div>
-        <Link href={settingsHref("appareils")} className={button.link}>
-          Gérer mes appareils
-        </Link>
+        <ArrowLink href={settingsHref("appareils")}>Gérer mes appareils</ArrowLink>
       </div>
       {!plan.priced ? (
         <Notice
@@ -191,23 +199,23 @@ export default async function ForecastPage() {
                 </span>
                 <div className="flex min-w-0 flex-1 flex-col">
                   <h3 className="text-[15px] font-bold">{appliance.name}</h3>
-                  <p className="text-[13px] text-muted">{describeAppliance(appliance)}</p>
+                  <p className="wu-mono text-xs text-muted">{describeAppliance(appliance)}</p>
                 </div>
               </div>
               {window ? (
                 <>
                   <p className="flex flex-wrap items-center gap-2">
-                    <span className="text-xl leading-none font-bold tracking-tight tabular-nums">
+                    <span className="wu-mono text-xl leading-none font-semibold">
                       {hourLabel(window.start, tz)} – {hourLabel(window.end, tz)}
                     </span>
                     {window.solarShare >= 0.5 && (
-                      <Badge tone="positive">{formatPercent(window.solarShare)} solaire</Badge>
+                      <DeltaChip tone="gain">{formatPercent(window.solarShare)} solaire</DeltaChip>
                     )}
                   </p>
                   {saving(window) >= SAVING_MIN_EUR ? (
                     <>
-                      <p className="text-sm font-semibold text-positive tabular-nums">
-                        {eur(saving(window))} économisés
+                      <p>
+                        <DeltaChip tone="gain">{eur(saving(window))} économisés</DeltaChip>
                       </p>
                       <p className="text-[13px] text-ink-soft tabular-nums">
                         {eur(window.costEur)} au lieu de {eur(window.nowCostEur)} en le lançant tout
@@ -219,9 +227,11 @@ export default async function ForecastPage() {
                       ≈ {eur(window.costEur)} : autant le lancer quand vous voulez
                     </p>
                   )}
-                  <p className="text-[13px] text-muted">
-                    {windowDay(window.start, plan.today, tz)}
-                  </p>
+                  {localParts(window.start, tz).date !== tabDate && (
+                    <p className="text-[13px] text-muted">
+                      {windowDay(window.start, plan.today, tz)}
+                    </p>
+                  )}
                 </>
               ) : (
                 <p className="text-[13px] text-muted">
@@ -298,13 +308,12 @@ export default async function ForecastPage() {
 
   return (
     <>
-      {header}
       <ForecastDay
         today={plan.today}
         timezone={tz}
         solar={ctx.profile.solar && plan.solarMethod !== null}
         battery={ctx.profile.battery}
-        bestSlot={best ? windowLabel(best.window.start, best.window.end, plan.today, tz) : null}
+        batteryNote={batteryNote}
         appliances={found.map(({ appliance, window }) => ({
           id: appliance.id,
           name: appliance.name,
@@ -312,7 +321,7 @@ export default async function ForecastPage() {
           start: window.start.toISOString(),
           end: window.end.toISOString(),
         }))}
-        windows={windowsSection}
+        windowsByDay={Object.fromEntries(plan.days.map((d) => [d.date, windowsSection(d.date)]))}
         why={whySection}
         days={plan.days.map((d) => ({ ...d, fullAt: fullByDate.get(d.date) ?? null }))}
         hours={plan.hours.map((h, i) => ({
