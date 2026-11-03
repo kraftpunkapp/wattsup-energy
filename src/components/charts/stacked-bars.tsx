@@ -113,7 +113,17 @@ export function StackedBars({
         {bars.map((b) => {
           if (b.future) {
             return (
-              <div key={b.key} title={b.title} className={`h-full min-w-0 flex-1 ${column}`} />
+              <div
+                key={b.key}
+                title={b.title}
+                className={`relative h-full min-w-0 flex-1 ${column}`}
+              >
+                {/* Jour à venir : trait en pointillés posé sur l'axe. */}
+                <span
+                  aria-hidden
+                  className="absolute inset-x-[1.5px] bottom-0 border-t-2 border-dashed border-dash"
+                />
+              </div>
             );
           }
           const total = b.segments.reduce((a, s) => a + s.value, 0);

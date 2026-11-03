@@ -1,8 +1,7 @@
 import type { ReactNode } from "react";
 import { InsightTile } from "@/components/cards/insight-grid";
-import { Gauge } from "@/components/ui";
-import { CATEGORY_SWATCH, categoryColor, categoryIcon } from "@/components/ui/category";
-import { Icon } from "@/components/ui";
+import { DeltaChip, Gauge, Icon } from "@/components/ui";
+import { categoryIcon } from "@/components/ui/category";
 import { yearlyKwh } from "@/domain/baseload";
 import { shortMonth } from "@/domain/overview";
 import { formatEurFromCents, formatKwh, formatNumber, formatPercent } from "@/lib/format";
@@ -30,7 +29,7 @@ export function PeakInsight({ overview, actions }: { overview: Ok; actions?: Rea
     <InsightTile
       id="peak"
       icon="moon"
-      tone="grid"
+      tone="neutral"
       title="Heures creuses"
       actions={actions}
       headline={
@@ -74,7 +73,7 @@ export function CategoriesInsight({ overview }: { overview: Ok }) {
     <InsightTile
       id="categories"
       icon={first ? categoryIcon(first.icon) : "plug"}
-      tone="pellet"
+      tone="neutral"
       title="Postes suivis"
       headline={
         first && balance.consumption > 0 && first.kwh > 0
@@ -88,11 +87,11 @@ export function CategoriesInsight({ overview }: { overview: Ok }) {
               <li key={c.id} className="flex items-center gap-2.5 text-sm">
                 <span
                   aria-hidden
-                  className={`flex size-[30px] flex-none items-center justify-center rounded-lg ${CATEGORY_SWATCH[categoryColor(c.color)].tile}`}
+                  className="flex size-[30px] flex-none items-center justify-center rounded-lg bg-bg text-ink-soft"
                 >
                   <Icon name={categoryIcon(c.icon)} size={16} />
                 </span>
-                <span className="min-w-0 flex-1 truncate">{c.name}</span>
+                <span className="min-w-0 flex-1 text-pretty">{c.name}</span>
                 <strong className="tabular-nums">{formatKwh(c.kwh)}</strong>
               </li>
             ))}
@@ -119,7 +118,7 @@ export function BaseloadInsight({ overview, actions }: { overview: Ok; actions?:
       actions={actions}
       headline={
         b.watts === null
-          ? "Pas encore assez de nuits complètes pour le mesurer"
+          ? "Pas encore mesurable"
           : `${formatNumber(b.watts)} W en permanence${
               b.previousWatts !== null
                 ? `, contre ${formatNumber(b.previousWatts)} W un an plus tôt`
@@ -132,31 +131,43 @@ export function BaseloadInsight({ overview, actions }: { overview: Ok; actions?:
           : `À ce niveau, ≈ ${formatKwh(yearlyKwh(b.watts))} par an pour ce qui tourne en permanence`
       }
       visual={
-        peak > 0 && (
-          <div className="flex flex-col gap-1.5">
-            <span
-              key="bars"
-              role="img"
-              aria-label={`Talon des ${b.months.length} derniers mois, de ${shortMonth(b.months[0].month)} à ${shortMonth(b.months[b.months.length - 1].month)}`}
-              className="flex h-[30px] items-end gap-[3px]"
-            >
-              {b.months.map((m, i) => (
-                <span
-                  key={m.month}
-                  className={`wu-grow-y flex-1 rounded-[2px] ${
-                    i === b.months.length - 1 ? "bg-grid" : "bg-grid/25"
-                  }`}
-                  style={{ height: `${Math.max(((m.watts ?? 0) / peak) * 100, m.watts ? 8 : 0)}%` }}
-                />
-              ))}
-            </span>
-            {delta !== null && Math.abs(delta) >= 0.005 && (
-              <span key="delta" className="text-[13px] font-semibold text-positive">
-                {delta < 0 ? "−" : "+"}
-                {formatPercent(Math.abs(delta))} par rapport à l&apos;an dernier
+        b.watts === null ? (
+          <span className="rounded-control border border-dashed border-dash px-3 py-3 text-[13px] text-muted text-pretty">
+            Il faut au moins 7 nuits complètes (minuit à 6 h) sur la période pour mesurer ce que la
+            maison consomme en permanence.
+          </span>
+        ) : (
+          peak > 0 && (
+            <div className="flex flex-col gap-1.5">
+              <span
+                key="bars"
+                role="img"
+                aria-label={`Talon des ${b.months.length} derniers mois, de ${shortMonth(b.months[0].month)} à ${shortMonth(b.months[b.months.length - 1].month)}`}
+                className="flex h-[30px] items-end gap-[3px]"
+              >
+                {b.months.map((m, i) => (
+                  <span
+                    key={m.month}
+                    className={`wu-grow-y flex-1 rounded-[2px] ${
+                      i === b.months.length - 1 ? "bg-grid" : "bg-grid/25"
+                    }`}
+                    style={{
+                      height: `${Math.max(((m.watts ?? 0) / peak) * 100, m.watts ? 8 : 0)}%`,
+                    }}
+                  />
+                ))}
               </span>
-            )}
-          </div>
+              {delta !== null && Math.abs(delta) >= 0.005 && (
+                <span key="delta" className="flex flex-wrap items-center gap-1.5 text-[13px]">
+                  <DeltaChip tone={delta < 0 ? "gain" : "cost"}>
+                    {delta < 0 ? "−" : "+"}
+                    {formatPercent(Math.abs(delta))}
+                  </DeltaChip>
+                  par rapport à l&apos;an dernier
+                </span>
+              )}
+            </div>
+          )
         )
       }
     />
@@ -175,7 +186,7 @@ export function SolarInsight({ overview }: { overview: Ok }) {
       id="solar"
       icon="sun"
       tone="solar"
-      title="Production solaire"
+      title="Solaire"
       headline={
         solar.kwh > 0
           ? delta !== null && Math.abs(delta) >= 0.005

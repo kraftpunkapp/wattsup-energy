@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { type Bar, StackedBars } from "@/components/charts/stacked-bars";
-import { button, Card, Segmented, Toggle } from "@/components/ui";
+import { button, Card, DeltaChip, Segmented, Toggle } from "@/components/ui";
 import { markedDays, markedMonths, type Marker } from "@/domain/markers";
 import { monthLabel, shortMonth, type Period } from "@/domain/overview";
 import { formatEurFromCents, formatKwh, formatPercent } from "@/lib/format";
@@ -65,6 +65,7 @@ export function MonthlyCostCard({
   markers,
   priced,
   estimates = [],
+  sameDate = null,
 }: {
   months: MonthCost[];
   /** Faux : aucun contrat pour chiffrer l'électricité, le graphique reste en kWh (T63). */
@@ -76,6 +77,8 @@ export function MonthlyCostCard({
   markers: Marker[];
   /** Vue année, année en cours : estimation (en centimes) des mois à venir. */
   estimates?: { key: string; cents: number }[];
+  /** Mois entamé : total de la même période (mêmes jours) un an plus tôt, en centimes. */
+  sameDate?: number | null;
 }) {
   const [unit, setUnit] = useState<Unit>("eur");
   // Jour touché, rattaché à sa période : changer de mois efface la sélection.
@@ -203,8 +206,15 @@ export function MonthlyCostCard({
       });
     }
   }
+  // Mois ou année entamé : le panneau dit jusqu'à quel jour vont les chiffres (« Au 3 novembre »).
+  const atDate = (() => {
+    if (period.complete || focusDay) return null;
+    const last = addDays(period.to, -1);
+    return `${Number(last.slice(8))} ${monthLabel(last.slice(0, 7)).split(" ")[0]?.toLowerCase()}`;
+  })();
   const markedCount = days ? dayMarks.size : marked.size;
 
+  // Comparaisons toujours nommées : « Novembre 2025 entier », « 2025 entière », « Mêmes mois 2025 ».
   const prevLabel = focusDay
     ? dayTitle(
         `${Number(focusDay.key.slice(0, 4)) - 1}${focusDay.key.slice(4)}`.replace(
@@ -213,21 +223,38 @@ export function MonthlyCostCard({
         ),
       )
     : selected
-      ? monthLabel(`${previousYear}${selected.key.slice(4)}`)
-      : `mêmes mois ${previousYear}`;
+      ? `${monthLabel(`${previousYear}${selected.key.slice(4)}`)} entier`
+      : period.complete
+        ? `${previousYear} entière`
+        : `mêmes mois ${previousYear}`;
+  const delta = (current: number, before: number) => (
+    <DeltaChip tone={current <= before ? "gain" : "cost"}>
+      {current <= before ? "−" : "+"}
+      {formatPercent(Math.abs(current / before - 1))}
+    </DeltaChip>
+  );
+  // Mois entamé, en euros : « Même date 2025 » (mêmes jours) avant le mois entier.
+  const sameDateRow = comparing &&
+    isEur &&
+    !focusDay &&
+    selected &&
+    !period.complete &&
+    sameDate && (
+      <div className="flex items-center justify-between gap-2 text-ink-soft">
+        <span>Même date {previousYear}</span>
+        <span className="flex flex-wrap items-center justify-end gap-x-2 whitespace-nowrap tabular-nums">
+          {eur(sameDate)}
+          {delta(currentTotal, sameDate)}
+        </span>
+      </div>
+    );
   const comparison = comparing && previousTotal !== null && (
     <div className="flex items-center justify-between gap-2 text-ink-soft">
       <span>{prevLabel.charAt(0).toUpperCase() + prevLabel.slice(1)}</span>
-      <span className="whitespace-nowrap tabular-nums">
+      <span className="flex flex-wrap items-center justify-end gap-x-2 whitespace-nowrap tabular-nums">
         {focusDay ? fmtDay(previousTotal) : fmt(previousTotal)}
         {/* Période en cours : comparer un mois entamé à un mois entier tromperait. */}
-        {complete && previousTotal > 0 && (
-          <span className={currentTotal <= previousTotal ? "text-positive" : "text-negative"}>
-            {" "}
-            ({currentTotal <= previousTotal ? "−" : "+"}
-            {formatPercent(Math.abs(currentTotal / previousTotal - 1))})
-          </span>
-        )}
+        {complete && previousTotal > 0 && delta(currentTotal, previousTotal)}
       </span>
     </div>
   );
@@ -305,8 +332,8 @@ export function MonthlyCostCard({
         </div>
         <div className="flex grow basis-[220px] flex-col gap-2.5 rounded-control bg-bg p-4 text-[13px] md:grow-0">
           <div className="flex items-baseline justify-between gap-2">
-            <h3 className={`font-semibold ${focusDay ? "" : "capitalize"}`}>
-              {focusDay ? dayTitle(focusDay.key) : period.label}
+            <h3 className={`font-semibold ${focusDay || atDate ? "" : "capitalize"}`}>
+              {focusDay ? dayTitle(focusDay.key) : atDate ? `Au ${atDate}` : period.label}
             </h3>
             {focusDay && (
               <button type="button" className={button.link} onClick={() => setPicked(null)}>
@@ -334,6 +361,7 @@ export function MonthlyCostCard({
                 <span>Total</span>
                 <span className="tabular-nums">{money(totals.energy + totals.subscription)}</span>
               </div>
+              {sameDateRow}
               {comparison}
             </>
           ) : (

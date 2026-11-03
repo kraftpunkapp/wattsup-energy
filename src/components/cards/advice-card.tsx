@@ -1,6 +1,6 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
-import { Card, Icon } from "@/components/ui";
+import { ArrowLink, Card, Icon } from "@/components/ui";
 import type { Advice } from "@/domain/advice";
 import type { ApplianceIcon } from "@/domain/forecast/appliances";
 import { windowLabel } from "@/domain/forecast/summary";
@@ -80,7 +80,7 @@ export function AdviceCard({
           <div className="flex min-w-0 flex-[1_1_320px] items-center gap-3">
             <span
               aria-hidden
-              className="flex size-10 flex-none items-center justify-center rounded-xl bg-grid/12 text-grid"
+              className="flex size-10 flex-none items-center justify-center rounded-xl bg-bg text-ink"
             >
               <Icon name="moon" size={20} />
             </span>
@@ -103,18 +103,14 @@ export function AdviceCard({
               >
                 <Icon name={w.icon} size={14} />
                 <strong>{w.name}</strong>
-                {w.when.startsWith("demain, ") ? w.when.slice(8) : w.when}
+                <span className="wu-mono text-xs">
+                  {w.when.startsWith("demain, ") ? w.when.slice(8) : w.when}
+                </span>
               </li>
             ))}
           </ul>
           <div className="ml-auto flex items-center gap-2">
-            <Link
-              href="/previsions"
-              className="inline-flex min-h-11 items-center gap-1.5 text-sm font-semibold"
-            >
-              Prévisions
-              <Icon name="arrowRight" size={16} />
-            </Link>
+            <ArrowLink href="/previsions">Voir les prévisions</ArrowLink>
             {actions}
           </div>
         </div>
@@ -178,14 +174,7 @@ export function AdviceCard({
           </li>
         ))}
       </ul>
-      {forecast && (
-        <Link
-          href="/previsions"
-          className="self-start text-[13px] font-medium text-ink underline underline-offset-2"
-        >
-          Voir les prévisions heure par heure
-        </Link>
-      )}
+      {forecast && <ArrowLink href="/previsions">Voir les prévisions heure par heure</ArrowLink>}
     </Card>
   );
 }

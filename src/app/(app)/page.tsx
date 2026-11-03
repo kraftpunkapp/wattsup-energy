@@ -139,6 +139,7 @@ export default async function OverviewPage({
             priced={overview.budget.totalCents !== null}
             period={overview.period}
             markers={overview.markers}
+            sameDate={overview.period.kind === "month" ? overview.budget.previousCents : null}
             estimates={
               overview.period.kind === "year" && !overview.period.complete
                 ? overview.projection?.futureMonths

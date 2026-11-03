@@ -122,20 +122,25 @@ export function BudgetCard({ overview }: { overview: Ok }) {
   const less = previous !== null && previous > 0 ? budget.totalCents <= previous : null;
   const gap = Math.abs(budget.totalCents - (previous ?? 0));
   const ratio = previous && previous > 0 ? budget.totalCents / previous - 1 : null;
-  // Période en cours : comparée aux mêmes jours de l'année précédente.
+  // Comparaison toujours nommée : même date, mois entier, mêmes mois ou année entière.
   const previousYear = Number(period.key.slice(0, 4)) - 1;
   const against = !period.complete
-    ? "qu'à la même date l'an dernier"
+    ? period.kind === "month"
+      ? `que la même date en ${previousYear}`
+      : `que les mêmes mois ${previousYear}`
     : period.kind === "month"
-      ? `qu'en ${monthLabel(`${previousYear}${period.key.slice(4)}`)}`
-      : `qu'en ${previousYear}`;
+      ? `que ${monthLabel(`${previousYear}${period.key.slice(4)}`)} entier`
+      : `que ${previousYear} entière`;
+  // Même arrondi des deux côtés de l'écart (centimes sous 10 €, sinon euros entiers).
+  const decimals = gap < 1000 ? 2 : 0;
+  const money = (cents: number) => formatEurFromCents(cents, decimals);
   const lastDay = addDays(period.to, -1);
   return (
     <section
       aria-label={`Budget · ${period.label}`}
       className="flex flex-col gap-4 rounded-card bg-panel p-6 text-panel-ink sm:p-7"
     >
-      <h2 className="text-sm font-normal text-panel-soft">
+      <h2 className="wu-label !text-panel-soft">
         <span className="capitalize">{period.label}</span>
         {!period.complete &&
           (period.kind === "month"
@@ -168,14 +173,17 @@ export function BudgetCard({ overview }: { overview: Ok }) {
             less ? "bg-panel-gain text-panel-ink" : "bg-panel-active text-panel-ink"
           }`}
         >
-          <span aria-hidden className="text-[15px] leading-none font-bold">
+          <span
+            aria-hidden
+            className={`text-[15px] leading-none font-bold ${less ? "text-panel-positive" : ""}`}
+          >
             {less ? "↓" : "↑"}
           </span>
           <span>
-            <strong>
-              {formatEurFromCents(gap, gap < 1000 ? 2 : 0)} de {less ? "moins" : "plus"}
+            <strong className={less ? "text-panel-positive" : ""}>
+              {money(gap)} de {less ? "moins" : "plus"}
             </strong>{" "}
-            {against} ({eur(previous)}), soit {less ? "−" : "+"}
+            {against} ({money(previous)}), soit {less ? "−" : "+"}
             {formatPercent(Math.abs(ratio))}
           </span>
         </p>
@@ -221,7 +229,7 @@ function Projection({
         </span>
         {p.previousTotalCents !== null && (
           <span className="tabular-nums">
-            {previousYear} : {eur(p.previousTotalCents)}
+            {previousYear} entière : {eur(p.previousTotalCents)}
           </span>
         )}
       </p>
@@ -802,9 +810,7 @@ export function PaymentBanner({
           ` Régularisation de ${monthLabel(s.month)} estimée : environ ${eur(Math.abs(s.balanceCents))} ${
             s.balanceCents > 0 ? "à payer" : "en votre faveur"
           }.`}{" "}
-        <span className="opacity-80">
-          Estimation, à confirmer auprès de votre fournisseur.
-        </span>
+        <span className="opacity-80">Estimation, à confirmer auprès de votre fournisseur.</span>
       </p>
     </Banner>
   );

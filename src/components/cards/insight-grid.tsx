@@ -105,22 +105,22 @@ export function InsightTile({
           open ? "border-accent" : "border-border"
         }`}
       >
-        <span className="flex items-center gap-2.5 pr-12 text-sm text-ink-soft">
+        <span className="flex items-center gap-2.5 pr-12">
           <span
             aria-hidden
             className={`flex size-8 flex-none items-center justify-center rounded-[9px] ${TONE[tone]}`}
           >
             <Icon name={icon} size={17} />
           </span>
-          {title}
+          <span className="wu-label min-w-0 text-pretty">{title}</span>
         </span>
         <span className="text-base leading-snug font-bold text-pretty">{headline}</span>
         {detail && <span className="text-sm text-muted text-pretty">{detail}</span>}
         {visual}
         <span className="mt-auto inline-flex items-center gap-1 pt-1 text-[13px] font-semibold">
           {open ? "Masquer le détail" : "Voir le détail"}
-          <span className={`transition-transform ${open ? "rotate-90" : ""}`}>
-            <Icon name="chevron" size={14} />
+          <span aria-hidden className={`transition-transform ${open ? "rotate-90" : ""}`}>
+            →
           </span>
         </span>
       </button>

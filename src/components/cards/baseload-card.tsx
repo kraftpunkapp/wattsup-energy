@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import { StackedBars } from "@/components/charts/stacked-bars";
-import { Card } from "@/components/ui";
+import { Card, DeltaChip } from "@/components/ui";
 import { yearlyKwh } from "@/domain/baseload";
 import { monthLabel, shortMonth } from "@/domain/overview";
 import { formatEurFromCents, formatKwh, formatNumber } from "@/lib/format";
@@ -35,7 +35,7 @@ export function BaseloadCard({
       description="Ce que la maison consomme en permanence, même quand personne n'utilise rien : box, réfrigérateur, VMC, veilles. Mesuré chaque nuit entre minuit et 6 h."
     >
       {b.watts === null ? (
-        <p className="text-[13px] text-muted text-pretty">
+        <p className="rounded-control border border-dashed border-dash px-3.5 py-3 text-[13px] text-muted text-pretty">
           Pas encore assez de nuits complètes sur la période ({period.label}, 7 au moins) pour
           mesurer le talon.
         </p>
@@ -53,14 +53,18 @@ export function BaseloadCard({
               ` · ≈ ${formatEurFromCents(yearlyKwh(b.watts) * b.centsPerKwh, 0)} par an`}
           </p>
           {delta !== null && (
-            <p
-              className={`text-xs tabular-nums ${
-                delta > 0 ? "text-negative" : delta < 0 ? "text-positive" : "text-subtle"
-              }`}
-            >
-              {delta === 0
-                ? "Stable sur un an"
-                : `${delta > 0 ? "+" : "−"}${formatNumber(Math.abs(delta))} W par rapport à la même période un an plus tôt`}
+            <p className="flex flex-wrap items-center gap-1.5 text-xs text-muted tabular-nums">
+              {delta === 0 ? (
+                "Stable sur un an"
+              ) : (
+                <>
+                  <DeltaChip tone={delta < 0 ? "gain" : "cost"}>
+                    {delta > 0 ? "+" : "−"}
+                    {formatNumber(Math.abs(delta))} W
+                  </DeltaChip>
+                  par rapport à la même période un an plus tôt
+                </>
+              )}
             </p>
           )}
         </div>
