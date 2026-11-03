@@ -75,14 +75,14 @@ export function AdviceCard({
   if (forecast && forecast.windows.length > 0) {
     const saving = forecast.windows.reduce((a, w) => a + w.savingEur, 0);
     return (
-      <section className="flex flex-col gap-3 rounded-card border border-border bg-surface px-5 py-4">
+      <section className="rounded-card border border-border bg-surface px-5 py-4">
         <div className="flex flex-wrap items-center gap-x-6 gap-y-3">
           <div className="flex min-w-0 flex-[1_1_320px] items-center gap-3">
             <span
               aria-hidden
-              className="flex size-10 flex-none items-center justify-center rounded-control bg-track text-ink"
+              className="flex size-10 flex-none items-center justify-center rounded-xl bg-grid/12 text-grid"
             >
-              <Icon name="sun" size={20} />
+              <Icon name="moon" size={20} />
             </span>
             <div className="flex flex-col gap-0.5">
               <h2 className="text-[17px] font-bold">
@@ -107,31 +107,17 @@ export function AdviceCard({
               </li>
             ))}
           </ul>
-          <Link
-            href="/previsions"
-            className="inline-flex min-h-11 items-center gap-1.5 text-[15px] font-semibold"
-          >
-            Prévisions
-            <Icon name="arrowRight" size={16} />
-          </Link>
-          {actions}
+          <div className="ml-auto flex items-center gap-2">
+            <Link
+              href="/previsions"
+              className="inline-flex min-h-11 items-center gap-1.5 text-[15px] font-semibold"
+            >
+              Prévisions
+              <Icon name="arrowRight" size={16} />
+            </Link>
+            {actions}
+          </div>
         </div>
-        {tips.length > 0 && (
-          <ul className="flex flex-col gap-2 border-t border-track pt-3">
-            {tips.map((a) => (
-              <li key={a.id} className="flex gap-3 text-sm">
-                <span
-                  className={`mt-1.5 size-2 flex-none rounded-full ${DOT[a.tone]}`}
-                  aria-hidden
-                />
-                <span className="text-ink-soft text-pretty">
-                  <strong className="block text-ink">{a.title}</strong>
-                  {a.text}
-                </span>
-              </li>
-            ))}
-          </ul>
-        )}
       </section>
     );
   }

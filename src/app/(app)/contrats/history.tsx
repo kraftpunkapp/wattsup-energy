@@ -30,6 +30,21 @@ const variation = (now: number, before: number | undefined) => {
   return `${v > 0 ? "+" : "−"}${formatPercent(Math.abs(v))}`;
 };
 
+/** Variation de prix : baisse en vert, hausse en brun-rouge, toujours avec son signe. */
+const Variation = ({ label, value }: { label: string; value: string }) => (
+  <span
+    className={
+      value.startsWith("+")
+        ? "text-increase"
+        : value.startsWith("−")
+          ? "text-positive"
+          : "text-muted"
+    }
+  >
+    {label} {value}
+  </span>
+);
+
 export function ContractHistory({ contracts }: { contracts: ContractItem[] }) {
   const list = contracts
     .filter((c) => c.status === "subscribed" && c.startDate)
@@ -58,8 +73,19 @@ export function ContractHistory({ contracts }: { contracts: ContractItem[] }) {
         </h2>
         {overall && (
           <span className="text-sm text-ink-soft">
-            Prix du kWh en heures pleines : <strong className="text-ink">{overall}</strong> depuis{" "}
-            {since}
+            Prix du kWh en heures pleines :{" "}
+            <strong
+              className={
+                overall.startsWith("−")
+                  ? "text-positive"
+                  : overall.startsWith("+")
+                    ? "text-increase"
+                    : "text-ink"
+              }
+            >
+              {overall}
+            </strong>{" "}
+            depuis {since}
           </span>
         )}
       </div>
@@ -98,9 +124,9 @@ export function ContractHistory({ contracts }: { contracts: ContractItem[] }) {
               )}
               {(hpVar || hcVar) && (
                 <span className="text-[13px] font-semibold tabular-nums">
-                  {hpVar && <>HP {hpVar}</>}
+                  {hpVar && <Variation label="HP" value={hpVar} />}
                   {hpVar && hcVar && ", "}
-                  {hcVar && <>HC {hcVar}</>}
+                  {hcVar && <Variation label="HC" value={hcVar} />}
                 </span>
               )}
             </li>

@@ -131,7 +131,7 @@ export default async function HeatingPage({
     <>
       <PageHeader title="Chauffage" subtitle={`${tracked}, au regard de la météo`} />
       {fuels.length > 0 && (
-        <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,340px),1fr))] items-start gap-4">
+        <div className="flex flex-col gap-4">
           {fuels.map((fuel) => {
             const price = referencePrice(events, fuel, ctx.settings, now);
             return (
@@ -143,6 +143,7 @@ export default async function HeatingPage({
                   avgPrice: price?.perUnit ?? null,
                   priceNote: priceNote(price, ctx.timezone),
                   bagKg: ctx.settings.pelletBagKg,
+                  bagsPerPallet: ctx.settings.pelletBagsPerPallet,
                   refill: fuel === "pellet" ? pelletSummary : null,
                 }}
               />

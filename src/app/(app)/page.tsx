@@ -1,10 +1,14 @@
 import {
   BudgetCard,
+  CategoriesOverviewCard,
   CheaperContractNotice,
   OriginCard,
+  PeakCard,
+  SolarCard,
   PaymentBanner,
   PeriodSwitcher,
 } from "@/components/cards/overview-cards";
+import { BaseloadCard } from "@/components/cards/baseload-card";
 import {
   BaseloadInsight,
   CategoriesInsight,
@@ -19,6 +23,8 @@ import { Icon } from "@/components/ui";
 import { PeriodContent, PeriodTransition } from "@/components/period-transition";
 import { MonthlyCostCard } from "@/components/cards/monthly-cost-card";
 import { MonthlyTable } from "@/components/cards/monthly-table";
+import { InsightGrid } from "@/components/cards/insight-grid";
+import { MONTHS_PANEL } from "@/components/cards/insight-ids";
 import Link from "next/link";
 import { PageHeader } from "@/components/page-header";
 import { EmptyState } from "@/components/empty-state";
@@ -36,6 +42,11 @@ import { pageContext } from "@/server/page";
 import { getForecastPlan } from "@/server/forecast";
 import { getContractComparison, getPaymentAnalysis } from "@/server/queries/contracts";
 import { getOverview } from "@/server/queries/overview";
+
+/** Cadre du détail déplié d'une tuile « Ce qu'il faut retenir ». */
+function InsightPanel({ children }: { children: React.ReactNode }) {
+  return <div className="rounded-card border border-border bg-surface p-4 sm:p-5">{children}</div>;
+}
 
 export default async function OverviewPage({
   searchParams,
@@ -128,18 +139,47 @@ export default async function OverviewPage({
                 : undefined
             }
           />
-          <section aria-labelledby="retenir" className="flex flex-col gap-3">
-            <div className="flex flex-col gap-0.5">
-              <h2 id="retenir" className="text-xl font-bold">
-                {overview.period.kind === "year"
+          <section aria-labelledby="retenir">
+            <InsightGrid
+              title={
+                overview.period.kind === "year"
                   ? `Ce qu'il faut retenir de ${overview.period.label}`
-                  : "Ce qu'il faut retenir ce mois-ci"}
-              </h2>
-              <p className="text-sm text-muted">
-                Un enseignement par sujet ; le détail en un clic.
-              </p>
-            </div>
-            <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,420px),1fr))] items-start gap-4">
+                  : "Ce qu'il faut retenir ce mois-ci"
+              }
+              subtitle="Un enseignement par sujet ; le détail en un clic."
+              monthsLabel={`Détail mois par mois ${overview.period.key.slice(0, 4)}`}
+              details={{
+                peak: (
+                  <InsightPanel>
+                    <PeakCard overview={overview} flat />
+                  </InsightPanel>
+                ),
+                categories: (
+                  <InsightPanel>
+                    <CategoriesOverviewCard overview={overview} flat />
+                  </InsightPanel>
+                ),
+                baseload: (
+                  <InsightPanel>
+                    <BaseloadCard overview={overview} flat />
+                  </InsightPanel>
+                ),
+                solar: (
+                  <InsightPanel>
+                    <SolarCard overview={overview} flat />
+                  </InsightPanel>
+                ),
+                [MONTHS_PANEL]: (
+                  <MonthlyTable
+                    months={overview.months}
+                    year={overview.period.key.slice(0, 4)}
+                    currentMonth={localParts(new Date(), ctx.timezone).date.slice(0, 7)}
+                    solar={modules.solar}
+                    priced={overview.budget.totalCents !== null}
+                  />
+                ),
+              }}
+            >
               {block("peak", (hide) => (
                 <PeakInsight overview={overview} actions={hide} />
               ))}
@@ -148,25 +188,8 @@ export default async function OverviewPage({
                 <BaseloadInsight overview={overview} actions={hide} />
               ))}
               <SolarInsight overview={overview} />
-            </div>
+            </InsightGrid>
           </section>
-          <details className="group">
-            <summary className="inline-flex min-h-11 cursor-pointer list-none items-center gap-1.5 text-[15px] font-semibold [&::-webkit-details-marker]:hidden">
-              Détail mois par mois {overview.period.key.slice(0, 4)}
-              <span className="transition-transform group-open:rotate-90">
-                <Icon name="chevron" size={14} />
-              </span>
-            </summary>
-            <div className="pt-2">
-              <MonthlyTable
-                months={overview.months}
-                year={overview.period.key.slice(0, 4)}
-                currentMonth={localParts(new Date(), ctx.timezone).date.slice(0, 7)}
-                solar={modules.solar}
-                priced={overview.budget.totalCents !== null}
-              />
-            </div>
-          </details>
           {payment &&
             block("payment", (hide) => (
               <PaymentBanner
@@ -174,13 +197,15 @@ export default async function OverviewPage({
                 hide={hide}
               />
             ))}
-          <Link
-            href={settingsHref("vue-ensemble")}
-            className="inline-flex min-h-11 items-center gap-1.5 self-start text-sm font-semibold"
-          >
-            <Icon name="layout" size={16} />
-            Personnaliser cette vue
-          </Link>
+          <div className="flex justify-center">
+            <Link
+              href={settingsHref("vue-ensemble")}
+              className="inline-flex min-h-11 items-center gap-2 rounded-control border border-border-strong bg-surface px-4.5 text-[15px] font-semibold hover:bg-bg"
+            >
+              <Icon name="layout" size={18} />
+              Personnaliser cette vue
+            </Link>
+          </div>
         </PeriodContent>
       )}
     </PeriodTransition>

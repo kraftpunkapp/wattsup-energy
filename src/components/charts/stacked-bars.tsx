@@ -32,6 +32,8 @@ export interface Bar {
   previous?: number | null;
   /** Un repère tombe sur cette barre : petit point sous l'étiquette (texte dans `title`). */
   marked?: boolean;
+  /** Jour pas encore écoulé : emplacement vide, pour que les jours passés gardent leur largeur. */
+  future?: boolean;
 }
 
 /** Courbe superposée : une valeur par barre (null : pas de point, la courbe s'interrompt). */
@@ -109,6 +111,11 @@ export function StackedBars({
           centre de chaque barre est exactement là où la courbe place son point. */}
       <div className="relative flex items-end border-b border-border" style={{ height }}>
         {bars.map((b) => {
+          if (b.future) {
+            return (
+              <div key={b.key} title={b.title} className={`h-full min-w-0 flex-1 ${column}`} />
+            );
+          }
           const total = b.segments.reduce((a, s) => a + s.value, 0);
           const visible = b.segments.filter((s) => s.value > 0);
           const stack = (

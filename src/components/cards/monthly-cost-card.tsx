@@ -2,11 +2,12 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { StackedBars } from "@/components/charts/stacked-bars";
+import { type Bar, StackedBars } from "@/components/charts/stacked-bars";
 import { button, Card, Segmented, Toggle } from "@/components/ui";
 import { markedDays, markedMonths, type Marker } from "@/domain/markers";
 import { monthLabel, shortMonth, type Period } from "@/domain/overview";
 import { formatEurFromCents, formatKwh, formatPercent } from "@/lib/format";
+import { addDays } from "@/lib/time";
 import type { DayCost, MonthCost } from "@/server/queries/overview";
 
 // Électricité mois par mois (vue année, chaque barre ouvre le mois) ou jour par jour (vue
@@ -183,6 +184,25 @@ export function MonthlyCostCard({
     marked: dayMarks.has(d.key),
     segments: segmentsOf(d),
   }));
+  // Mois entamé : les jours à venir restent des emplacements vides, les barres gardent la
+  // largeur qu'elles auront en fin de mois.
+  const futureBars: Bar[] = [];
+  if (days && period.kind === "month" && days.length > 0) {
+    const [y, m] = period.key.split("-").map(Number);
+    const monthEnd = addDays(
+      `${period.key}-${String(new Date(Date.UTC(y, m, 0)).getUTCDate())}`,
+      1,
+    );
+    for (let d = addDays(days[days.length - 1].key, 1); d < monthEnd; d = addDays(d, 1)) {
+      futureBars.push({
+        key: d,
+        label: (days.length + futureBars.length) % 7 === 0 ? String(Number(d.slice(8))) : "",
+        segments: [],
+        title: `${dayTitle(d)} : à venir`,
+        future: true,
+      });
+    }
+  }
   const markedCount = days ? dayMarks.size : marked.size;
 
   const prevLabel = focusDay
@@ -272,7 +292,7 @@ export function MonthlyCostCard({
             ariaLabel={`${isEur ? "Coût de l'électricité" : "Électricité soutirée au réseau"} par ${
               days ? `jour, ${period.label}` : `mois en ${year}`
             }`}
-            bars={days ? dayBars : [...monthBars, ...estimateBars]}
+            bars={days ? [...dayBars, ...futureBars] : [...monthBars, ...estimateBars]}
           />
           {markedCount > 0 && (
             <p className="flex items-center gap-1.5 text-[11px] text-muted">

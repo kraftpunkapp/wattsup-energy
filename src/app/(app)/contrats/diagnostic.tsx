@@ -1,6 +1,6 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
-import { Icon, type IconName } from "@/components/ui";
+import { Icon, IconChip, type IconName, type IconTone } from "@/components/ui";
 import { monthLabel } from "@/domain/overview";
 import { PAYMENT_NOTICE_GAP, type PaymentAnalysis } from "@/domain/tariff/payment";
 import { formatEurFromCents, formatNumber, formatPercent } from "@/lib/format";
@@ -20,12 +20,14 @@ const label = (r: ComparedRow) => (r.provider ? `${r.provider} ${r.name}` : r.na
 
 function Row({
   icon,
+  tone,
   title,
   last,
   aside,
   children,
 }: {
   icon: IconName;
+  tone: IconTone;
   title: string;
   last?: boolean;
   aside?: ReactNode;
@@ -35,12 +37,7 @@ function Row({
     <div
       className={`flex flex-wrap items-start gap-x-4 gap-y-2 py-5 sm:flex-nowrap ${last ? "" : "border-b border-track"}`}
     >
-      <span
-        aria-hidden
-        className="flex size-10 flex-none items-center justify-center rounded-full bg-track text-ink"
-      >
-        <Icon name={icon} size={20} />
-      </span>
+      <IconChip icon={icon} tone={tone} size="lg" />
       <div className="flex min-w-0 flex-[1_1_220px] flex-col gap-1">
         <h2 className="text-xl font-bold text-balance">{title}</h2>
         {children}
@@ -88,6 +85,7 @@ export function ContractsDiagnostic({
       {(current || best) && (
         <Row
           icon="check"
+          tone={cheapest || !current ? "battery" : "solar"}
           title={
             !current && best
               ? `${label(best)} est l'offre la plus économique`
@@ -139,6 +137,7 @@ export function ContractsDiagnostic({
       {showPayment && payment && a?.status === "ok" && (
         <Row
           icon="tag"
+          tone="solar"
           title={`Votre mensualité pourrait ${a.gap > 0 ? "baisser" : "augmenter"}`}
           last={!showLever}
         >
@@ -166,6 +165,7 @@ export function ContractsDiagnostic({
       {showLever && peak && gapCents !== null && (
         <Row
           icon="bulb"
+          tone="grid"
           title={
             cheapest
               ? "Votre levier n'est pas le fournisseur, c'est l'horaire"

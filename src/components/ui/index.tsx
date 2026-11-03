@@ -50,6 +50,7 @@ export function Badge({ tone = "neutral", children }: { tone?: BadgeTone; childr
  */
 export function Card({
   icon,
+  iconTone,
   title,
   badges,
   description,
@@ -61,6 +62,8 @@ export function Card({
   children,
 }: {
   icon?: IconName;
+  /** Teinte de la pastille du pictogramme (neutre par défaut). */
+  iconTone?: IconTone;
   title: ReactNode;
   badges?: ReactNode;
   description?: ReactNode;
@@ -101,7 +104,7 @@ export function Card({
                 ? "bg-negative/10 text-negative"
                 : highlight
                   ? "bg-accent text-on-accent"
-                  : "bg-bg text-subtle"
+                  : ICON_TONES[iconTone ?? "neutral"]
             }`}
           >
             <Icon name={icon} size={18} />
@@ -170,6 +173,71 @@ export function StatTile({
   );
 }
 
+/** Teintes des pastilles de pictogramme (une couleur = un sens, comme les tokens). */
+export const ICON_TONES = {
+  neutral: "bg-bg text-ink-soft",
+  grid: "bg-grid/12 text-grid",
+  solar: "bg-solar/15 text-solar-ink",
+  battery: "bg-battery/15 text-positive",
+  pellet: "bg-pellet/15 text-pellet",
+  wood: "bg-wood/15 text-wood",
+  eheat: "bg-eheat/12 text-eheat",
+} as const;
+export type IconTone = keyof typeof ICON_TONES;
+
+/** Pastille carrée : pictogramme teinté. */
+export function IconChip({
+  icon,
+  tone = "neutral",
+  size = "md",
+}: {
+  icon: IconName;
+  tone?: IconTone;
+  size?: "md" | "lg";
+}) {
+  return (
+    <span
+      aria-hidden
+      className={`flex flex-none items-center justify-center ${
+        size === "lg" ? "size-10 rounded-xl" : "size-8 rounded-[9px]"
+      } ${ICON_TONES[tone]}`}
+    >
+      <Icon name={icon} size={size === "lg" ? 20 : 17} />
+    </span>
+  );
+}
+
+/** Chiffre d'une saison ou d'une période : pastille, libellé, grand chiffre, comparaison. */
+export function KpiTile({
+  icon,
+  tone,
+  label,
+  value,
+  unit,
+  sub,
+}: {
+  icon: IconName;
+  tone?: IconTone;
+  label: string;
+  value: string;
+  unit?: string;
+  sub?: string;
+}) {
+  return (
+    <div className="flex min-w-0 flex-col gap-1.5 rounded-[18px] border border-border bg-surface p-5">
+      <span className="flex items-center gap-2.5 text-sm text-ink-soft">
+        <IconChip icon={icon} tone={tone} />
+        {label}
+      </span>
+      <span className="flex flex-wrap items-baseline gap-x-1.5">
+        <span className="text-[30px] leading-tight font-bold tabular-nums">{value}</span>
+        {unit && <span className="text-lg font-semibold text-ink-soft">{unit}</span>}
+      </span>
+      {sub && <span className="text-[13px] text-muted tabular-nums">{sub}</span>}
+    </div>
+  );
+}
+
 export interface Figure {
   label: string;
   value: string;
@@ -227,11 +295,14 @@ export function Notice({
   title,
   children,
   action,
+  icon,
 }: {
   tone?: "warning" | "info";
   title: ReactNode;
   children?: ReactNode;
   action?: ReactNode;
+  /** Pictogramme sur pastille blanche, en tête de l'encart. */
+  icon?: IconName;
 }) {
   return (
     <div
@@ -240,11 +311,45 @@ export function Notice({
         tone === "warning" ? "border-border-strong bg-warning-bg" : "border-border-strong bg-track"
       }`}
     >
-      <p>
-        <span className="font-semibold">{title}</span> {children}
-      </p>
+      <div className="flex items-start gap-3">
+        {icon && (
+          <span
+            aria-hidden
+            className="flex size-8 flex-none items-center justify-center rounded-[9px] bg-surface text-ink-soft"
+          >
+            <Icon name={icon} size={17} />
+          </span>
+        )}
+        <p className="min-w-0 flex-1 self-center">
+          <span className="font-semibold">{title}</span> {children}
+        </p>
+      </div>
       {action && <div className="flex flex-wrap gap-2">{action}</div>}
     </div>
+  );
+}
+
+/** Remarque dans une carte : pictogramme et fond teinté, texte court. */
+export function Callout({
+  icon = "info",
+  tone = "note",
+  children,
+}: {
+  icon?: IconName;
+  tone?: "note" | "neutral";
+  children: ReactNode;
+}) {
+  return (
+    <p
+      className={`flex items-start gap-3 rounded-xl p-3.5 text-sm text-pretty ${
+        tone === "note" ? "bg-note-bg text-note-ink" : "bg-bg text-ink-soft"
+      }`}
+    >
+      <span aria-hidden className="mt-px flex-none">
+        <Icon name={icon} size={18} />
+      </span>
+      <span className="min-w-0 flex-1">{children}</span>
+    </p>
   );
 }
 

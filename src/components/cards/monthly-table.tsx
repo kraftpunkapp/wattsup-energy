@@ -6,7 +6,7 @@ import { monthLabel } from "@/domain/overview";
 import { formatEurFromCents, formatNumber, formatPercent } from "@/lib/format";
 import type { MonthCost, MonthFigures } from "@/server/queries/overview";
 
-// Détail mois par mois de l'année (SPEC §9, Vue d'ensemble) : carte repliée par défaut.
+// Détail mois par mois de l'année (SPEC §9, Vue d'ensemble) : carte dépliée depuis le lien de « Ce qu'il faut retenir ».
 // Électricité soutirée (dont HP / HC si le contrat en a), coût, production et économie
 // solaire estimée ; chaque mois se déplie sur le même mois de l'année précédente. Les
 // écarts ne sont donnés que pour un mois terminé (un mois entamé contre un mois entier
@@ -140,19 +140,14 @@ export function MonthlyTable({
   const sticky = "sticky left-0 z-[1] bg-surface";
 
   return (
-    <details className="group rounded-card border border-border bg-surface">
-      <summary className="flex cursor-pointer list-none items-start gap-3 p-4 sm:p-5 [&::-webkit-details-marker]:hidden">
-        <span className="flex min-w-0 flex-1 flex-col gap-1">
-          <h2 className="text-[15px] font-semibold">Détail mois par mois · {year}</h2>
-          <span className="text-xs text-muted text-pretty">
-            Électricité, budget{solar ? " et solaire" : ""} de chaque mois, comparés au même mois de{" "}
-            {Number(year) - 1}. Touchez un mois pour voir l&apos;année précédente.
-          </span>
-        </span>
-        <span className="mt-0.5 flex-none text-muted transition-transform group-open:rotate-90">
-          <Icon name="chevron" size={16} />
-        </span>
-      </summary>
+    <section className="rounded-card border border-border bg-surface">
+      <div className="flex flex-col gap-1 p-4 sm:p-5">
+        <h3 className="text-[15px] font-semibold">Détail mois par mois · {year}</h3>
+        <p className="text-xs text-muted text-pretty">
+          Électricité, budget{solar ? " et solaire" : ""} de chaque mois, comparés au même mois de{" "}
+          {Number(year) - 1}. Touchez un mois pour voir l&apos;année précédente.
+        </p>
+      </div>
 
       <div className="overflow-x-auto border-t border-track">
         <table className="w-full min-w-[560px] border-collapse text-[13px]">
@@ -286,6 +281,6 @@ export function MonthlyTable({
           par heure, est dans Rentabilité.
         </p>
       )}
-    </details>
+    </section>
   );
 }

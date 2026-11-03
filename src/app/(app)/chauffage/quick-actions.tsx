@@ -3,7 +3,7 @@
 import { callAction } from "@/lib/action";
 import { useRouter } from "next/navigation";
 import { useEffect, useState, useTransition } from "react";
-import { Badge, button, Card, CardFooter, Icon, Notice, StatTile, tiles } from "@/components/ui";
+import { Badge, button, Icon, Notice } from "@/components/ui";
 import { UNITS_FOR, type Fuel, type FuelUnit } from "@/domain/heating/fuel";
 import { formatNumber } from "@/lib/format";
 import {
@@ -25,6 +25,8 @@ export interface FuelSummary {
   priceNote: string | null;
   /** Poids d'un sac de granulés (Réglages). */
   bagKg: number;
+  /** Sacs par palette (Réglages) : échelle de la jauge du stock. */
+  bagsPerPallet: number;
   /** Prévision de réapprovisionnement (granulés), null sans assez de données. */
   refill?: RefillSummary | null;
 }
@@ -286,40 +288,157 @@ export function FuelCard({ summary }: { summary: FuelSummary }) {
     router.refresh();
   };
 
+  const toBuy = refill?.toBuy ?? null;
+  const known =
+    refill !== null && refill !== undefined && refill.need !== null && refill.spare !== null;
+  // Jauge du stock : un sac plein = la palette (ou le stock si plus grand) ; le trait marque le besoin.
+  const palette = Math.max(summary.bagsPerPallet, 1);
+  const gaugeMax = Math.max(palette, Math.ceil(shown), refill?.need ?? 0);
+  const box = "flex flex-col gap-1 rounded-[14px] bg-bg p-4";
+  const action =
+    "inline-flex min-h-14 items-center justify-center gap-2 rounded-xl border border-border-strong bg-surface px-4.5 text-[15px] font-semibold hover:bg-bg disabled:opacity-60";
+
   return (
-    <Card
-      icon="flame"
-      title={FUEL_LABELS[fuel]}
-      highlight={undo !== null}
-      badges={stock < 0 ? <Badge tone="warning">Stock à corriger</Badge> : undefined}
-      description="Stock = dernier relevé + achats − consommations saisies."
+    <section
+      aria-labelledby={`fuel-${fuel}`}
+      className={`flex flex-wrap gap-7 rounded-card border bg-surface p-6 sm:p-7 ${
+        undo !== null ? "border-accent shadow-[0_0_0_3px_rgba(26,26,26,0.10)]" : "border-border"
+      }`}
     >
-      {refill && refill.need !== null && refill.spare !== null && (
-        <p className="text-[22px] leading-snug font-bold text-balance">
-          {refill.toBuy !== null && refill.toBuy > 0
-            ? `Il manquera ≈ ${formatNumber(refill.toBuy)} sac${refill.toBuy > 1 ? "s" : ""} avant la fin de l'hiver`
-            : "Stock suffisant pour finir l'hiver"}
-        </p>
-      )}
-      <div className={tiles}>
-        <StatTile
-          label="Stock restant"
-          value={formatNumber(shown, pellet ? 0 : 1)}
-          unit={pellet ? "sacs" : "stères"}
-          sub={pellet ? `${formatNumber(stock)} kg` : undefined}
-          dot={pellet ? "bg-pellet" : "bg-wood"}
-        />
-        <StatTile
-          label="Prix moyen payé"
-          value={avgPrice === null ? "—" : formatNumber(pellet ? avgPrice * bagKg : avgPrice, 2)}
-          unit={pellet ? "€/sac" : "€/stère"}
-          sub={avgPrice === null ? "aucun achat chiffré" : (priceNote ?? undefined)}
-        />
+      <div className="flex min-w-0 flex-[1.2_1_420px] flex-col gap-[18px]">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <h2 id={`fuel-${fuel}`} className="flex items-center gap-2.5 text-xl font-bold">
+            <span
+              aria-hidden
+              className={`flex size-9 flex-none items-center justify-center rounded-[10px] ${
+                pellet ? "bg-pellet/15 text-pellet" : "bg-wood/15 text-wood"
+              }`}
+            >
+              <Icon name="flame" size={19} />
+            </span>
+            {FUEL_LABELS[fuel]}
+          </h2>
+          {stock < 0 ? (
+            <Badge tone="warning">Stock à corriger</Badge>
+          ) : (
+            known && (
+              <span
+                className={`inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-sm font-bold ${
+                  toBuy !== null && toBuy > 0 ? "bg-track text-ink" : "bg-battery/15 text-positive"
+                }`}
+              >
+                <Icon name={toBuy !== null && toBuy > 0 ? "bulb" : "check"} size={15} />
+                {toBuy !== null && toBuy > 0
+                  ? `Il manquera ≈ ${formatNumber(toBuy)} sac${toBuy > 1 ? "s" : ""} avant la fin de l'hiver`
+                  : "Stock suffisant pour finir l'hiver"}
+              </span>
+            )
+          )}
+        </div>
+        <div className="flex flex-wrap items-end gap-x-6 gap-y-2">
+          <p className="text-[64px] leading-[0.95] font-bold tracking-[-0.03em] tabular-nums sm:text-[72px]">
+            <span>{formatNumber(shown, pellet ? 0 : 1)}</span>{" "}
+            <span className="text-[26px] font-semibold tracking-normal">
+              {pellet ? "sacs" : "stères"}
+            </span>
+          </p>
+          <p className="pb-2 text-[15px] text-ink-soft">
+            {pellet ? `${formatNumber(stock)} kg en stock · ` : ""}stock = dernier relevé + achats −
+            consommations saisies
+          </p>
+        </div>
+        {pellet && stock >= 0 && (
+          <div className="flex flex-col gap-2">
+            <div
+              role="img"
+              aria-label={`${formatNumber(shown)} sacs en stock${
+                known && refill?.need !== null && refill
+                  ? `, ${formatNumber(refill.need)} nécessaires jusqu'à la fin de la saison pour un hiver moyen`
+                  : ""
+              }`}
+              className="relative h-3.5 rounded-[7px] bg-track"
+            >
+              <div
+                className="wu-grow-x absolute inset-y-0 left-0 rounded-[7px] bg-pellet"
+                style={{ width: `${Math.min(100, (shown / gaugeMax) * 100)}%` }}
+              />
+              {known && refill?.need != null && (
+                <div
+                  className="absolute -top-[5px] -bottom-[5px] w-0.5 bg-ink"
+                  style={{ left: `${Math.min(100, (refill.need / gaugeMax) * 100)}%` }}
+                />
+              )}
+            </div>
+            <div className="relative h-[18px] text-[13px] text-ink-soft">
+              {known && refill?.need != null && (
+                <span
+                  className="absolute -translate-x-1/2 font-semibold whitespace-nowrap"
+                  style={{ left: `${Math.min(88, Math.max(12, (refill.need / gaugeMax) * 100))}%` }}
+                >
+                  besoin jusqu&apos;à {refill.currentEnd ?? "la fin de saison"} :{" "}
+                  {formatNumber(refill.need)}
+                </span>
+              )}
+              {gaugeMax === palette && (
+                <span className="absolute right-0 text-muted">
+                  {formatNumber(palette)} = 1 palette
+                </span>
+              )}
+            </div>
+          </div>
+        )}
+
+        {stock < 0 && (
+          <Notice
+            icon="bulb"
+            title="Stock négatif :"
+            action={
+              <button type="button" onClick={() => setForm("stock")} className={button.primary}>
+                Corriger le stock
+              </button>
+            }
+          >
+            plus de consommations que d&apos;achats depuis le dernier relevé. Saisissez un achat
+            oublié ou comptez ce qu&apos;il reste.
+          </Notice>
+        )}
+
+        <div className="flex flex-wrap gap-2.5">
+          <button
+            type="button"
+            disabled={pending}
+            onClick={() =>
+              act(
+                () => quickConsumptionAction(fuel),
+                (id) => id && setUndo({ id, label: pellet ? "1 sac versé" : "½ stère utilisé" }),
+              )
+            }
+            className="inline-flex min-h-14 flex-[1_1_220px] items-center justify-center gap-2.5 rounded-xl bg-ink px-5 text-[17px] font-semibold text-bg disabled:opacity-60"
+          >
+            <Icon name="download" size={20} />
+            {pellet ? "J'ai versé un sac" : "J'ai brûlé ½ stère"}
+          </button>
+          <button type="button" onClick={() => setForm("purchase")} className={action}>
+            <Icon name="plus" size={17} />
+            Achat
+          </button>
+          <button type="button" onClick={() => setForm("stock")} className={action}>
+            <Icon name="edit" size={17} />
+            Corriger le stock
+          </button>
+        </div>
+
+        {form === "purchase" && <PurchaseForm fuel={fuel} onDone={close} />}
+        {form === "stock" && (
+          <StockForm fuel={fuel} initial={pellet ? Math.round(shown) : shown} onDone={close} />
+        )}
+        <Errors errors={errors} />
       </div>
-      {refill && refill.need !== null && refill.spare !== null && (
-        <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,240px),1fr))] gap-3">
-          <div className="flex flex-col gap-1 rounded-control bg-bg p-4">
-            <span className="text-[13px] font-semibold text-muted">
+
+      <div className="flex min-w-0 flex-[1_1_340px] flex-col gap-3">
+        {known && refill && refill.need !== null && refill.spare !== null && (
+          <div className={box}>
+            <span className="text-[13px] font-bold text-ink-soft">
               D&apos;ici {refill.currentEnd ?? "la fin de saison"} · estimation
             </span>
             <span className="text-lg font-bold tabular-nums">
@@ -334,78 +453,53 @@ export function FuelCard({ summary }: { summary: FuelSummary }) {
                 ` ${refill.rigorousOk ? "Même un" : "Un"} hiver rigoureux (${formatNumber(refill.rigorousNeed)} sacs) ${refill.rigorousOk ? "passerait" : "ne passerait pas"}.`}
             </span>
           </div>
-          {refill.perDay !== null && refill.perDay > 0 && (
-            <div className="flex flex-col gap-1 rounded-control bg-bg p-4">
-              <span className="text-[13px] font-semibold text-muted">
-                Au rythme actuel · mesuré
+        )}
+        {refill && refill.perDay !== null && refill.perDay > 0 && (
+          <div className={box}>
+            <span className="text-[13px] font-bold text-ink-soft">Au rythme actuel · mesuré</span>
+            <span className="text-lg font-bold tabular-nums">
+              {refill.perDay >= 1
+                ? `≈ ${formatNumber(refill.perDay, 1)} sacs par jour`
+                : `≈ 1 sac tous les ${formatNumber(Math.round(1 / refill.perDay))} jours`}
+            </span>
+            <span className="text-sm text-ink-soft text-pretty">
+              Calculé sur les sacs versés ces 30 derniers jours ; le rythme change avec le froid.
+            </span>
+          </div>
+        )}
+        <div className={box}>
+          <span className="text-[13px] font-bold text-ink-soft">Prix moyen payé</span>
+          <span className="text-lg font-bold tabular-nums">
+            {avgPrice === null
+              ? "—"
+              : `${formatNumber(pellet ? avgPrice * bagKg : avgPrice, 2)} ${pellet ? "€/sac" : "€/stère"}`}
+          </span>
+          <span className="text-sm text-ink-soft">
+            {avgPrice === null ? "aucun achat chiffré" : priceNote}
+          </span>
+        </div>
+        {refill && (
+          <div className="flex items-center gap-3 rounded-[14px] border border-border p-4">
+            <span
+              aria-hidden
+              className="flex size-10 flex-none items-center justify-center rounded-xl bg-pellet/15 text-pellet"
+            >
+              <Icon name="layout" size={20} />
+            </span>
+            <div className="flex flex-col gap-0.5">
+              <span className="text-base font-bold">
+                Prochain achat : saison {refill.nextLabel}
               </span>
-              <span className="text-lg font-bold tabular-nums">
-                {refill.perDay >= 1
-                  ? `≈ ${formatNumber(refill.perDay, 1)} sacs par jour`
-                  : `≈ 1 sac tous les ${formatNumber(Math.round(1 / refill.perDay))} jours`}
-              </span>
-              <span className="text-sm text-ink-soft text-pretty">
-                Calculé sur les sacs versés ces 30 derniers jours ; le rythme change avec le froid.
+              <span className="text-sm text-ink-soft">
+                ≈ {formatNumber(refill.nextBags)} sacs
+                {refill.nextCostEur !== null &&
+                  `, ≈ ${formatNumber(refill.nextCostEur)} € au dernier prix d'achat`}{" "}
+                (hiver moyen)
               </span>
             </div>
-          )}
-        </div>
-      )}
-      {refill && (
-        <p className="text-sm text-ink-soft text-pretty">
-          <strong className="text-ink">Saison {refill.nextLabel} :</strong> prévoyez ≈{" "}
-          {formatNumber(refill.nextBags)} sacs
-          {refill.nextCostEur !== null &&
-            `, ≈ ${formatNumber(refill.nextCostEur)} € au dernier prix d'achat`}{" "}
-          (hiver moyen).
-        </p>
-      )}
-
-      {stock < 0 && (
-        <Notice
-          title="Stock négatif :"
-          action={
-            <button type="button" onClick={() => setForm("stock")} className={button.primary}>
-              Corriger le stock
-            </button>
-          }
-        >
-          plus de consommations que d&apos;achats depuis le dernier relevé. Saisissez un achat
-          oublié ou comptez ce qu&apos;il reste.
-        </Notice>
-      )}
-
-      <button
-        type="button"
-        disabled={pending}
-        onClick={() =>
-          act(
-            () => quickConsumptionAction(fuel),
-            (id) => id && setUndo({ id, label: pellet ? "1 sac versé" : "½ stère utilisé" }),
-          )
-        }
-        className={`${button.primary} h-12 w-full text-[15px]`}
-      >
-        <Icon name="plus" size={18} />
-        {pellet ? "J'ai versé un sac" : "J'ai brûlé ½ stère"}
-      </button>
-
-      {form === "purchase" && <PurchaseForm fuel={fuel} onDone={close} />}
-      {form === "stock" && (
-        <StockForm fuel={fuel} initial={pellet ? Math.round(shown) : shown} onDone={close} />
-      )}
-      <Errors errors={errors} />
-
-      {form === null && (
-        <CardFooter>
-          <button type="button" onClick={() => setForm("purchase")} className={button.secondary}>
-            Achat
-          </button>
-          <button type="button" onClick={() => setForm("stock")} className={button.secondary}>
-            Corriger le stock
-          </button>
-        </CardFooter>
-      )}
+          </div>
+        )}
+      </div>
 
       {undo && (
         <UndoToast
@@ -419,6 +513,6 @@ export function FuelCard({ summary }: { summary: FuelSummary }) {
           }}
         />
       )}
-    </Card>
+    </section>
   );
 }

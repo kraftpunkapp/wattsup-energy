@@ -305,6 +305,13 @@ export default async function ForecastPage() {
         solar={ctx.profile.solar && plan.solarMethod !== null}
         battery={ctx.profile.battery}
         bestSlot={best ? windowLabel(best.window.start, best.window.end, plan.today, tz) : null}
+        appliances={found.map(({ appliance, window }) => ({
+          id: appliance.id,
+          name: appliance.name,
+          icon: appliance.icon,
+          start: window.start.toISOString(),
+          end: window.end.toISOString(),
+        }))}
         windows={windowsSection}
         why={whySection}
         days={plan.days.map((d) => ({ ...d, fullAt: fullByDate.get(d.date) ?? null }))}

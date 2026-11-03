@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { BatteryGapNotices } from "@/components/battery-gap-notice";
-import { button, Notice } from "@/components/ui";
+import { button, Callout, Notice } from "@/components/ui";
 import { monthLabel, monthName } from "@/domain/overview";
 import { formatEurFromCents, formatNumber, formatPercent } from "@/lib/format";
 import type { EquipmentRoi, RoiView } from "@/server/queries/roi";
@@ -128,8 +128,8 @@ export function RoiDetails({ roi, view }: { roi: EquipmentRoi; view: RoiView }) 
       )}
 
       {range && payback.status === "in-progress" && (
-        <p className="rounded-control bg-warning-bg px-3.5 py-3 text-sm text-ink-soft text-pretty">
-          <strong className="text-ink">
+        <Callout>
+          <strong>
             Amorti{solar ? "" : "e"} entre {range.early.slice(0, 4)} et {range.late.slice(0, 4)}
             {range.early.slice(0, 4) === range.late.slice(0, 4)
               ? ` (${monthName(range.early)} à ${monthName(range.late)})`
@@ -140,7 +140,7 @@ export function RoiDetails({ roi, view }: { roi: EquipmentRoi; view: RoiView }) 
           {roi.dataFrom ? fmtMonth(roi.dataFrom) : "peu"} : ses{" "}
           {formatNumber(payback.monthlyCents / 100)} €/mois sont ceux de {periodLabel(recent)}. La
           fourchette se resserrera avec une année complète.
-        </p>
+        </Callout>
       )}
 
       <details className="text-sm">
@@ -170,14 +170,14 @@ export function RoiDetails({ roi, view }: { roi: EquipmentRoi; view: RoiView }) 
             propreté des panneaux et l&apos;état de l&apos;onduleur.
           </Notice>
         ) : (
-          <p className="rounded-control bg-bg px-3.5 py-3 text-sm text-ink-soft text-pretty tabular-nums">
+          <Callout icon="sun" tone="neutral">
             Rendement de {monthLabel(view.solarYield.month)} :{" "}
             <span className="font-semibold text-ink">
               {formatNumber(view.solarYield.yield, 2)} kWh par kWh/m²
             </span>{" "}
             reçu ({view.solarYield.deviation >= 0 ? "+" : "−"}
             {formatPercent(Math.abs(view.solarYield.deviation))} par rapport à d&apos;habitude).
-          </p>
+          </Callout>
         ))}
 
       {view.noContract && (

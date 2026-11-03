@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { PeriodLink } from "@/components/period-transition";
-import { Badge, button, Notice, StatTile } from "@/components/ui";
+import { Badge, button, KpiTile, Notice } from "@/components/ui";
 import { monthLabel, shortMonth } from "@/domain/overview";
 import { formatEurFromCents, formatNumber, formatPercent } from "@/lib/format";
 import type { HeatingView } from "@/server/queries/heating";
@@ -77,9 +77,9 @@ export function HeatingKpis({ view }: { view: HeatingView }) {
   const { current, previous, modules, inProgress } = view;
   const previousLabel = inProgress ? "même période N-1" : "saison précédente";
   return (
-    <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,150px),1fr))] gap-2">
-      <StatTile
-        standalone
+    <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,200px),1fr))] gap-4">
+      <KpiTile
+        icon="tag"
         label="Coût de la saison"
         value={formatNumber(current.cost.totalCents / 100)}
         unit="€"
@@ -87,12 +87,12 @@ export function HeatingKpis({ view }: { view: HeatingView }) {
       />
       {modules.pellet && <PelletTile view={view} previousLabel={previousLabel} />}
       {modules.wood && (
-        <StatTile
-          standalone
+        <KpiTile
+          icon="flame"
+          tone="wood"
           label="Bois brûlé"
           value={formatNumber(current.fuels.wood?.qty ?? 0, 1)}
           unit="stères"
-          dot="bg-wood"
           sub={
             previous?.fuels.wood
               ? `${previousLabel} : ${formatNumber(previous.fuels.wood.qty, 1)} st.`
@@ -101,19 +101,20 @@ export function HeatingKpis({ view }: { view: HeatingView }) {
         />
       )}
       {modules.electric && (
-        <StatTile
-          standalone
+        <KpiTile
+          icon="plug"
+          tone="eheat"
           label="Radiateurs"
           value={formatNumber(current.electricKwh)}
           unit="kWh"
-          dot="bg-eheat"
           sub={
             previous ? `${previousLabel} : ${formatNumber(previous.electricKwh)} kWh` : undefined
           }
         />
       )}
-      <StatTile
-        standalone
+      <KpiTile
+        icon="thermometer"
+        tone="grid"
         label="Température moyenne"
         value={current.tMean === null ? "—" : formatNumber(current.tMean, 1)}
         unit="°C"
@@ -131,12 +132,12 @@ function PelletTile({ view, previousLabel }: { view: HeatingView; previousLabel:
   const { current, previous, bagKg } = view;
   const bags = (kg: number) => kg / bagKg;
   return (
-    <StatTile
-      standalone
+    <KpiTile
+      icon="flame"
+      tone="pellet"
       label="Granulés versés"
       value={formatNumber(bags(current.fuels.pellet?.qty ?? 0))}
       unit="sacs"
-      dot="bg-pellet"
       sub={
         previous?.fuels.pellet
           ? `${previousLabel} : ${formatNumber(bags(previous.fuels.pellet.qty))} sacs`

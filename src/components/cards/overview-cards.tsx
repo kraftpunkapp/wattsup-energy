@@ -166,11 +166,11 @@ export function BudgetCard({ overview }: { overview: Ok }) {
       </div>
       {less !== null && ratio !== null && previous !== null && (
         <p
-          className={`flex items-center gap-3 rounded-control px-3.5 py-3 text-base ${
+          className={`flex items-center gap-2.5 rounded-control px-3 py-2 text-sm ${
             less ? "bg-panel-gain text-panel-ink" : "bg-panel-active text-panel-ink"
           }`}
         >
-          <span aria-hidden className="text-lg leading-none font-bold">
+          <span aria-hidden className="text-base leading-none font-bold">
             {less ? "↓" : "↑"}
           </span>
           <span>

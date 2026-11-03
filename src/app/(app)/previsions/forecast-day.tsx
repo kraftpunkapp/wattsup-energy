@@ -1,11 +1,11 @@
 "use client";
 
 import { useState, type ReactNode } from "react";
-import { StackedBars } from "@/components/charts/stacked-bars";
-import { Card, Gauge, Legend, Segmented, StatTile, tiles } from "@/components/ui";
+import { Gauge, Legend, Segmented, StatTile, tiles } from "@/components/ui";
 import { hourLabel } from "@/domain/forecast/summary";
 import { formatEurFromCents, formatKwh, formatPercent } from "@/lib/format";
 import { localParts } from "@/lib/time";
+import { HourlyDetail, type DayAppliance } from "./hourly-detail";
 
 // Aujourd'hui ou demain heure par heure (T72, SPEC §7.14) : consommation prévue (couverte
 // sur place ou achetée), production prévue en barre claire derrière, coût d'un kWh de plus
@@ -45,10 +45,6 @@ export interface ForecastDayView {
   measured: { solarKwh: number; loadKwh: number; hours: number };
 }
 
-const COST_LINE = "var(--color-hc)";
-const FORECAST_LINE = "var(--color-ink)";
-/** Heures encore prévues d'un jour en partie mesuré (classes écrites en entier pour Tailwind). */
-const FORECAST_TONE = { "bg-solar": "bg-solar/55", "bg-grid": "bg-grid/55" } as const;
 const kwh = (v: number) => formatKwh(v, v < 10 ? 1 : 0);
 const eur = (v: number) => formatEurFromCents(v * 100, 2);
 
@@ -62,7 +58,10 @@ export function ForecastDay({
   windows,
   why,
   bestSlot,
+  appliances,
 }: {
+  /** Créneaux conseillés des appareils (tous jours confondus). */
+  appliances: DayAppliance[];
   /** « cette nuit, de 1 h à 5 h » : le créneau d'appareil le plus économe, null sans. */
   bestSlot: string | null;
   windows: ReactNode;
@@ -80,114 +79,11 @@ export function ForecastDay({
   const list = hours.filter((h) => localParts(new Date(h.start), timezone).date === date);
   const focus = list.find((h) => h.start === picked) ?? null;
   const priced = list.some((h) => h.kwhCostEur !== null);
-  // Jour en partie mesuré : les heures prévues sont plus claires.
-  const mixed = list.some((h) => h.measured) && list.some((h) => !h.measured);
   // Heures écoulées avec leur estimation : bilan « depuis minuit ».
   const past = list.filter((h) => h.estimated !== null);
   const sum = (pick: (h: ForecastHourView) => number) => past.reduce((a, h) => a + pick(h), 0);
-  const tone = (h: ForecastHourView, color: keyof typeof FORECAST_TONE) =>
-    mixed && !h.measured ? FORECAST_TONE[color] : color;
-  const detail = (h: ForecastHourView) => {
-    const start = new Date(h.start);
-    const end = new Date(start.getTime() + 3_600_000);
-    const covered = Math.max(0, h.loadKwh - h.importKwh);
-    const e = h.estimated;
-    return `${hourLabel(start, timezone)} – ${hourLabel(end, timezone)}, ${h.measured ? "mesuré" : "prévu"} : ${kwh(h.loadKwh)} consommés${
-      e ? ` (${kwh(e.loadKwh)} prévus)` : ""
-    }, dont ${kwh(covered)} sur place et ${kwh(h.importKwh)} achetés${
-      solar ? ` · production ${kwh(h.solarKwh)}${e ? ` (${kwh(e.solarKwh)} prévus)` : ""}` : ""
-    }${!h.measured && h.kwhCostEur !== null ? ` · ${eur(h.kwhCostEur)} le kWh de plus` : ""}`;
-  };
   if (!day) return null;
 
-  const chart = (
-    <>
-      <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted">
-        <span className="flex items-center gap-1.5">
-          <span className="size-2 rounded-[2px] bg-solar" />
-          Couverte sur place
-        </span>
-        <span className="flex items-center gap-1.5">
-          <span className="size-2 rounded-[2px] bg-grid" />
-          Achetée
-        </span>
-        {solar && (
-          <span className="flex items-center gap-1.5">
-            <span className="size-2 rounded-[2px] bg-solar/35" />
-            Production prévue
-          </span>
-        )}
-        {priced && (
-          <span className="flex items-center gap-1.5">
-            <span className="h-0.5 w-3 rounded-full" style={{ background: COST_LINE }} />
-            Coût d&apos;un kWh de plus
-          </span>
-        )}
-        {past.length > 0 && (
-          <span className="flex items-center gap-1.5">
-            <span className="h-0.5 w-3 rounded-full bg-ink" />
-            Ce qui était prévu
-            <span className="w-5 border-t-2 border-dashed border-ink" />
-            Encore à venir
-          </span>
-        )}
-        {mixed && <span>Heures écoulées : mesuré ; à venir, plus clair : prévu</span>}
-      </div>
-      <StackedBars
-        height={150}
-        ariaLabel={`Consommation et production prévues heure par heure, ${date === today ? "aujourd'hui" : "demain"}`}
-        previousColor="bg-solar/35"
-        bars={list.map((h, i) => {
-          const start = new Date(h.start);
-          return {
-            key: h.start,
-            label: i % 3 === 0 ? `${localParts(start, timezone).hour} h` : "",
-            title: detail(h),
-            selected: h.start === focus?.start,
-            onSelect: () => setPicked(h.start === focus?.start ? null : h.start),
-            segments: [
-              {
-                value: Math.max(0, h.loadKwh - h.importKwh),
-                color: tone(h, "bg-solar"),
-                label: "Couverte sur place",
-              },
-              { value: h.importKwh, color: tone(h, "bg-grid"), label: "Achetée" },
-            ],
-            previous: solar ? h.solarKwh : undefined,
-          };
-        })}
-        line={[
-          ...(priced
-            ? // Le coût d'un kWh de plus ne concerne que les heures à venir.
-              [{ values: list.map((h) => (h.measured ? null : h.kwhCostEur)), color: COST_LINE }]
-            : []),
-          ...(past.length > 0
-            ? [
-                // Ce qui était prévu pour les heures écoulées…
-                {
-                  values: list.map((h) => h.estimated?.loadKwh ?? null),
-                  color: FORECAST_LINE,
-                  barScale: true,
-                },
-                // … puis la prévision, en pointillés, reliée à la dernière heure écoulée.
-                {
-                  values: list.map((h, i) =>
-                    !h.measured
-                      ? h.loadKwh
-                      : list[i + 1] && !list[i + 1]?.measured
-                        ? (h.estimated?.loadKwh ?? null)
-                        : null,
-                  ),
-                  color: FORECAST_LINE,
-                  barScale: true,
-                  dashed: true,
-                },
-              ]
-            : []),
-        ]}
-      />
-    </>
-  );
   const sinceMidnight = (
     <>
       {past.length > 0 && (
@@ -201,13 +97,24 @@ export function ForecastDay({
       )}
     </>
   );
-  const chartFooter = (
-    <>
-      {sinceMidnight}
-      <p className="text-[11px] text-muted tabular-nums" aria-live="polite">
-        {focus ? detail(focus) : "Touchez une heure pour son détail."}
-      </p>
-    </>
+  const dayAppliances = appliances.filter(
+    (a) => localParts(new Date(a.start), timezone).date === date,
+  );
+  const hourly = (description: string) => (
+    <HourlyDetail
+      list={list}
+      timezone={timezone}
+      today={today}
+      date={date}
+      solar={solar}
+      battery={battery}
+      priced={priced}
+      appliances={dayAppliances}
+      focus={focus}
+      onPick={setPicked}
+      description={description}
+      footer={sinceMidnight}
+    />
   );
   const tomorrow = date !== today;
   const switcher = (
@@ -292,13 +199,7 @@ export function ForecastDay({
         </section>
         {windows}
         {why}
-        <Card
-          title="Le détail heure par heure"
-          description="Pour aller plus loin : touchez une heure."
-        >
-          {chart}
-          {chartFooter}
-        </Card>
+        {hourly("Pour aller plus loin : touchez une heure.")}
       </>
     );
   }
@@ -438,70 +339,11 @@ export function ForecastDay({
           </div>
         </section>
       )}
-      <Card
-        title="Le détail heure par heure"
-        description={
-          hasPast
-            ? `Avant ${nowLabel} : mesuré, avec ce qui était prévu en trait noir. Après : la prévision mise à jour.`
-            : "D'après vos habitudes, la météo et votre contrat."
-        }
-      >
-        <div className="flex flex-wrap items-stretch gap-5">
-          <div className="flex min-w-0 flex-[2_1_380px] flex-col gap-3">{chart}</div>
-          <aside
-            aria-live="polite"
-            className="flex grow basis-[220px] flex-col gap-2 rounded-control bg-bg p-4 text-sm md:grow-0"
-          >
-            {focus ? (
-              <>
-                <h3 className="font-semibold">
-                  {hourLabel(new Date(focus.start), timezone)} –{" "}
-                  {hourLabel(new Date(new Date(focus.start).getTime() + 3_600_000), timezone)}
-                </h3>
-                <p className="text-ink-soft">{focus.measured ? "Mesuré" : "Prévu"}</p>
-                <p>
-                  <span className="text-muted">Consommé</span>
-                  <br />
-                  <strong className="text-lg tabular-nums">{kwh(focus.loadKwh)}</strong>
-                  {focus.estimated && (
-                    <span className="text-ink-soft tabular-nums">
-                      {" "}
-                      · prévu {kwh(focus.estimated.loadKwh)}
-                    </span>
-                  )}
-                </p>
-                <p className="text-ink-soft tabular-nums">
-                  dont {kwh(Math.max(0, focus.loadKwh - focus.importKwh))} sur place et{" "}
-                  {kwh(focus.importKwh)} achetés
-                </p>
-                {solar && (
-                  <p>
-                    <span className="text-muted">Produit</span>
-                    <br />
-                    <strong className="text-lg tabular-nums">{kwh(focus.solarKwh)}</strong>
-                    {focus.estimated && (
-                      <span className="text-ink-soft tabular-nums">
-                        {" "}
-                        · prévu {kwh(focus.estimated.solarKwh)}
-                      </span>
-                    )}
-                  </p>
-                )}
-                {!focus.measured && focus.kwhCostEur !== null && (
-                  <p className="text-ink-soft tabular-nums">
-                    Lancer un appareil à cette heure : {eur(focus.kwhCostEur)} le kWh
-                  </p>
-                )}
-              </>
-            ) : (
-              <p className="text-ink-soft text-pretty">
-                Une heure en particulier ? Touchez une barre pour comparer le mesuré et le prévu.
-              </p>
-            )}
-          </aside>
-        </div>
-        {sinceMidnight}
-      </Card>
+      {hourly(
+        hasPast
+          ? `Avant ${nowLabel} : mesuré, avec ce qui était prévu en trait noir. Après : la prévision mise à jour.`
+          : "D'après vos habitudes, la météo et votre contrat.",
+      )}
       {windows}
     </>
   );

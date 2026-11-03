@@ -136,6 +136,7 @@ export function EquipmentCard({
   return (
     <Card
       icon={kind === "solar" ? "sun" : "bolt"}
+      iconTone={kind === "solar" ? "solar" : "battery"}
       title={item?.label ?? KIND[kind].title}
       // Coût et capacité en ligne de contexte : le coût est repris dans « X € économisés sur
       // Y € », l'amortissement reste ce qu'on lit d'abord.

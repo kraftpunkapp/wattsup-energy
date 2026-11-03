@@ -53,6 +53,9 @@ export type MarketState =
       unavailable: number;
     };
 
+/** Hausse annuelle à partir de laquelle l'écart se signale en couleur (5 €). */
+const NOTABLE_CENTS = 500;
+
 /** En dessous d'un euro par an, deux offres coûtent la même chose. */
 const SAME_CENTS = 100;
 const NEAR = 3;
@@ -143,7 +146,9 @@ function Delta({ row }: { row: ComparedRow }) {
   }
   return (
     <span
-      className={`text-xs font-semibold tabular-nums ${d < 0 ? "text-positive" : "text-ink-soft"}`}
+      className={`text-sm font-semibold tabular-nums ${
+        d < 0 ? "text-positive" : d >= NOTABLE_CENTS ? "text-increase" : "text-ink-soft"
+      }`}
     >
       {d < 0 ? "−" : "+"}
       {eur(Math.abs(d))} par an

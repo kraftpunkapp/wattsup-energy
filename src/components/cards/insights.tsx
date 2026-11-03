@@ -1,55 +1,21 @@
 import type { ReactNode } from "react";
-import { BaseloadCard } from "@/components/cards/baseload-card";
-import { CategoriesOverviewCard, PeakCard, SolarCard } from "@/components/cards/overview-cards";
+import { InsightTile } from "@/components/cards/insight-grid";
+import { Gauge } from "@/components/ui";
+import { CATEGORY_SWATCH, categoryColor, categoryIcon } from "@/components/ui/category";
 import { Icon } from "@/components/ui";
 import { yearlyKwh } from "@/domain/baseload";
+import { shortMonth } from "@/domain/overview";
 import { formatEurFromCents, formatKwh, formatNumber, formatPercent } from "@/lib/format";
 import type { Overview } from "@/server/queries/overview";
 
 // « Ce qu'il faut retenir » : un enseignement par sujet, une phrase calculée sur les données
-// de la période ; le détail (carte complète) se déplie au clic. Les phrases ne disent que ce
-// que l'appli mesure.
+// de la période et un petit graphique quand elles le permettent ; le détail (carte complète)
+// se déplie au clic, sous la rangée (InsightGrid). Les phrases ne disent que ce que l'appli
+// mesure.
 
 type Ok = Extract<Overview, { status: "ok" }>;
 
 const eur = (cents: number) => formatEurFromCents(cents, 0);
-
-function InsightCard({
-  title,
-  headline,
-  detail,
-  actions,
-  children,
-}: {
-  title: string;
-  headline: ReactNode;
-  detail?: ReactNode;
-  actions?: ReactNode;
-  children: ReactNode;
-}) {
-  return (
-    <div className="relative">
-      <details className="group rounded-card border border-border bg-surface">
-        <summary className="flex min-h-11 cursor-pointer list-none items-start gap-3 rounded-card p-5 pr-14 [&::-webkit-details-marker]:hidden">
-          <span className="flex min-w-0 flex-1 flex-col gap-1">
-            <span className="text-[13px] font-semibold text-muted">{title}</span>
-            <span className="text-[17px] leading-snug font-semibold text-pretty">{headline}</span>
-            {detail && <span className="text-sm text-ink-soft text-pretty">{detail}</span>}
-            <span className="mt-1 inline-flex items-center gap-1 text-[13px] font-semibold">
-              <span className="group-open:hidden">Voir le détail</span>
-              <span className="hidden group-open:inline">Masquer le détail</span>
-              <span className="transition-transform group-open:rotate-90">
-                <Icon name="chevron" size={14} />
-              </span>
-            </span>
-          </span>
-        </summary>
-        <div className="border-t border-track p-5">{children}</div>
-      </details>
-      {actions && <div className="absolute top-2 right-2">{actions}</div>}
-    </div>
-  );
-}
 
 /** Heures creuses : ce que la part de nuit fait gagner, au prix des heures pleines. */
 export function PeakInsight({ overview, actions }: { overview: Ok; actions?: ReactNode }) {
@@ -59,23 +25,43 @@ export function PeakInsight({ overview, actions }: { overview: Ok; actions?: Rea
   const hpRate = peak.hp.kwh > 0 ? peak.hp.energyCents / peak.hp.kwh : null;
   const hcRate = peak.hc.kwh > 0 ? peak.hc.energyCents / peak.hc.kwh : null;
   const saving = hpRate !== null && hcRate !== null ? peak.hc.kwh * (hpRate - hcRate) : null;
+  const share = sum > 0 ? peak.hc.kwh / sum : 0;
   return (
-    <InsightCard
+    <InsightTile
+      id="peak"
+      icon="moon"
+      tone="grid"
       title="Heures creuses"
       actions={actions}
       headline={
         saving !== null && saving >= 100
           ? `≈ ${eur(saving)} de moins qu'au tarif des heures pleines`
-          : `${formatPercent(peak.hc.kwh / sum)} de votre électricité en heures creuses`
+          : `${formatPercent(share)} de votre électricité en heures creuses`
       }
       detail={
         saving !== null && saving >= 100 && hpRate !== null && hcRate !== null
-          ? `${formatKwh(peak.hc.kwh)} à ${formatEurFromCents(hcRate, 3)} € au lieu de ${formatEurFromCents(hpRate, 3)} €, soit ${formatPercent(peak.hc.kwh / sum)} de l'électricité achetée`
+          ? `${formatKwh(peak.hc.kwh)} à ${formatEurFromCents(hcRate, 3)} € au lieu de ${formatEurFromCents(hpRate, 3)} €`
           : undefined
       }
-    >
-      <PeakCard overview={overview} flat />
-    </InsightCard>
+      visual={
+        sum > 0 && (
+          <div className="flex flex-col gap-1.5">
+            <Gauge
+              key="gauge"
+              height={10}
+              label={`Heures creuses ${formatPercent(share)}, heures pleines ${formatPercent(1 - share)}`}
+              parts={[
+                { value: peak.hc.kwh, color: "bg-hc" },
+                { value: peak.hp.kwh, color: "bg-grid" },
+              ]}
+            />
+            <span key="share" className="text-[13px] font-semibold text-ink-soft">
+              {formatPercent(share)} de l&apos;électricité achetée en heures creuses
+            </span>
+          </div>
+        )
+      }
+    />
   );
 }
 
@@ -85,19 +71,35 @@ export function CategoriesInsight({ overview }: { overview: Ok }) {
   const top = [...categories].sort((a, b) => b.kwh - a.kwh).slice(0, 3);
   const first = top[0];
   return (
-    <InsightCard
+    <InsightTile
+      id="categories"
+      icon={first ? categoryIcon(first.icon) : "plug"}
+      tone="pellet"
       title="Postes suivis"
       headline={
         first && balance.consumption > 0 && first.kwh > 0
           ? `${first.name} : ${formatPercent(first.kwh / balance.consumption)} de votre consommation`
           : "Aucun poste suivi sur cette période"
       }
-      detail={
-        top.length > 0 ? top.map((c) => `${c.name} ${formatKwh(c.kwh)}`).join(" · ") : undefined
+      visual={
+        top.length > 0 && (
+          <ul className="flex flex-col gap-2">
+            {top.map((c) => (
+              <li key={c.id} className="flex items-center gap-2.5 text-sm">
+                <span
+                  aria-hidden
+                  className={`flex size-[30px] flex-none items-center justify-center rounded-lg ${CATEGORY_SWATCH[categoryColor(c.color)].tile}`}
+                >
+                  <Icon name={categoryIcon(c.icon)} size={16} />
+                </span>
+                <span className="min-w-0 flex-1 truncate">{c.name}</span>
+                <strong className="tabular-nums">{formatKwh(c.kwh)}</strong>
+              </li>
+            ))}
+          </ul>
+        )
       }
-    >
-      <CategoriesOverviewCard overview={overview} flat />
-    </InsightCard>
+    />
   );
 }
 
@@ -105,8 +107,14 @@ export function CategoriesInsight({ overview }: { overview: Ok }) {
 export function BaseloadInsight({ overview, actions }: { overview: Ok; actions?: ReactNode }) {
   const b = overview.baseload;
   if (!b) return null;
+  const measured = b.months.filter((m) => m.watts !== null);
+  const peak = Math.max(...measured.map((m) => m.watts ?? 0), 0);
+  const delta = b.watts !== null && b.previousWatts ? b.watts / b.previousWatts - 1 : null;
   return (
-    <InsightCard
+    <InsightTile
+      id="baseload"
+      icon="plug"
+      tone="neutral"
       title="Talon de consommation"
       actions={actions}
       headline={
@@ -123,9 +131,35 @@ export function BaseloadInsight({ overview, actions }: { overview: Ok; actions?:
           ? undefined
           : `À ce niveau, ≈ ${formatKwh(yearlyKwh(b.watts))} par an pour ce qui tourne en permanence`
       }
-    >
-      <BaseloadCard overview={overview} flat />
-    </InsightCard>
+      visual={
+        peak > 0 && (
+          <div className="flex flex-col gap-1.5">
+            <span
+              key="bars"
+              role="img"
+              aria-label={`Talon des ${b.months.length} derniers mois, de ${shortMonth(b.months[0].month)} à ${shortMonth(b.months[b.months.length - 1].month)}`}
+              className="flex h-[30px] items-end gap-[3px]"
+            >
+              {b.months.map((m, i) => (
+                <span
+                  key={m.month}
+                  className={`wu-grow-y flex-1 rounded-[2px] ${
+                    i === b.months.length - 1 ? "bg-grid" : "bg-grid/25"
+                  }`}
+                  style={{ height: `${Math.max(((m.watts ?? 0) / peak) * 100, m.watts ? 8 : 0)}%` }}
+                />
+              ))}
+            </span>
+            {delta !== null && Math.abs(delta) >= 0.005 && (
+              <span key="delta" className="text-[13px] font-semibold text-positive">
+                {delta < 0 ? "−" : "+"}
+                {formatPercent(Math.abs(delta))} par rapport à l&apos;an dernier
+              </span>
+            )}
+          </div>
+        )
+      }
+    />
   );
 }
 
@@ -137,7 +171,10 @@ export function SolarInsight({ overview }: { overview: Ok }) {
     solar.yield !== null && solar.previousYield ? solar.yield / solar.previousYield - 1 : null;
   const sunshine = solar.points.reduce((a, p) => a + (p.sunshineHours ?? 0), 0);
   return (
-    <InsightCard
+    <InsightTile
+      id="solar"
+      icon="sun"
+      tone="solar"
       title="Production solaire"
       headline={
         solar.kwh > 0
@@ -151,8 +188,6 @@ export function SolarInsight({ overview }: { overview: Ok }) {
           ? `Pour ${formatNumber(sunshine)} h de soleil${delta !== null ? ", à ensoleillement comparable" : ""}`
           : undefined
       }
-    >
-      <SolarCard overview={overview} flat />
-    </InsightCard>
+    />
   );
 }
