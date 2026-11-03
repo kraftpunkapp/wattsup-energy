@@ -230,7 +230,7 @@ function CurrentSeason({
                 <div
                   className={`wu-grow-x absolute inset-y-0 left-0 flex items-center justify-end rounded-[6px] pr-2 text-[13px] ${tint} ${
                     main
-                      ? "font-bold text-white"
+                      ? "font-bold text-on-fill"
                       : "bg-opacity-40 font-semibold text-ink opacity-45"
                   }`}
                   style={{ width: `${(n / scale) * 100}%` }}

@@ -43,7 +43,7 @@ export function RoiSummary({ view }: { view: RoiView }) {
           className="relative h-[22px] rounded-[6px] bg-track"
         >
           <div
-            className="wu-grow-x absolute inset-y-0 left-0 flex min-w-11 items-center justify-end rounded-[6px] bg-positive pr-2 text-[13px] font-bold text-white"
+            className="wu-grow-x absolute inset-y-0 left-0 flex min-w-11 items-center justify-end rounded-[6px] bg-positive pr-2 text-[13px] font-bold text-on-fill"
             style={{ width: `${ratio * 100}%` }}
           >
             {formatPercent(ratio)}
