@@ -105,6 +105,23 @@ WattsUp vous rend service ? Vous pouvez soutenir son développement :
 
 ## Notes de version
 
+### 1.12.0 — 3 novembre 2026
+
+- **Nouveau design** : nouveau logo, nouvelles couleurs (une couleur = un sens), chiffres plus
+  lisibles, barre latérale et menu « Plus » sur téléphone, thème sombre retravaillé. Les
+  animations légères respectent le réglage « réduire les animations » de l'appareil.
+- **Vue d'ensemble** : Budget comparé à l'an dernier, origine de la consommation, bloc
+  « Demain » en bandeau, mois à venir estimés en pointillés.
+- **Prévisions** : coût de demain, part en heures creuses, créneaux conseillés et pourquoi.
+- **Chauffage** : coût mensuel sur toute la saison avec une jauge « froid », réapprovisionnement
+  en deux colonnes, journal compact aux icônes colorées.
+- **Rentabilité** : prochain jalon, fourchette d'amortissement quand l'équipement est mesuré
+  depuis moins d'un an, simulateur en trois étapes.
+- **Contrats** : diagnostic, offres les plus proches, frise de la journée tarifaire.
+- Connexion : le bouton reste inactif jusqu'au chargement complet de la page, pour qu'un mot de
+  passe ne puisse plus se retrouver dans l'adresse.
+- Textes plus contrastés sur les barres en thème sombre.
+
 ### 1.11.0 — 27 octobre 2026
 
 - **Niveau de la batterie** : Home Assistant peut envoyer le pourcentage de charge de la
