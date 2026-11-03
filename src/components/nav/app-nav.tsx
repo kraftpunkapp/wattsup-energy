@@ -69,16 +69,11 @@ const ADMIN_LINKS: { href: string; label: string; icon: React.ReactNode }[] = [
   { href: "/admin/parametres", label: "Paramètres", icon: <Icon name="sliders" size={18} /> },
 ];
 
-/**
- * Section réservée à l'administrateur, sous la navigation : intitulé et liens en couleur
- * solaire sur un cadre pointillé, pour ne pas les confondre avec les pages du foyer.
- */
+/** Section réservée à l'administrateur, sous la navigation : mêmes entrées que les pages du foyer. */
 function AdminNav({ pathname }: { pathname: string }) {
   return (
-    <nav aria-label="Administration" className="mt-6 flex flex-col gap-1.5">
-      <p className="px-3 text-[10px] font-semibold tracking-[0.08em] text-solar uppercase">
-        Administration
-      </p>
+    <nav aria-label="Administration" className="mt-6 flex flex-col gap-0.5">
+      <p className="wu-label px-3 pb-1.5 !text-panel-muted">Administration</p>
       {ADMIN_LINKS.map((l) => {
         const active = isActive(pathname, l.href);
         return (
@@ -86,8 +81,8 @@ function AdminNav({ pathname }: { pathname: string }) {
             key={l.href}
             href={l.href}
             aria-current={active ? "page" : undefined}
-            className={`flex items-center gap-3 rounded-[9px] border border-dashed px-3 py-2 text-sm font-medium text-solar no-underline hover:bg-solar/10 ${
-              active ? "border-solar bg-solar/15" : "border-solar/40"
+            className={`flex min-h-11 items-center gap-3 rounded-control px-3 text-sm font-medium no-underline hover:bg-panel-active/70 hover:text-panel-ink ${
+              active ? "bg-panel-active font-semibold text-panel-ink" : "text-panel-soft"
             }`}
           >
             <PendingIcon>{l.icon}</PendingIcon>

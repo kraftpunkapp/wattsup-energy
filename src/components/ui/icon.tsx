@@ -25,6 +25,9 @@ const PATHS = {
   // Postes de consommation (CATEGORY_ICONS, src/domain/categories.ts)
   droplet: "M12 3s-6 6.5-6 11a6 6 0 0 0 12 0c0-4.5-6-11-6-11z",
   flame: "M12 2c1 4 5 6 5 11a5 5 0 0 1-10 0c0-2 1-3.5 2-4.5 0 2 1 3 2 3 0-3-1-6 1-9.5z",
+  // Granulés (sac) et bois (bûche) : deux icônes distinctes pour deux combustibles.
+  bag: "M9 3h6l-1 3c3 1.5 5 4.5 5 8a7 7 0 0 1-14 0c0-3.5 2-6.5 5-8zM8.5 6.5h7",
+  log: "M4 8h13a4 4 0 0 1 0 8H4a2 2 0 0 1-2-2v-4a2 2 0 0 1 2-2zM17 8a2.2 4 0 0 0 0 8M17 10.5a.6 1.5 0 0 0 0 3",
   plug: "M9 3v5M15 3v5M6 8h12v3a6 6 0 0 1-12 0zM12 17v4",
   car: "M5 16V11l2-5h10l2 5v5M3 16h18v3H3zM7 19v2M17 19v2M5 11h14",
   washer: "M5 3h14v18H5zM5 7h14M12 10.5a3.5 3.5 0 1 0 0 7 3.5 3.5 0 0 0 0-7zM8 5h.01",

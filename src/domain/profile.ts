@@ -23,12 +23,12 @@ export interface NavItem {
 }
 
 export const NAV_ITEMS: readonly NavItem[] = [
-  { id: "overview", href: "/", label: "Vue d'ensemble", short: "Accueil" },
+  { id: "overview", href: "/", label: "Accueil", short: "Accueil" },
   { id: "forecast", href: "/previsions", label: "Prévisions", short: "Prévisions" },
   { id: "heating", href: "/chauffage", label: "Chauffage", short: "Chauffage" },
-  { id: "roi", href: "/rentabilite", label: "Rentabilité", short: "ROI", mobile: false },
-  { id: "contracts", href: "/contrats", label: "Contrats", short: "Contrats" },
-  // Sur mobile, la barre garde Accueil, Prévisions, Chauffage et Contrats ; le reste est dans « Plus ».
+  { id: "roi", href: "/rentabilite", label: "Rentabilité", short: "Rentabilité" },
+  { id: "contracts", href: "/contrats", label: "Contrats", short: "Contrats", mobile: false },
+  // Sur mobile, la barre garde Accueil, Prévisions, Chauffage et Rentabilité ; le reste est dans « Plus ».
   { id: "settings", href: "/reglages", label: "Réglages", short: "Réglages", mobile: false },
 ];
 

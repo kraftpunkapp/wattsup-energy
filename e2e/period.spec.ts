@@ -38,16 +38,16 @@ test("Chauffage : flèche de saison, affichage rapide", async ({ page }) => {
 test("Menu : les pages s'affichent sans rester bloquées", async ({ page }, info) => {
   test.skip(info.project.name === "mobile", "menu latéral : bureau seulement");
   await open(page, "/");
-  for (const [name, path] of [
-    ["Chauffage", "/chauffage"],
-    ["Contrats", "/contrats"],
-    ["Vue d'ensemble", "/"],
+  for (const [name, path, heading] of [
+    ["Chauffage", "/chauffage", "Chauffage"],
+    ["Contrats", "/contrats", "Contrats"],
+    ["Accueil", "/", "Vue d'ensemble"],
   ] as const) {
     await page
       .getByRole("navigation", { name: "Navigation principale" })
       .getByRole("link", { name })
       .click();
     await expect(page).toHaveURL(new RegExp(`${path === "/" ? "/$" : path}`), { timeout: 10_000 });
-    await expect(page.getByRole("heading", { level: 1 })).toHaveText(name, { timeout: 10_000 });
+    await expect(page.getByRole("heading", { level: 1 })).toHaveText(heading, { timeout: 10_000 });
   }
 });

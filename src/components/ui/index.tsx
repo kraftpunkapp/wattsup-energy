@@ -1,4 +1,5 @@
-import { Fragment, type ReactNode } from "react";
+import Link from "next/link";
+import { Fragment, type ComponentProps, type ReactNode } from "react";
 import { Icon, type IconName } from "./icon";
 
 // Briques d'interface partagées (SPEC §2 « Principes d'interface ») : une carte par objet,
@@ -20,9 +21,102 @@ export const button = {
   icon: "flex size-11 flex-none items-center justify-center rounded-control border border-border text-muted hover:bg-bg hover:text-ink disabled:opacity-60",
   iconDanger:
     "flex size-11 flex-none items-center justify-center rounded-control border border-border text-negative hover:bg-danger-bg disabled:opacity-60",
-  /** Lien d'action discret dans un texte ou un pied de carte. */
-  link: "inline-flex min-h-11 items-center text-xs text-muted underline-offset-2 hover:text-ink hover:underline",
+  /** Bouton icône « fantôme » (modifier, supprimer, masquer) : sans bordure, cadre au survol. */
+  ghost:
+    "flex size-11 flex-none items-center justify-center rounded-control border border-transparent text-muted hover:border-border hover:bg-bg hover:text-ink disabled:opacity-60",
+  ghostDanger:
+    "flex size-11 flex-none items-center justify-center rounded-control border border-transparent text-negative hover:border-border hover:bg-danger-bg disabled:opacity-60",
+  /** Lien d'action unique : « Libellé → », 600, encre (voir ArrowLink). */
+  link: "inline-flex min-h-11 items-center gap-1.5 text-[13px] font-semibold text-ink underline-offset-2 hover:underline",
 };
+
+/** Lien d'action de la charte : « Libellé → », graisse 600, encre. */
+export function ArrowLink({
+  children,
+  ...props
+}: Omit<ComponentProps<typeof Link>, "className"> & { children: ReactNode }) {
+  return (
+    <Link {...props} className={button.link}>
+      {children}
+      <span aria-hidden>→</span>
+    </Link>
+  );
+}
+
+/** Même style, pour une action qui n'est pas une navigation (bouton). */
+export function ArrowButton({
+  children,
+  ...props
+}: Omit<ComponentProps<"button">, "className"> & { children: ReactNode }) {
+  return (
+    <button type="button" {...props} className={button.link}>
+      {children}
+      <span aria-hidden>→</span>
+    </button>
+  );
+}
+
+/** Libellé de carte ou de section : mono, capitales, espacé. */
+export function MonoLabel({
+  as: Tag = "span",
+  children,
+}: {
+  as?: "span" | "h2" | "h3" | "p";
+  children: ReactNode;
+}) {
+  return <Tag className="wu-label">{children}</Tag>;
+}
+
+export type StatusTone = "ok" | "estimate" | "hc" | "neutral";
+
+const STATUS_DOT: Record<StatusTone, string> = {
+  ok: "bg-status-ok",
+  estimate: "bg-solar",
+  hc: "bg-hc",
+  neutral: "bg-neutral-bar",
+};
+
+/** Puce de statut : pastille arrondie, point coloré (le sens est aussi écrit). */
+export function StatusChip({
+  tone = "ok",
+  children,
+}: {
+  tone?: StatusTone;
+  children: ReactNode;
+}) {
+  return (
+    <span className="inline-flex items-center gap-1.5 rounded-full border border-border bg-surface px-2.5 py-0.5 text-xs font-medium text-ink">
+      <span aria-hidden className={`size-2 flex-none rounded-full ${STATUS_DOT[tone]}`} />
+      {children}
+    </span>
+  );
+}
+
+/**
+ * Puce d'écart : « gain » (fond vert pâle, point vert) ou « cost » (surcoût, couleurs de la
+ * notice). Toujours avec son signe écrit dans le texte.
+ */
+export function DeltaChip({
+  tone,
+  children,
+}: {
+  tone: "gain" | "cost";
+  children: ReactNode;
+}) {
+  return (
+    <span
+      className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-medium tabular-nums ${
+        tone === "gain" ? "bg-gain-bg text-ink" : "bg-note-bg text-note-ink"
+      }`}
+    >
+      <span
+        aria-hidden
+        className={`size-2 flex-none rounded-full ${tone === "gain" ? "bg-status-ok" : "bg-solar"}`}
+      />
+      {children}
+    </span>
+  );
+}
 
 export type BadgeTone = "active" | "neutral" | "soft" | "positive" | "warning";
 
@@ -30,7 +124,7 @@ const BADGE: Record<BadgeTone, string> = {
   active: "bg-accent text-on-accent",
   neutral: "bg-track text-ink-soft",
   soft: "bg-accent/10 text-ink",
-  positive: "bg-battery/15 text-positive",
+  positive: "bg-gain-bg text-ink",
   // Texte plus foncé que le token : 4,8:1 sur le fond teinté (texte de 11 px).
   warning: "bg-track text-warning-ink",
 };
@@ -308,7 +402,9 @@ export function Notice({
     <div
       role="status"
       className={`flex flex-col gap-3 rounded-card border p-4 text-[13px] text-pretty ${
-        tone === "warning" ? "border-border-strong bg-warning-bg" : "border-border-strong bg-track"
+        tone === "warning"
+          ? "border-transparent bg-note-bg text-note-ink"
+          : "border-border-strong bg-track"
       }`}
     >
       <div className="flex items-start gap-3">
@@ -356,7 +452,7 @@ export function Callout({
 /** Titre de groupe au-dessus d'une liste de cartes. */
 export function GroupTitle({ children }: { children: ReactNode }) {
   return (
-    <h2 className="px-1 text-xs font-medium tracking-wide text-muted uppercase">{children}</h2>
+    <h2 className="wu-label px-1">{children}</h2>
   );
 }
 

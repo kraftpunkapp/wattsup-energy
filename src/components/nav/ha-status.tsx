@@ -55,27 +55,33 @@ export function HaStatus({ lastPushAt, granularity, renderedAt, compact }: Props
   }[state];
   const since = last === null ? "" : formatAgo(now - last);
 
+  const text =
+    state === "never"
+      ? compact
+        ? "HA · en attente"
+        : "Home Assistant · en attente"
+      : compact
+        ? `HA · ${since}`
+        : `Home Assistant · ${since}`;
+
   if (compact) {
     return (
       <div className="flex items-center gap-1.5 rounded-full border border-border bg-surface px-2.5 py-1.5 text-xs text-ink-soft">
         <span className={`size-[7px] rounded-full ${dot}`} />
-        {state === "never" ? "HA · en attente" : `HA · ${since.replace("il y a ", "")}`}
+        {text}
       </div>
     );
   }
+  // Puce sur le panneau sombre ; l'état (connecté, silencieux, en attente) reste lisible en clair.
   return (
-    <div className="flex flex-col gap-1.5 rounded-[10px] bg-panel-ink/[0.06] px-3 py-3.5">
-      <div className="flex items-center gap-2 text-xs text-panel-muted">
-        <span className={`size-[7px] rounded-full ${dot}`} />
-        {state === "never"
-          ? "Home Assistant non connecté"
-          : state === "stale"
-            ? "Home Assistant silencieux"
-            : "Home Assistant connecté"}
-      </div>
-      <div className="text-[11px] text-panel-muted tabular-nums">
-        {state === "never" ? "En attente du premier envoi" : `Dernier envoi ${since}`}
-      </div>
+    <div
+      className="flex items-center gap-2 rounded-full bg-panel-ink/[0.08] px-3 py-2 text-xs text-panel-soft"
+      title={
+        state === "stale" ? "Home Assistant silencieux" : state === "never" ? "Aucun envoi reçu" : undefined
+      }
+    >
+      <span className={`size-[7px] flex-none rounded-full ${dot}`} />
+      {text}
     </div>
   );
 }

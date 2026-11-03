@@ -50,6 +50,10 @@
   --color-panel-gain: #1f3a2e;
   /* Pastille « Home Assistant connecté » (plein ; l'état est aussi écrit). */
   --color-status-ok: #3fbf86;
+  /* Puce « gain » : fond vert pâle, point #3fbf86, texte en encre. */
+  --color-gain-bg: #e3f4eb;
+  /* Libellés de carte et de section (mono, capitales). */
+  --color-label: #6e6a62;
   --color-panel-negative: #f2f0eb;
   --color-neutral-bar: #8a857b;
   /* Pointillés des emplacements vides, jour Tempo blanc, interrupteur éteint. */
@@ -116,6 +120,8 @@
   --color-solar-ink: #e9bd57;
   --color-on-grid: #18181a;
   --color-on-fill: #18181a;
+  --color-gain-bg: #1f3a2e;
+  --color-label: #a9a59c;
   color-scheme: dark;
 }
 
@@ -157,7 +163,9 @@
     --color-note-ink: #ecd9b0;
     --color-solar-ink: #e9bd57;
     --color-on-grid: #18181a;
-  --color-on-fill: #18181a;
+    --color-on-fill: #18181a;
+    --color-gain-bg: #1f3a2e;
+    --color-label: #a9a59c;
     color-scheme: dark;
   }
 }
@@ -207,6 +215,7 @@
     background: var(--color-bg);
     color: var(--color-ink);
     font-family: var(--font-sans);
+    font-variant-numeric: tabular-nums;
     -webkit-font-smoothing: antialiased;
   }
 
@@ -227,6 +236,27 @@
 }
 :where(input, select, textarea):focus {
   border-color: var(--color-ink);
+}
+
+/* Libellé de carte ou de section : JetBrains Mono, capitales, 11-12 px, espacé. */
+@utility wu-label {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--color-label);
+}
+/* Valeur technique (puissance, €/kWh, kVA, horaire) : mono, chiffres tabulaires. */
+@utility wu-mono {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+/* Gros montant : 600, interlettrage resserré, chiffres tabulaires. */
+@utility wu-amount {
+  font-weight: 600;
+  letter-spacing: -0.03em;
+  font-variant-numeric: tabular-nums;
 }
 
 /* Mouvement léger : apparition des blocs, croissance des barres. Neutralisé par
