@@ -1,3 +1,4 @@
+import { Gauge } from "@/components/ui";
 import { monthName } from "@/domain/overview";
 import { formatEurFromCents, formatNumber, formatPercent } from "@/lib/format";
 import type { RoiView } from "@/server/queries/roi";
@@ -30,25 +31,38 @@ export function RoiSummary({ view }: { view: RoiView }) {
     >
       <div className="flex min-w-0 flex-[2_1_420px] flex-col gap-3">
         <p className="flex flex-wrap items-baseline gap-x-3.5 gap-y-1">
-          <span className="text-3xl leading-none font-bold tracking-[-0.02em] tabular-nums">
-            {eur(saved)}
-          </span>
+          <span className="wu-amount text-3xl leading-none">{eur(saved)}</span>
           <span className="text-[15px] text-ink-soft">
             d&apos;économies cumulées, sur {eur(invested)} investis
           </span>
         </p>
-        <div
-          role="img"
-          aria-label={`${formatPercent(ratio)} amortis`}
-          className="relative h-[22px] rounded-[6px] bg-track"
-        >
-          <div
-            className="wu-grow-x absolute inset-y-0 left-0 flex min-w-11 items-center justify-end rounded-[6px] bg-positive pr-2 text-[13px] font-bold text-on-fill"
-            style={{ width: `${ratio * 100}%` }}
-          >
-            {formatPercent(ratio)}
-          </div>
-        </div>
+        <Gauge
+          height={22}
+          label={`${formatPercent(ratio)} amortis : ${items
+            .map(
+              (i) =>
+                `${i.equipment.kind === "solar" ? "solaire" : "batterie"} ${eur(i.payback.cumulativeCents)}`,
+            )
+            .join(", ")}`}
+          parts={[
+            ...items.map((i) => ({
+              value: Math.max(0, i.payback.cumulativeCents),
+              color: i.equipment.kind === "solar" ? "bg-solar" : "bg-battery",
+            })),
+            { value: Math.max(0, invested - saved), color: "bg-track" },
+          ]}
+        />
+        <p className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[13px] text-ink-soft">
+          <span className="flex items-center gap-1.5">
+            <span aria-hidden className="size-2.5 rounded-[3px] bg-solar" />
+            Solaire
+          </span>
+          <span className="flex items-center gap-1.5">
+            <span aria-hidden className="size-2.5 rounded-[3px] bg-battery" />
+            Batterie
+          </span>
+          <span className="wu-mono ml-auto text-xs">{formatPercent(ratio)} amortis</span>
+        </p>
         {invested > saved && (
           <p className="text-sm text-ink-soft">
             Reste <strong className="text-ink">{eur(invested - saved)}</strong> à récupérer
@@ -56,11 +70,14 @@ export function RoiSummary({ view }: { view: RoiView }) {
         )}
       </div>
       <div className="flex min-w-0 flex-[1_1_280px] flex-col gap-2.5 text-sm">
-        <h2 className="text-[13px] font-bold text-ink-soft">Économies actuelles</h2>
+        <h2 className="wu-label">Économies actuelles</h2>
         {items.map((i) => (
-          <p key={i.equipment.kind} className="flex justify-between gap-3">
-            <span className="text-ink-soft">
-              {i.equipment.kind === "solar" ? "Panneaux" : "Batterie"} · {periodLabel(i.recent)}
+          <p key={i.equipment.kind} className="flex items-start justify-between gap-3">
+            <span className="flex flex-col">
+              <span className="text-ink-soft">
+                {i.equipment.kind === "solar" ? "Solaire" : "Batterie"}
+              </span>
+              <span className="wu-mono text-xs text-muted">{periodLabel(i.recent)}</span>
             </span>
             <strong className="whitespace-nowrap tabular-nums">
               {formatNumber(i.payback.monthlyCents / 100)} € / mois

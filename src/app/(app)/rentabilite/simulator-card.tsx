@@ -2,7 +2,7 @@
 
 import { callAction } from "@/lib/action";
 import { useState, useTransition } from "react";
-import { Badge, button, Icon } from "@/components/ui";
+import { button, DeltaChip, Icon, StatusChip } from "@/components/ui";
 import { formatEur, formatEurFromCents, formatNumber, formatPercent } from "@/lib/format";
 import { simulateAction } from "@/server/actions/simulation";
 import type { SimulationView } from "@/server/simulation";
@@ -87,9 +87,7 @@ function Choose({
       disabled={disabled}
       onClick={onClick}
       className={`flex min-h-16 flex-1 basis-60 items-center gap-3 rounded-control border px-4 py-3 text-left disabled:opacity-50 ${
-        on
-          ? "border-ink bg-surface shadow-[0_0_0_2px_var(--color-ink)]"
-          : "border-border-strong bg-bg"
+        on ? "border-2 border-ink bg-surface" : "border border-border-strong bg-bg"
       }`}
     >
       <span
@@ -224,7 +222,7 @@ export function SimulatorCard({
           <h3 className="text-sm font-bold">
             <label htmlFor="sim-size">2 · Quelle taille ?</label>
           </h3>
-          <output htmlFor="sim-size" className="text-base font-bold tabular-nums">
+          <output htmlFor="sim-size" className="wu-mono text-base font-semibold" aria-live="polite">
             {formatNumber(size[choice], 1)} {o.unit}
           </output>
         </div>
@@ -238,7 +236,15 @@ export function SimulatorCard({
           onChange={(e) => setSize({ ...size, [choice]: Number(e.target.value) })}
           className="h-11 w-full accent-ink"
         />
-        <div className="flex justify-between text-[13px] text-muted tabular-nums">
+        <div aria-hidden className="flex justify-between px-2">
+          {Array.from({ length: Math.round((o.max - o.min) / o.step) + 1 }, (_, i) => (
+            <span
+              key={i}
+              className={`w-px bg-border-strong ${Number.isInteger(o.min + i * o.step) ? "h-2" : "h-1"}`}
+            />
+          ))}
+        </div>
+        <div className="wu-mono flex justify-between text-xs text-muted">
           <span>
             {formatNumber(o.min, 1)} {o.unit}
           </span>
@@ -260,8 +266,8 @@ export function SimulatorCard({
             onChange={(e) => setTyped({ ...typed, [choice]: e.target.value })}
             className="h-11 w-full rounded-control border border-border-strong bg-surface px-3 text-sm tabular-nums outline-none focus:border-ink focus-visible:ring-2 focus-visible:ring-accent/30"
           />
-          <span aria-hidden className="text-ink-soft">
-            €
+          <span className="wu-mono flex-none text-sm whitespace-nowrap text-ink-soft">
+            {Number.isFinite(toNumber(price)) ? formatEur(toNumber(price)) : "€"}
           </span>
         </div>
         <p className="text-[13px] text-muted">
@@ -290,7 +296,13 @@ export function SimulatorCard({
       {ok && verdict && life && (
         <div role="status" className="flex flex-col gap-4 border-t border-track pt-5">
           <div className="flex flex-wrap items-center gap-3">
-            <Badge tone={verdict.tone}>{verdict.label}</Badge>
+            {verdict.tone === "positive" ? (
+              <DeltaChip tone="gain">{verdict.label}</DeltaChip>
+            ) : verdict.tone === "soft" ? (
+              <StatusChip tone="estimate">{verdict.label}</StatusChip>
+            ) : (
+              <DeltaChip tone="cost">{verdict.label}</DeltaChip>
+            )}
             <p className="text-base font-bold text-pretty">
               {ok.paybackYears !== null
                 ? `Amorti en ≈ ${formatNumber(ok.paybackYears, ok.paybackYears < 10 ? 1 : 0)} ans, pour une durée de vie de ${life.life}`

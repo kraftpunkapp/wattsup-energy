@@ -159,7 +159,7 @@ export function EquipmentCard({
           <>
             <button
               type="button"
-              className={button.icon}
+              className={button.ghost}
               aria-label={`Modifier « ${item.label} »`}
               title="Modifier l'équipement"
               onClick={() => setEditing(true)}
@@ -169,7 +169,7 @@ export function EquipmentCard({
             <button
               type="button"
               disabled={pending}
-              className={button.iconDanger}
+              className={button.ghostDanger}
               aria-label={`Supprimer « ${item.label} »`}
               title="Supprimer la fiche"
               onClick={async () => {

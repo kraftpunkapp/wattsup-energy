@@ -51,14 +51,15 @@ export function RoiDetails({ roi, view }: { roi: EquipmentRoi; view: RoiView }) 
           : []),
       ];
   const paybackYear = payback.paybackDate?.slice(0, 4) ?? null;
+  // Rien à détailler (ex. batterie sans économie ventilée) : la section est masquée.
+  const hasBreakdown = lines.some((l) => l.cents !== 0);
+  const fill = solar ? "bg-solar text-ink" : "bg-battery text-on-fill";
 
   return (
     <div className="flex flex-col gap-4">
       <BatteryGapNotices gaps={roi.gaps} context="roi" />
       <p className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
-        <span className="text-3xl leading-none font-bold tabular-nums">
-          {eur(payback.cumulativeCents)}
-        </span>
+        <span className="wu-amount text-3xl leading-none">{eur(payback.cumulativeCents)}</span>
         <span className="text-sm text-ink-soft">
           économisés
           {costCents > payback.cumulativeCents &&
@@ -71,7 +72,7 @@ export function RoiDetails({ roi, view }: { roi: EquipmentRoi; view: RoiView }) 
         className="relative h-[22px] rounded-[6px] bg-track"
       >
         <div
-          className="wu-grow-x absolute inset-y-0 left-0 flex min-w-11 items-center justify-end rounded-[6px] bg-positive pr-2 text-[13px] font-bold text-on-fill"
+          className={`wu-grow-x absolute inset-y-0 left-0 flex min-w-11 items-center justify-end rounded-[6px] pr-2 text-[13px] font-bold ${fill}`}
           style={{ width: `${payback.ratio * 100}%` }}
         >
           {formatPercent(payback.ratio)}
@@ -102,25 +103,29 @@ export function RoiDetails({ roi, view }: { roi: EquipmentRoi; view: RoiView }) 
         )
       )}
 
-      {payback.status !== "no-savings" && (
-        <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,200px),1fr))] gap-3 text-sm text-ink-soft">
+      {payback.status !== "no-savings" && (recent || paybackYear || range) && (
+        <div className="grid grid-cols-2 gap-3 text-sm text-ink-soft max-sm:grid-cols-1">
           {recent && (
             <div className="flex flex-col gap-0.5 rounded-control bg-bg px-3.5 py-3">
-              {recent.months >= 12
-                ? "Économies sur 12 mois"
-                : `Économies sur ${periodLabel(recent)}`}
-              <strong className="text-[15px] text-ink tabular-nums">≈ {eur(recent.cents)}</strong>
-              <span className="text-[13px] text-muted">
+              <span className="wu-label">
+                {recent.months >= 12
+                  ? "Économies sur 12 mois"
+                  : `Économies · ${periodLabel(recent)}`}
+              </span>
+              <strong className="wu-amount text-[17px] text-ink">≈ {eur(recent.cents)}</strong>
+              <span className="wu-mono text-xs text-muted">
                 {monthLabel(recent.from)} → {monthLabel(recent.to)}
               </span>
             </div>
           )}
-          {payback.status === "in-progress" && !range && paybackYear && (
+          {payback.status === "in-progress" && (range || paybackYear) && (
             <div className="flex flex-col gap-0.5 rounded-control bg-bg px-3.5 py-3">
-              Amorti vers
-              <strong className="text-[15px] text-ink tabular-nums">{paybackYear}</strong>
-              <span className="text-[13px] text-muted">
-                estimation, à prix de l&apos;électricité constants
+              <span className="wu-label">Amortissement</span>
+              <strong className="wu-amount text-[17px] text-ink">
+                {range ? `${range.early.slice(0, 4)} – ${range.late.slice(0, 4)}` : paybackYear}
+              </strong>
+              <span className="text-xs text-muted">
+                {range ? "selon la saison" : "estimation, à prix de l'électricité constants"}
               </span>
             </div>
           )}
@@ -143,22 +148,26 @@ export function RoiDetails({ roi, view }: { roi: EquipmentRoi; view: RoiView }) 
         </Callout>
       )}
 
-      <details className="text-sm">
-        <summary className="inline-flex min-h-11 cursor-pointer items-center font-semibold">
-          D&apos;où viennent ces économies
-        </summary>
-        <ul className="flex flex-col gap-1.5 pb-1 text-[13px]">
-          {lines.map((l) => (
-            <li key={l.label} className="flex justify-between gap-2">
-              <span className="text-ink-soft">{l.label}</span>
-              <span className="whitespace-nowrap tabular-nums">{eur(l.cents)}</span>
-            </li>
-          ))}
-        </ul>
-        {!solar && view.settings.batteryGridCharging && (
-          <p className="pt-1 text-xs text-muted">Charge depuis le réseau incluse dans le calcul.</p>
-        )}
-      </details>
+      {hasBreakdown && (
+        <details className="text-sm">
+          <summary className="inline-flex min-h-11 cursor-pointer items-center font-semibold">
+            D&apos;où viennent ces économies
+          </summary>
+          <ul className="flex flex-col gap-1.5 pb-1 text-[13px]">
+            {lines.map((l) => (
+              <li key={l.label} className="flex justify-between gap-2">
+                <span className="text-ink-soft">{l.label}</span>
+                <span className="whitespace-nowrap tabular-nums">{eur(l.cents)}</span>
+              </li>
+            ))}
+          </ul>
+          {!solar && view.settings.batteryGridCharging && (
+            <p className="pt-1 text-xs text-muted">
+              Charge depuis le réseau incluse dans le calcul.
+            </p>
+          )}
+        </details>
+      )}
 
       {solar &&
         view.solarYield &&
