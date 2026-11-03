@@ -6,17 +6,22 @@ import { Icon, type IconName } from "./icon";
 // actions secondaires en icônes et une action principale claire.
 
 export { Icon, type IconName };
+export { Segmented } from "./segmented";
+export { segmented } from "./segmented-styles";
+export { Legend, type LegendItem } from "./legend";
+export { Gauge, type GaugePart } from "./gauge";
+export { Banner } from "./banner";
 
 export const button = {
   primary:
-    "flex h-9 flex-none items-center justify-center gap-1.5 rounded-[8px] bg-ink px-3.5 text-[13px] font-medium text-bg disabled:opacity-60",
+    "flex min-h-11 flex-none items-center justify-center gap-1.5 rounded-control bg-ink px-4 text-[13px] font-medium text-bg disabled:opacity-60",
   secondary:
-    "flex h-9 flex-none items-center justify-center gap-1.5 rounded-[8px] border border-border-strong px-3.5 text-[13px] font-medium hover:bg-bg disabled:opacity-60",
-  icon: "flex size-8 flex-none items-center justify-center rounded-[8px] border border-border text-muted hover:bg-bg hover:text-ink disabled:opacity-60",
+    "flex min-h-11 flex-none items-center justify-center gap-1.5 rounded-control border border-border-strong px-4 text-[13px] font-medium hover:bg-bg disabled:opacity-60",
+  icon: "flex size-11 flex-none items-center justify-center rounded-control border border-border text-muted hover:bg-bg hover:text-ink disabled:opacity-60",
   iconDanger:
-    "flex size-8 flex-none items-center justify-center rounded-[8px] border border-border text-negative hover:bg-danger-bg disabled:opacity-60",
+    "flex size-11 flex-none items-center justify-center rounded-control border border-border text-negative hover:bg-danger-bg disabled:opacity-60",
   /** Lien d'action discret dans un texte ou un pied de carte. */
-  link: "text-xs text-muted hover:text-ink",
+  link: "inline-flex min-h-11 items-center text-xs text-muted underline-offset-2 hover:text-ink hover:underline",
 };
 
 export type BadgeTone = "active" | "neutral" | "soft" | "positive" | "warning";
@@ -33,7 +38,7 @@ const BADGE: Record<BadgeTone, string> = {
 /** Pastille de type ou de statut (« En cours », « Terminé », « HP/HC »…). */
 export function Badge({ tone = "neutral", children }: { tone?: BadgeTone; children: ReactNode }) {
   return (
-    <span className={`rounded-[5px] px-1.5 py-0.5 text-[11px] font-medium ${BADGE[tone]}`}>
+    <span className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${BADGE[tone]}`}>
       {children}
     </span>
   );

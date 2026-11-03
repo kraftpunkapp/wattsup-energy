@@ -193,3 +193,33 @@
     color: var(--color-ink);
   }
 }
+
+/* Mouvement léger : apparition des blocs, croissance des barres. Neutralisé par
+   prefers-reduced-motion (règle de @layer base : durée quasi nulle, état final immédiat). */
+@keyframes wu-rise {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+}
+@keyframes wu-grow-x {
+  from {
+    transform: scaleX(0);
+  }
+}
+@keyframes wu-grow-y {
+  from {
+    transform: scaleY(0);
+  }
+}
+.wu-rise {
+  animation: wu-rise 0.5s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+}
+.wu-grow-x {
+  transform-origin: left;
+  animation: wu-grow-x 0.7s cubic-bezier(0.2, 0.7, 0.2, 1) 0.2s both;
+}
+.wu-grow-y {
+  transform-origin: bottom;
+  animation: wu-grow-y 0.7s cubic-bezier(0.2, 0.7, 0.2, 1) 0.2s both;
+}

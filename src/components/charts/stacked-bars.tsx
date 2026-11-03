@@ -116,7 +116,7 @@ export function StackedBars({
               {visible.map((s, i) => (
                 <div
                   key={s.label}
-                  className={`${s.color} ${i === visible.length - 1 ? "rounded-t-[4px]" : ""}`}
+                  className={`wu-grow-y ${s.color} ${i === visible.length - 1 ? "rounded-t-[4px]" : ""}`}
                   style={{ height: toHeight(s.value) }}
                 />
               ))}
