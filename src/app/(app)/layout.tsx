@@ -1,4 +1,5 @@
 import { AppNav } from "@/components/nav/app-nav";
+import { ConfirmProvider } from "@/components/ui/confirm";
 import { visibleModules } from "@/domain/profile";
 import { APP_VERSION } from "@/lib/version";
 import { getAlerts } from "@/server/alerts";
@@ -35,7 +36,9 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         admin={ctx.isAdmin}
       />
       <main className="min-w-0 flex-1 px-4 pt-2 pb-28 lg:px-9 lg:py-8">
-        <div className="mx-auto flex max-w-[1120px] flex-col gap-5">{children}</div>
+        <ConfirmProvider>
+          <div className="mx-auto flex max-w-[1120px] flex-col gap-5">{children}</div>
+        </ConfirmProvider>
       </main>
     </div>
   );

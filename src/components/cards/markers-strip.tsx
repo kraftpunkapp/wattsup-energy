@@ -3,6 +3,7 @@
 import { callAction } from "@/lib/action";
 import { useState, useTransition } from "react";
 import { Badge, button, Icon, type IconName } from "@/components/ui";
+import { useConfirm } from "@/components/ui/confirm";
 import {
   MARKER_KINDS,
   MARKER_TEXT_MAX,
@@ -152,6 +153,7 @@ export function MarkersStrip({
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Marker | "new" | null>(null);
   const [pending, startTransition] = useTransition();
+  const confirm = useConfirm();
   // Nouveau repère : aujourd'hui si la période le contient, sinon son premier jour.
   const defaultDate = today >= period.from && today < period.to ? today : period.from;
   const summary = shown
@@ -243,8 +245,8 @@ export function MarkersStrip({
                     className={button.iconDanger}
                     aria-label={`Supprimer le repère « ${m.text} »`}
                     title="Supprimer"
-                    onClick={() => {
-                      if (!confirm("Supprimer ce repère ?")) return;
+                    onClick={async () => {
+                      if (!(await confirm({ title: "Supprimer ce repère ?" }))) return;
                       const id = m.id;
                       if (id) startTransition(async () => void (await deleteMarkerAction(id)));
                     }}

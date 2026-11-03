@@ -4,6 +4,7 @@ import { callAction } from "@/lib/action";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { button, Card, Icon, Notice } from "@/components/ui";
+import { useConfirm } from "@/components/ui/confirm";
 import { formatNumber } from "@/lib/format";
 import { deleteEquipmentAction, saveEquipmentAction } from "@/server/actions/equipment";
 import type { Equipment, EquipmentKind } from "@/server/equipment";
@@ -129,6 +130,7 @@ export function EquipmentCard({
   const router = useRouter();
   const [editing, setEditing] = useState(false);
   const [pending, startTransition] = useTransition();
+  const confirm = useConfirm();
   const done = () => {
     setEditing(false);
     router.refresh();
@@ -170,11 +172,12 @@ export function EquipmentCard({
               className={button.iconDanger}
               aria-label={`Supprimer « ${item.label} »`}
               title="Supprimer la fiche"
-              onClick={() => {
+              onClick={async () => {
                 if (
-                  !confirm(
-                    `Supprimer la fiche « ${item.label} » ? Les données d'énergie sont conservées.`,
-                  )
+                  !(await confirm({
+                    title: `Supprimer la fiche « ${item.label} » ?`,
+                    detail: "Les données d'énergie sont conservées.",
+                  }))
                 )
                   return;
                 startTransition(async () => {

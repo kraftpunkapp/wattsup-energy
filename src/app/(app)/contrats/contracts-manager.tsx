@@ -27,6 +27,7 @@ import {
   type SubscriptionValue,
 } from "./contract-editor";
 import { Badge, button, Card, CardFooter, GroupTitle, Icon, Notice } from "@/components/ui";
+import { useConfirm } from "@/components/ui/confirm";
 import { PageHeader } from "@/components/page-header";
 import { GridView, gridSummary } from "./grid-view";
 import { KIND_LABELS } from "./labels";
@@ -212,6 +213,7 @@ function PriceHistory({
   onAct,
   pending,
 }: CardProps & { shownId: string }) {
+  const confirm = useConfirm();
   return (
     <div className="flex flex-col rounded-control border border-border">
       <h4 className="px-3 pt-2.5 pb-2 text-[11px] font-medium tracking-wide text-muted uppercase">
@@ -244,8 +246,8 @@ function PriceHistory({
                 className={button.iconDanger}
                 aria-label={`Supprimer les prix du ${fmtDate(p.validFrom)}`}
                 title="Supprimer ces prix"
-                onClick={() => {
-                  if (confirm("Supprimer cette grille de prix ?"))
+                onClick={async () => {
+                  if (await confirm({ title: "Supprimer cette grille de prix ?" }))
                     onAct(() => deletePricePeriodAction(p.id));
                 }}
               >
@@ -299,6 +301,7 @@ function ContractCard(props: CardProps) {
   const { item, today, onEdit, onAct, pending, paymentAnalysis } = props;
   const [showHistory, setShowHistory] = useState(false);
   const [switching, setSwitching] = useState(false);
+  const confirm = useConfirm();
   const subscribed = item.status === "subscribed";
   // Prix affichés : ceux du jour ; pour un contrat terminé, ses derniers prix.
   const refDate = item.endDate && item.endDate < today ? item.endDate : today;
@@ -351,8 +354,13 @@ function ContractCard(props: CardProps) {
             className={button.iconDanger}
             aria-label={`Supprimer « ${item.name} »`}
             title="Supprimer"
-            onClick={() => {
-              if (confirm(`Supprimer « ${item.name} » et son historique de prix ?`)) {
+            onClick={async () => {
+              if (
+                await confirm({
+                  title: `Supprimer « ${item.name} » ?`,
+                  detail: "Son historique de prix est supprimé avec lui.",
+                })
+              ) {
                 onAct(() => deleteContractAction(item.id));
               }
             }}

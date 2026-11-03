@@ -4,6 +4,7 @@ import { callAction } from "@/lib/action";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { Badge, button, Card, CardFooter, Icon, Notice } from "@/components/ui";
+import { useConfirm } from "@/components/ui/confirm";
 import {
   CATEGORY_SWATCH,
   CategoryTile,
@@ -325,13 +326,17 @@ export function CategoriesCard({
   const [editing, setEditing] = useState<Editing>(null);
   const [errors, setErrors] = useState<string[]>([]);
   const [pending, startTransition] = useTransition();
+  const confirm = useConfirm();
   const done = () => {
     setEditing(null);
     router.refresh();
   };
-  const remove = (item: CategoryItem) => {
-    const data = item.lastDataAt ? " et toutes ses données reçues" : "";
-    if (!confirm(`Supprimer le poste « ${item.name} »${data} ?`)) return;
+  const remove = async (item: CategoryItem) => {
+    const ok = await confirm({
+      title: `Supprimer le poste « ${item.name} » ?`,
+      detail: item.lastDataAt ? "Toutes ses données reçues sont supprimées avec lui." : undefined,
+    });
+    if (!ok) return;
     startTransition(async () => {
       const res = await callAction(() => deleteCategoryAction(item.id));
       setErrors(res.ok ? [] : res.errors);

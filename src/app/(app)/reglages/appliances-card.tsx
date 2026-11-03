@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { button, Card, CardFooter, Icon } from "@/components/ui";
+import { useConfirm } from "@/components/ui/confirm";
 import {
   APPLIANCE_ICONS,
   APPLIANCE_PRESETS,
@@ -182,12 +183,13 @@ export function AppliancesCard({ appliances }: { appliances: ApplianceItem[] }) 
   );
   const [adding, setAdding] = useState(false);
   const [pending, startTransition] = useTransition();
+  const confirm = useConfirm();
   const [errors, setErrors] = useState<string[]>([]);
   const names = new Set(appliances.map((a) => a.name));
   const suggestions = APPLIANCE_PRESETS.filter((p) => !names.has(p.name));
   const full = appliances.length >= MAX_APPLIANCES;
-  const remove = (a: ApplianceItem) => {
-    if (!confirm(`Retirer « ${a.name} » ?`)) return;
+  const remove = async (a: ApplianceItem) => {
+    if (!(await confirm({ title: `Retirer « ${a.name} » ?`, action: "Retirer" }))) return;
     startTransition(async () => {
       const res = await callAction(() => deleteApplianceAction(a.id));
       setErrors(res.ok ? [] : res.errors);

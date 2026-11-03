@@ -4,6 +4,7 @@ import { callAction } from "@/lib/action";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { Badge, button, Card, Icon, Notice } from "@/components/ui";
+import { useConfirm } from "@/components/ui/confirm";
 import { BATTERY_LEVEL, metricLabel } from "@/domain/ingest/metrics";
 import { formatNumber, formatPercent } from "@/lib/format";
 import { settingsHref } from "@/lib/settings-tabs";
@@ -79,6 +80,7 @@ function ValueRow({ item, title, sub }: { item: ValueItem; title: string; sub?: 
   const [text, setText] = useState(String(item.kwh).replace(".", ","));
   const [errors, setErrors] = useState<string[]>([]);
   const [pending, startTransition] = useTransition();
+  const confirm = useConfirm();
   const key = {
     metric: item.metric,
     start: item.start,
@@ -93,8 +95,8 @@ function ValueRow({ item, title, sub }: { item: ValueItem; title: string; sub?: 
         setErrors([]);
       } else setErrors(res.errors);
     });
-  const remove = () => {
-    if (!confirm(`Supprimer la valeur « ${title} » ?`)) return;
+  const remove = async () => {
+    if (!(await confirm({ title: `Supprimer la valeur « ${title} » ?` }))) return;
     startTransition(async () => {
       const res = await callAction(() => deleteValueAction(key));
       if (!res.ok) setErrors(res.errors);
@@ -288,6 +290,7 @@ export function DayCard({
   const [d, setD] = useState(day);
   const [errors, setErrors] = useState<string[]>([]);
   const [pending, startTransition] = useTransition();
+  const confirm = useConfirm();
   const total = items.reduce((a, v) => a + v.kwh, 0);
   const show = (e: React.FormEvent) => {
     e.preventDefault();
@@ -295,8 +298,9 @@ export function DayCard({
       scroll: false,
     });
   };
-  const deleteDay = () => {
-    if (!confirm(`Supprimer les ${items.length} valeurs de ce jour pour ce compteur ?`)) return;
+  const deleteDay = async () => {
+    const title = `Supprimer les ${items.length} valeurs de ce jour pour ce compteur ?`;
+    if (!(await confirm({ title }))) return;
     startTransition(async () => {
       const res = await callAction(() => deleteRangeAction({ metric, from: day, to: day }));
       if (!res.ok) setErrors(res.errors);
@@ -386,6 +390,7 @@ export function RangeCard({
   const [done, setDone] = useState<number | null>(null);
   const [errors, setErrors] = useState<string[]>([]);
   const [pending, startTransition] = useTransition();
+  const confirm = useConfirm();
   const input = { metric: m || null, from, to };
   const reset = () => {
     setPreview(null);
@@ -399,8 +404,9 @@ export function RangeCard({
         setPreview({ count: res.count, kwh: res.kwh });
       } else setErrors(res.errors);
     });
-  const remove = () => {
-    if (!preview || !confirm(`Supprimer définitivement ${preview.count} valeurs ?`)) return;
+  const remove = async () => {
+    if (!preview || !(await confirm({ title: `Supprimer définitivement ${preview.count} valeurs ?` })))
+      return;
     startTransition(async () => {
       const res = await callAction(() => deleteRangeAction(input));
       if (res.ok) {

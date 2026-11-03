@@ -9,6 +9,7 @@ import {
 } from "@/server/actions/ingest-token";
 import type { PushState } from "@/domain/ingest/push-state";
 import { Badge, button, Card, CardFooter, Icon, Notice } from "@/components/ui";
+import { useConfirm } from "@/components/ui/confirm";
 
 interface ActiveToken {
   prefix: string;
@@ -71,6 +72,7 @@ function CopyButton({ value }: { value: string }) {
 export function IngestCard({ endpoint, active, granularity, link, lastPushAt }: Props) {
   const [fresh, setFresh] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
+  const confirm = useConfirm();
   const [mode, setMode] = useState(granularity);
 
   const chooseMode = (next: Granularity) => {
@@ -83,8 +85,15 @@ export function IngestCard({ endpoint, active, granularity, link, lastPushAt }: 
     });
   };
 
-  const generate = () => {
-    if (active && !confirm("Régénérer le token ? L'ancien cessera immédiatement de fonctionner."))
+  const generate = async () => {
+    if (
+      active &&
+      !(await confirm({
+        title: "Régénérer le token ?",
+        detail: "L'ancien cessera immédiatement de fonctionner.",
+        action: "Régénérer",
+      }))
+    )
       return;
     startTransition(async () => {
       const created = await createIngestTokenAction();
@@ -92,8 +101,13 @@ export function IngestCard({ endpoint, active, granularity, link, lastPushAt }: 
     });
   };
 
-  const revoke = () => {
-    if (!confirm("Révoquer le token ? Home Assistant ne pourra plus envoyer de données.")) return;
+  const revoke = async () => {
+    const ok = await confirm({
+      title: "Révoquer le token ?",
+      detail: "Home Assistant ne pourra plus envoyer de données.",
+      action: "Révoquer",
+    });
+    if (!ok) return;
     startTransition(async () => {
       await revokeIngestTokenAction();
       setFresh(null);

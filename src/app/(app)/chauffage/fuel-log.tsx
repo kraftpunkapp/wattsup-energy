@@ -4,6 +4,7 @@ import { callAction } from "@/lib/action";
 import { useRouter } from "next/navigation";
 import { useEffect, useState, useTransition } from "react";
 import { Badge, button, Card, Icon, type IconName } from "@/components/ui";
+import { useConfirm } from "@/components/ui/confirm";
 import {
   toBaseQty,
   type Fuel,
@@ -165,6 +166,7 @@ export function FuelLog({
   const [pastOpen, setPastOpen] = useState(false);
   const [all, setAll] = useState(false);
   const [pending, startTransition] = useTransition();
+  const confirm = useConfirm();
   const showFuel = fuels.length > 1;
   // Le lien de la prévision (« Saisir une consommation passée ») ouvre le formulaire.
   useEffect(() => {
@@ -294,8 +296,14 @@ export function FuelLog({
                   className={button.iconDanger}
                   aria-label={`Supprimer : ${EVENT_LABELS[item.type]}, ${when(item)}`}
                   title="Supprimer"
-                  onClick={() => {
-                    if (!confirm("Supprimer cet événement ? Le stock sera recalculé.")) return;
+                  onClick={async () => {
+                    if (
+                      !(await confirm({
+                        title: "Supprimer cet événement ?",
+                        detail: "Le stock sera recalculé.",
+                      }))
+                    )
+                      return;
                     startTransition(async () => {
                       await deleteFuelEventAction(item.id);
                       router.refresh();
