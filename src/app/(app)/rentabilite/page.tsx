@@ -5,6 +5,7 @@ import { pageContext } from "@/server/page";
 import { getRoi } from "@/server/queries/roi";
 import { EquipmentCard } from "./equipment-sheet";
 import { RoiDetails } from "./roi-details";
+import { RoiSummary } from "./roi-summary";
 import { SimulatorCard } from "./simulator-card";
 
 export const metadata = { title: "Rentabilité · WattsUp Energy" };
@@ -20,17 +21,18 @@ export default async function RoiPage() {
   return (
     <>
       <PageHeader
-        title="Rentabilité matérielle"
-        subtitle="Amortissement de vos équipements face aux tarifs du réseau"
+        title="Rentabilité"
+        subtitle="Ce que vos équipements vous ont fait économiser, au prix de vos contrats successifs"
       />
-      <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,340px),1fr))] items-start gap-4">
+      <RoiSummary view={roi} />
+      <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,420px),1fr))] items-start gap-4">
         {kinds.map((kind) => (
           <EquipmentCard key={kind} kind={kind} item={roi.items[kind]?.equipment ?? null}>
             {roi.items[kind] && <RoiDetails roi={roi.items[kind]} view={roi} />}
           </EquipmentCard>
         ))}
       </div>
-      <div className="max-w-3xl">
+      <div>
         <SimulatorCard
           hasBattery={Boolean(roi.items.battery)}
           solarKwc={roi.items.solar?.equipment.capacity ?? null}

@@ -2,25 +2,52 @@
 
 import { callAction } from "@/lib/action";
 import { useState, useTransition } from "react";
-import { button, Card, Figures, Notice, SwitchRow } from "@/components/ui";
+import { Badge, button, Icon } from "@/components/ui";
 import { formatEur, formatEurFromCents, formatNumber, formatPercent } from "@/lib/format";
 import { simulateAction } from "@/server/actions/simulation";
 import type { SimulationView } from "@/server/simulation";
 
-// « Et si… ? » (T45) : une batterie et/ou des panneaux en plus, rejoués heure par heure sur
-// les 12 derniers mois du foyer, au prix du contrat actuel. Réponse en grand (économie par
-// an), détail dessous, hypothèses en pied.
+// « Et si vous investissiez davantage ? » (T45) : une batterie ou des panneaux en plus, rejoués
+// heure par heure sur les 12 derniers mois du foyer, au prix du contrat actuel. Trois étapes
+// (quel équipement, quelle taille, quel prix), puis la réponse en grand et les hypothèses.
 
-const inputClass =
-  "h-9 w-full rounded-[8px] border border-border-strong bg-surface px-2.5 text-[14px] tabular-nums outline-none focus:border-ink focus-visible:ring-2 focus-visible:ring-accent/30";
-const labelClass = "flex min-w-0 flex-col gap-1 text-xs text-muted";
-const toNumber = (t: string) => Number(t.replace(",", ".").trim() || "NaN");
-const fmtDate = (iso: string) =>
-  new Date(`${iso}T12:00:00Z`).toLocaleDateString("fr-FR", {
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-  });
+type Choice = "battery" | "panels";
+
+const OPTIONS: Record<
+  Choice,
+  {
+    min: number;
+    max: number;
+    step: number;
+    start: number;
+    unit: string;
+    unitPrice: number;
+    life: string;
+    lifeYears: number;
+  }
+> = {
+  // Prix au kWh ou au kWc : repères indicatifs pour préremplir le devis (à remplacer par le sien).
+  battery: {
+    min: 2,
+    max: 15,
+    step: 0.5,
+    start: 5,
+    unit: "kWh",
+    unitPrice: 700,
+    life: "10 à 15 ans",
+    lifeYears: 12,
+  },
+  panels: {
+    min: 0.5,
+    max: 6,
+    step: 0.5,
+    start: 2,
+    unit: "kWc",
+    unitPrice: 1250,
+    life: "25 ans environ",
+    lifeYears: 25,
+  },
+};
 
 const UNAVAILABLE: Record<Extract<SimulationView, { status: "unavailable" }>["reason"], string> = {
   "no-contract": "il faut un contrat en cours pour chiffrer l'électricité achetée.",
@@ -30,27 +57,57 @@ const UNAVAILABLE: Record<Extract<SimulationView, { status: "unavailable" }>["re
     "indiquez la puissance (kWc) de votre installation solaire dans sa carte ci-dessus.",
 };
 
-function Field({
-  label,
-  unit,
-  value,
-  onChange,
+const fmtDate = (iso: string) =>
+  new Date(`${iso}T12:00:00Z`).toLocaleDateString("fr-FR", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  });
+const toNumber = (t: string) => Number(t.replace(",", ".").trim() || "NaN");
+
+function Choose({
+  icon,
+  title,
+  text,
+  on,
+  disabled,
+  onClick,
 }: {
-  label: string;
-  unit: string;
-  value: string;
-  onChange: (v: string) => void;
+  icon: "bolt" | "sun";
+  title: string;
+  text: string;
+  on: boolean;
+  disabled?: boolean;
+  onClick: () => void;
 }) {
   return (
-    <label className={labelClass}>
-      {label} ({unit})
-      <input
-        inputMode="decimal"
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        className={inputClass}
-      />
-    </label>
+    <button
+      type="button"
+      aria-pressed={on}
+      disabled={disabled}
+      onClick={onClick}
+      className={`flex min-h-16 flex-1 basis-60 items-center gap-3 rounded-control border px-4 py-3 text-left disabled:opacity-50 ${
+        on
+          ? "border-ink bg-surface shadow-[0_0_0_2px_var(--color-ink)]"
+          : "border-border-strong bg-bg"
+      }`}
+    >
+      <span
+        aria-hidden
+        className="flex size-10 flex-none items-center justify-center rounded-control bg-track"
+      >
+        <Icon name={icon} size={20} />
+      </span>
+      <span className="flex flex-col">
+        <strong className="text-base">{title}</strong>
+        <span className="text-[13px] text-ink-soft">{text}</span>
+      </span>
+      {on && (
+        <span aria-hidden className="ml-auto flex-none">
+          <Icon name="check" size={18} />
+        </span>
+      )}
+    </button>
   );
 }
 
@@ -65,14 +122,21 @@ export function SimulatorCard({
   solarKwc: number | null;
   exportEnabled: boolean;
 }) {
-  const [battery, setBattery] = useState(true);
-  const [capacity, setCapacity] = useState("5");
-  const [power, setPower] = useState("2,5");
-  const [batteryCost, setBatteryCost] = useState("3500");
-  const [panels, setPanels] = useState(false);
-  const [kwc, setKwc] = useState("2");
-  const [panelsCost, setPanelsCost] = useState("2500");
+  const [choice, setChoice] = useState<Choice>("battery");
+  const o = OPTIONS[choice];
+  const [size, setSize] = useState<Record<Choice, number>>({
+    battery: OPTIONS.battery.start,
+    panels: OPTIONS.panels.start,
+  });
+  // Prix : proposé d'après la taille tant que le foyer n'a pas mis son devis.
+  const [typed, setTyped] = useState<Record<Choice, string | null>>({
+    battery: null,
+    panels: null,
+  });
+  const proposed = Math.round((size[choice] * o.unitPrice) / 50) * 50;
+  const price = typed[choice] ?? String(proposed);
   const [view, setView] = useState<SimulationView | null>(null);
+  const [asked, setAsked] = useState<Choice | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
 
@@ -80,18 +144,21 @@ export function SimulatorCard({
     startTransition(async () => {
       const res = await callAction(() =>
         simulateAction({
-          battery: battery
-            ? {
-                capacityKwh: toNumber(capacity),
-                powerKw: toNumber(power),
-                costEur: toNumber(batteryCost),
-              }
-            : null,
-          panels: panels ? { kwc: toNumber(kwc), costEur: toNumber(panelsCost) } : null,
+          battery:
+            choice === "battery"
+              ? {
+                  capacityKwh: size.battery,
+                  // Hypothèse : puissance de charge et de décharge = la moitié de la capacité.
+                  powerKw: size.battery / 2,
+                  costEur: toNumber(price),
+                }
+              : null,
+          panels: choice === "panels" ? { kwc: size.panels, costEur: toNumber(price) } : null,
         }),
       );
       if (res.ok) {
         setView(res.view);
+        setAsked(choice);
         setError(null);
       } else {
         setView(null);
@@ -99,48 +166,112 @@ export function SimulatorCard({
       }
     });
 
-  const ok = view?.status === "ok" ? view : null;
+  const ok = view?.status === "ok" && asked ? view : null;
+  const life = asked ? OPTIONS[asked] : null;
+  const verdict =
+    ok && life
+      ? ok.paybackYears === null
+        ? { tone: "warning" as const, label: "Pas rentable" }
+        : ok.paybackYears <= life.lifeYears * 0.7
+          ? { tone: "positive" as const, label: "Rentable" }
+          : ok.paybackYears <= life.lifeYears
+            ? { tone: "soft" as const, label: "Juste rentable" }
+            : { tone: "warning" as const, label: "Pas rentable" }
+      : null;
+
   return (
-    <Card
-      icon="bolt"
-      title="Et si… ?"
-      description="Une batterie ou des panneaux en plus, rejoués heure par heure sur vos 12 derniers mois, au prix de votre contrat actuel."
+    <section
+      aria-labelledby="sim-titre"
+      className="flex flex-col gap-5 rounded-card border border-border bg-surface p-6 sm:p-7"
     >
-      <div className="flex flex-col">
-        <SwitchRow
-          label={hasBattery ? "Une batterie de plus" : "Une batterie"}
-          description="Elle se charge du surplus qui part au réseau et le restitue quand vous achetez."
-          checked={battery}
-          onChange={() => setBattery(!battery)}
-        />
-        {battery && (
-          <div className="grid grid-cols-3 items-end gap-2 pb-3">
-            <Field label="Capacité" unit="kWh" value={capacity} onChange={setCapacity} />
-            <Field label="Puissance" unit="kW" value={power} onChange={setPower} />
-            <Field label="Prix" unit="€" value={batteryCost} onChange={setBatteryCost} />
-          </div>
-        )}
-        <SwitchRow
-          label="Des panneaux en plus"
-          description={
-            solarKwc
-              ? `Production proportionnelle à la vôtre (${formatNumber(solarKwc, 1)} kWc aujourd'hui).`
-              : "Indiquez d'abord la puissance de votre installation dans sa carte."
-          }
-          checked={panels}
-          disabled={!solarKwc}
-          onChange={() => setPanels(!panels)}
-        />
-        {panels && (
-          <div className="grid grid-cols-3 items-end gap-2 pb-3">
-            <Field label="Ajout" unit="kWc" value={kwc} onChange={setKwc} />
-            <Field label="Prix" unit="€" value={panelsCost} onChange={setPanelsCost} />
-          </div>
-        )}
+      <div className="flex flex-col gap-1">
+        <h2 id="sim-titre" className="text-xl font-bold">
+          Et si vous investissiez davantage ?
+        </h2>
+        <p className="text-[15px] text-muted text-pretty">
+          Vos 12 derniers mois rejoués heure par heure avec du matériel en plus, au prix de votre
+          contrat actuel.
+        </p>
       </div>
+
+      <div className="flex flex-col gap-2">
+        <h3 className="text-[15px] font-bold">1 · Quel équipement ?</h3>
+        <div className="flex flex-wrap gap-3">
+          <Choose
+            icon="bolt"
+            title={hasBattery ? "Une batterie de plus" : "Une batterie"}
+            text="stocker plus de soleil"
+            on={choice === "battery"}
+            onClick={() => setChoice("battery")}
+          />
+          <Choose
+            icon="sun"
+            title="Des panneaux en plus"
+            text={
+              solarKwc
+                ? `produire davantage (${formatNumber(solarKwc, 1)} kWc aujourd'hui)`
+                : "indiquez d'abord la puissance de votre installation"
+            }
+            on={choice === "panels"}
+            disabled={!solarKwc}
+            onClick={() => setChoice("panels")}
+          />
+        </div>
+      </div>
+
+      <div className="flex flex-col gap-2">
+        <div className="flex items-baseline justify-between gap-3">
+          <h3 className="text-[15px] font-bold">
+            <label htmlFor="sim-size">2 · Quelle taille ?</label>
+          </h3>
+          <output htmlFor="sim-size" className="text-lg font-bold tabular-nums">
+            {formatNumber(size[choice], 1)} {o.unit}
+          </output>
+        </div>
+        <input
+          id="sim-size"
+          type="range"
+          min={o.min}
+          max={o.max}
+          step={o.step}
+          value={size[choice]}
+          onChange={(e) => setSize({ ...size, [choice]: Number(e.target.value) })}
+          className="h-11 w-full accent-ink"
+        />
+        <div className="flex justify-between text-[13px] text-muted tabular-nums">
+          <span>
+            {formatNumber(o.min, 1)} {o.unit}
+          </span>
+          <span>
+            {formatNumber(o.max, 0)} {o.unit}
+          </span>
+        </div>
+      </div>
+
+      <div className="flex flex-col gap-2">
+        <h3 className="text-[15px] font-bold">
+          <label htmlFor="sim-price">3 · Pour quel prix, pose comprise ?</label>
+        </h3>
+        <div className="flex max-w-xs items-center gap-2">
+          <input
+            id="sim-price"
+            inputMode="decimal"
+            value={price}
+            onChange={(e) => setTyped({ ...typed, [choice]: e.target.value })}
+            className="h-11 w-full rounded-control border border-border-strong bg-surface px-3 text-[15px] tabular-nums outline-none focus:border-ink focus-visible:ring-2 focus-visible:ring-accent/30"
+          />
+          <span aria-hidden className="text-ink-soft">
+            €
+          </span>
+        </div>
+        <p className="text-[13px] text-muted">
+          Proposé d&apos;après des prix indicatifs ; mettez votre devis.
+        </p>
+      </div>
+
       <button
         type="button"
-        disabled={pending || (!battery && !panels)}
+        disabled={pending}
         onClick={run}
         className={`${button.primary} self-start`}
       >
@@ -152,72 +283,70 @@ export function SimulatorCard({
         </p>
       )}
       {view?.status === "unavailable" && (
-        <Notice tone="info" title="Simulation impossible :">
-          {UNAVAILABLE[view.reason]}
-        </Notice>
+        <p role="status" className="rounded-control bg-bg px-3.5 py-3 text-sm text-ink-soft">
+          <strong className="text-ink">Simulation impossible :</strong> {UNAVAILABLE[view.reason]}
+        </p>
       )}
-      {ok && (
-        <div role="status" className="flex flex-col gap-3">
-          <p className="flex flex-wrap items-baseline gap-x-2">
-            <span
-              className={`text-[32px] leading-none font-semibold tracking-tight tabular-nums ${
-                ok.annual.savingsCents > 0 ? "text-positive" : ""
-              }`}
-            >
-              {ok.annual.savingsCents > 0 ? "≈ " : ""}
-              {formatEurFromCents(ok.annual.savingsCents, 0)}
-            </span>
-            <span className="text-[13px] text-muted">d&apos;économie par an</span>
-          </p>
-          <p className="text-[13px] text-ink-soft text-pretty">
-            {ok.paybackYears !== null
-              ? `Amorti en ≈ ${formatNumber(ok.paybackYears, ok.paybackYears < 10 ? 1 : 0)} ans pour ${formatEur(ok.costEur)}${
-                  battery && ok.paybackYears > 15
-                    ? " : plus long que la durée de vie d'une batterie (10 à 15 ans)."
-                    : "."
-                }`
-              : ok.costEur > 0
-                ? `Pas d'économie : ${formatEur(ok.costEur)} jamais remboursés.`
-                : "Indiquez un prix pour estimer l'amortissement."}
-            {ok.selfConsumption.before !== null && ok.selfConsumption.after !== null && (
-              <>
-                {" "}
-                Autoconsommation : {formatPercent(ok.selfConsumption.before)} →{" "}
-                <span className="font-semibold text-ink">
-                  {formatPercent(ok.selfConsumption.after)}
-                </span>{" "}
-                de la production.
-              </>
-            )}
-          </p>
-          <Figures
-            items={[
-              {
-                label: "Achats évités",
-                value: formatNumber(ok.annual.importAvoidedKwh),
-                unit: "kWh/an",
-              },
-              {
-                label: exportEnabled ? "Revente" : "Envoyé au réseau",
-                value: `${ok.annual.exportChangeKwh > 0 ? "+" : "−"}${formatNumber(Math.abs(ok.annual.exportChangeKwh))}`,
-                unit: "kWh/an",
-              },
-            ]}
-          />
-          <p className="text-[11px] text-subtle text-pretty">
-            Rejoué sur {ok.days} jours de données ({fmtDate(ok.from)} – {fmtDate(ok.to)})
-            {ok.days < 365 ? ", ramené à un an" : ""}. Batterie : rendement aller-retour de 90 %,
-            vide au départ ; panneaux ajoutés : même orientation que les vôtres.{" "}
-            {exportEnabled
-              ? "La revente perdue est déduite."
-              : "Sans revente, le surplus envoyé au réseau ne rapporte rien."}{" "}
-            Estimation : un hiver ou des prix différents changeront le résultat.
-          </p>
+      {ok && verdict && life && (
+        <div role="status" className="flex flex-col gap-4 border-t border-track pt-5">
+          <div className="flex flex-wrap items-center gap-3">
+            <Badge tone={verdict.tone}>{verdict.label}</Badge>
+            <p className="text-lg font-bold text-pretty">
+              {ok.paybackYears !== null
+                ? `Amorti en ≈ ${formatNumber(ok.paybackYears, ok.paybackYears < 10 ? 1 : 0)} ans, pour une durée de vie de ${life.life}`
+                : ok.costEur > 0
+                  ? `Pas d'économie : ${formatEur(ok.costEur)} jamais remboursés`
+                  : "Indiquez un prix pour estimer l'amortissement"}
+            </p>
+          </div>
+          <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,220px),1fr))] gap-3">
+            <div className="flex flex-col gap-0.5 rounded-control bg-bg px-4 py-3">
+              <span className="text-sm text-ink-soft">Économie par an</span>
+              <strong className="text-[28px] leading-tight tabular-nums">
+                {ok.annual.savingsCents > 0 ? "≈ " : ""}
+                {formatEurFromCents(ok.annual.savingsCents, 0)}
+              </strong>
+              <span className="text-[13px] text-muted tabular-nums">
+                {formatNumber(ok.annual.importAvoidedKwh)} kWh d&apos;achats évités par an
+              </span>
+            </div>
+            <div className="flex flex-col gap-0.5 rounded-control bg-bg px-4 py-3">
+              <span className="text-sm text-ink-soft">Amortissement simple</span>
+              <strong className="text-[28px] leading-tight tabular-nums">
+                {ok.paybackYears !== null
+                  ? `${formatNumber(ok.paybackYears, ok.paybackYears < 10 ? 1 : 0)} ans`
+                  : "—"}
+              </strong>
+              <span className="text-[13px] text-muted">durée de vie ≈ {life.life}</span>
+            </div>
+          </div>
+          {ok.selfConsumption.before !== null && ok.selfConsumption.after !== null && (
+            <p className="text-sm text-ink-soft">
+              Autoconsommation : {formatPercent(ok.selfConsumption.before)} →{" "}
+              <strong className="text-ink">{formatPercent(ok.selfConsumption.after)}</strong> de la
+              production. {exportEnabled ? "Revente" : "Envoyé au réseau"} :{" "}
+              {ok.annual.exportChangeKwh > 0 ? "+" : "−"}
+              {formatNumber(Math.abs(ok.annual.exportChangeKwh))} kWh par an.
+            </p>
+          )}
+          <details className="text-sm">
+            <summary className="inline-flex min-h-11 cursor-pointer items-center font-semibold">
+              Hypothèses du calcul
+            </summary>
+            <p className="text-[13px] text-muted text-pretty">
+              Rejoué sur {ok.days} jours de données ({fmtDate(ok.from)} – {fmtDate(ok.to)})
+              {ok.days < 365 ? ", ramené à un an" : ""}, au prix de votre contrat actuel, sans
+              hausse. Batterie : rendement aller-retour de 90 %, puissance égale à la moitié de la
+              capacité, vide au départ ; panneaux ajoutés : même orientation que les vôtres.{" "}
+              {exportEnabled
+                ? "La revente perdue est déduite."
+                : "Sans revente, le surplus envoyé au réseau ne rapporte rien."}{" "}
+              Hors remplacement, entretien et aides. Estimation : un hiver ou des prix différents
+              changeront le résultat.
+            </p>
+          </details>
         </div>
       )}
-      {!ok && !view && !error && (
-        <p className="text-[11px] text-subtle">Choisissez une option puis « Simuler ».</p>
-      )}
-    </Card>
+    </section>
   );
 }

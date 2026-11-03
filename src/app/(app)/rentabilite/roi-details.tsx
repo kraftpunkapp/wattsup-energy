@@ -1,16 +1,21 @@
 import Link from "next/link";
-import { RingGauge } from "@/components/charts/ring-gauge";
 import { BatteryGapNotices } from "@/components/battery-gap-notice";
-import { Badge, button, Notice, StatTile, tiles } from "@/components/ui";
-import { monthLabel } from "@/domain/overview";
+import { button, Notice } from "@/components/ui";
+import { monthLabel, monthName } from "@/domain/overview";
 import { formatEurFromCents, formatNumber, formatPercent } from "@/lib/format";
 import type { EquipmentRoi, RoiView } from "@/server/queries/roi";
+import { periodLabel } from "./roi-summary";
 
-// Amortissement d'un équipement (T30), affiché dans sa carte.
+// Amortissement d'un équipement (T30), affiché dans sa carte : ce qu'il a déjà rapporté, où
+// il en est, le prochain palier, puis l'économie récente et la date d'amortissement (ou la
+// fourchette tant qu'on mesure depuis moins d'un an).
 
 const eur = (cents: number) => formatEurFromCents(cents, 0);
 const fmtMonth = (iso: string) =>
-  new Date(`${iso}T12:00:00Z`).toLocaleDateString("fr-FR", { month: "long", year: "numeric" });
+  new Date(`${iso.slice(0, 7)}-15T12:00:00Z`).toLocaleDateString("fr-FR", {
+    month: "long",
+    year: "numeric",
+  });
 const fmtDay = (iso: string) =>
   new Date(`${iso}T12:00:00Z`).toLocaleDateString("fr-FR", {
     day: "numeric",
@@ -18,45 +23,17 @@ const fmtDay = (iso: string) =>
     year: "numeric",
   });
 
-const STATUS = {
-  amortized: { label: "Amorti", tone: "positive" },
-  "in-progress": { label: "En cours d'amortissement", tone: "soft" },
-  "no-savings": { label: "Aucune économie mesurée", tone: "warning" },
+const MILESTONE_NAME = {
+  0.25: "le premier quart",
+  0.5: "la moitié",
+  0.75: "les trois quarts",
+  1: "l'amortissement complet",
 } as const;
 
-/** Frise : installation → aujourd'hui → amortissement prévu. */
-function Timeline({ roi, today }: { roi: EquipmentRoi; today: string }) {
-  const start = Date.parse(roi.equipment.installedOn);
-  const end = roi.payback.paybackDate ? Date.parse(roi.payback.paybackDate) : null;
-  const now = Date.parse(today);
-  const progress =
-    roi.payback.status === "amortized" ? 1 : end && end > start ? (now - start) / (end - start) : 0;
-  return (
-    <div className="flex flex-col gap-1.5">
-      <div className="relative h-2 rounded-full bg-track" aria-hidden>
-        <div
-          className="absolute inset-y-0 left-0 rounded-full bg-battery"
-          style={{ width: `${Math.min(100, Math.max(0, progress * 100))}%` }}
-        />
-      </div>
-      <div className="flex justify-between gap-2 text-[11px] text-subtle tabular-nums">
-        <span>Installé le {fmtDay(roi.equipment.installedOn)}</span>
-        <span className="text-right">
-          {roi.payback.status === "amortized"
-            ? "Amorti"
-            : roi.payback.paybackDate
-              ? `Amorti vers ${fmtMonth(roi.payback.paybackDate)}`
-              : "Date d'amortissement inconnue"}
-        </span>
-      </div>
-    </div>
-  );
-}
-
 export function RoiDetails({ roi, view }: { roi: EquipmentRoi; view: RoiView }) {
-  const { savings, payback } = roi;
-  const status = STATUS[payback.status];
+  const { savings, payback, recent, milestone, range } = roi;
   const solar = roi.equipment.kind === "solar";
+  const costCents = roi.equipment.costEur * 100;
   const lines = solar
     ? [
         { label: "Électricité évitée (autoconsommation)", cents: savings.parts.avoided },
@@ -73,67 +50,115 @@ export function RoiDetails({ roi, view }: { roi: EquipmentRoi; view: RoiView }) 
           ? [{ label: "Revente perdue (énergie stockée)", cents: savings.parts.lostExport }]
           : []),
       ];
+  const paybackYear = payback.paybackDate?.slice(0, 4) ?? null;
 
   return (
     <div className="flex flex-col gap-4">
       <BatteryGapNotices gaps={roi.gaps} context="roi" />
-      <div className="flex items-center gap-4">
-        <RingGauge ratio={payback.ratio} label={formatPercent(payback.ratio)} />
-        <div className="flex min-w-0 flex-col items-start gap-1.5">
-          <Badge tone={status.tone}>{status.label}</Badge>
-          {/* Ce qu'on lit d'abord : ce que l'équipement a déjà rapporté, face à son coût. */}
-          <p className="text-[26px] leading-none font-semibold tracking-tight tabular-nums">
-            {eur(payback.cumulativeCents)}
-          </p>
-          <p className="text-[13px] text-muted text-pretty">
-            économisés sur {formatNumber(roi.equipment.costEur)} €
-            {roi.dataFrom && roi.dataFrom > roi.equipment.installedOn && (
-              <> (depuis la première donnée, le {fmtDay(roi.dataFrom)})</>
-            )}
-          </p>
+      <p className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+        <span className="text-4xl leading-none font-bold tabular-nums">
+          {eur(payback.cumulativeCents)}
+        </span>
+        <span className="text-[15px] text-ink-soft">
+          économisés
+          {costCents > payback.cumulativeCents &&
+            ` · reste ${eur(costCents - payback.cumulativeCents)}`}
+        </span>
+      </p>
+      <div
+        role="img"
+        aria-label={`${formatPercent(payback.ratio)} amortis`}
+        className="relative h-[22px] rounded-[6px] bg-track"
+      >
+        <div
+          className="wu-grow-x absolute inset-y-0 left-0 flex min-w-11 items-center justify-end rounded-[6px] bg-positive pr-2 text-[13px] font-bold text-white"
+          style={{ width: `${payback.ratio * 100}%` }}
+        >
+          {formatPercent(payback.ratio)}
         </div>
+        {milestone && milestone.ratio < 1 && (
+          <span
+            aria-hidden
+            className="absolute -top-[3px] -bottom-[3px] w-0.5 bg-dash"
+            style={{ left: `${milestone.ratio * 100}%` }}
+          />
+        )}
       </div>
-
-      <div className={tiles}>
-        <StatTile
-          label="Économie mensuelle"
-          value={formatNumber(payback.monthlyCents / 100)}
-          unit="€/mois"
-          sub={
-            payback.averagedMonths >= 12
-              ? "moyenne des 12 derniers mois"
-              : payback.averagedMonths > 1
-                ? `moyenne des ${payback.averagedMonths} mois complets`
-                : payback.averagedMonths === 1
-                  ? "sur le seul mois complet"
-                  : "aucun mois complet"
-          }
-        />
-        <StatTile
-          label="Amortissement prévu"
-          value={
-            payback.status === "amortized"
-              ? "Atteint"
-              : payback.paybackDate
-                ? fmtMonth(payback.paybackDate)
-                : "—"
-          }
-        />
-      </div>
-
-      <Timeline roi={roi} today={view.today} />
-
-      <ul className="flex flex-col gap-1.5 text-[13px]">
-        {lines.map((l) => (
-          <li key={l.label} className="flex justify-between gap-2">
-            <span className="text-ink-soft">{l.label}</span>
-            <span className="whitespace-nowrap tabular-nums">{eur(l.cents)}</span>
-          </li>
-        ))}
-      </ul>
-      {!solar && view.settings.batteryGridCharging && (
-        <p className="text-[11px] text-subtle">Charge depuis le réseau incluse dans le calcul.</p>
+      {payback.status === "amortized" ? (
+        <p className="text-sm text-ink-soft">
+          <strong className="text-ink">Amorti.</strong> L&apos;équipement a remboursé son coût
+          (installé le {fmtDay(roi.equipment.installedOn)}).
+        </p>
+      ) : payback.status === "no-savings" ? (
+        <Notice tone="info" title="Aucune économie mesurée :">
+          rien à rembourser pour l&apos;instant sur les données reçues depuis l&apos;installation.
+        </Notice>
+      ) : (
+        milestone && (
+          <p className="text-sm text-ink-soft">
+            Prochain jalon : <strong className="text-ink">{MILESTONE_NAME[milestone.ratio]}</strong>
+            {milestone.date && <>, vers {fmtMonth(milestone.date)}</>}
+          </p>
+        )
       )}
+
+      {payback.status !== "no-savings" && (
+        <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,200px),1fr))] gap-3 text-sm text-ink-soft">
+          {recent && (
+            <div className="flex flex-col gap-0.5 rounded-control bg-bg px-3.5 py-3">
+              {recent.months >= 12
+                ? "Économies sur 12 mois"
+                : `Économies sur ${periodLabel(recent)}`}
+              <strong className="text-xl text-ink tabular-nums">≈ {eur(recent.cents)}</strong>
+              <span className="text-[13px] text-muted">
+                {monthLabel(recent.from)} → {monthLabel(recent.to)}
+              </span>
+            </div>
+          )}
+          {payback.status === "in-progress" && !range && paybackYear && (
+            <div className="flex flex-col gap-0.5 rounded-control bg-bg px-3.5 py-3">
+              Amorti vers
+              <strong className="text-xl text-ink tabular-nums">{paybackYear}</strong>
+              <span className="text-[13px] text-muted">
+                estimation, à prix de l&apos;électricité constants
+              </span>
+            </div>
+          )}
+        </div>
+      )}
+
+      {range && payback.status === "in-progress" && (
+        <p className="rounded-control bg-warning-bg px-3.5 py-3 text-sm text-ink-soft text-pretty">
+          <strong className="text-ink">
+            Amorti{solar ? "" : "e"} entre {range.early.slice(0, 4)} et {range.late.slice(0, 4)}
+            {range.early.slice(0, 4) === range.late.slice(0, 4)
+              ? ` (${monthName(range.early)} à ${monthName(range.late)})`
+              : ""}
+            , selon la saison.
+          </strong>{" "}
+          {solar ? "L'installation" : "La batterie"} n&apos;est mesurée que depuis{" "}
+          {roi.dataFrom ? fmtMonth(roi.dataFrom) : "peu"} : ses{" "}
+          {formatNumber(payback.monthlyCents / 100)} €/mois sont ceux de {periodLabel(recent)}. La
+          fourchette se resserrera avec une année complète.
+        </p>
+      )}
+
+      <details className="text-sm">
+        <summary className="inline-flex min-h-11 cursor-pointer items-center font-semibold">
+          D&apos;où viennent ces économies
+        </summary>
+        <ul className="flex flex-col gap-1.5 pb-1 text-[13px]">
+          {lines.map((l) => (
+            <li key={l.label} className="flex justify-between gap-2">
+              <span className="text-ink-soft">{l.label}</span>
+              <span className="whitespace-nowrap tabular-nums">{eur(l.cents)}</span>
+            </li>
+          ))}
+        </ul>
+        {!solar && view.settings.batteryGridCharging && (
+          <p className="pt-1 text-xs text-muted">Charge depuis le réseau incluse dans le calcul.</p>
+        )}
+      </details>
 
       {solar &&
         view.solarYield &&
@@ -145,7 +170,7 @@ export function RoiDetails({ roi, view }: { roi: EquipmentRoi; view: RoiView }) 
             propreté des panneaux et l&apos;état de l&apos;onduleur.
           </Notice>
         ) : (
-          <p className="rounded-control bg-bg px-3 py-2.5 text-xs text-muted text-pretty tabular-nums">
+          <p className="rounded-control bg-bg px-3.5 py-3 text-sm text-ink-soft text-pretty tabular-nums">
             Rendement de {monthLabel(view.solarYield.month)} :{" "}
             <span className="font-semibold text-ink">
               {formatNumber(view.solarYield.yield, 2)} kWh par kWh/m²

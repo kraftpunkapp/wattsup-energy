@@ -29,6 +29,9 @@ const MONTHS = [
   "décembre",
 ];
 
+/** « octobre » : le nom du mois d'une clé « AAAA-MM », sans l'année. */
+export const monthName = (key: string) => MONTHS[Number(key.slice(5, 7)) - 1] ?? key;
+
 export const monthLabel = (key: string) => {
   const [y, m] = key.split("-").map(Number);
   return `${MONTHS[(m ?? 1) - 1]} ${y}`;

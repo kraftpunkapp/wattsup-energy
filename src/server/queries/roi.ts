@@ -2,7 +2,13 @@ import { and, asc, eq, gte, inArray, lt } from "drizzle-orm";
 import { db } from "@/db";
 import { energyInterval, household, weatherDaily } from "@/db/schema";
 import { batteryGaps, type BatteryGap, type BatteryMonth } from "@/domain/battery-data";
-import { payback, type Payback } from "@/domain/roi/payback";
+import {
+  nextMilestone,
+  payback,
+  paybackRange,
+  recentSavings,
+  type Payback,
+} from "@/domain/roi/payback";
 import { batterySavings, solarSavings, type EnergySlot, type Savings } from "@/domain/roi/savings";
 import { monthlyYields, yieldDeviation } from "@/domain/roi/yield";
 import { currentContract, latestGrid } from "@/domain/tariff/timeline";
@@ -28,6 +34,12 @@ export interface EquipmentRoi {
   equipment: Equipment;
   savings: Savings;
   payback: Payback;
+  /** Économies des 12 derniers mois complets (ou de ceux qu'on a). */
+  recent: ReturnType<typeof recentSavings>;
+  /** Prochain palier (quart, moitié…) et sa date ; null une fois amorti. */
+  milestone: ReturnType<typeof nextMilestone>;
+  /** Moins d'un an mesuré : amortissement au plus tôt et au plus tard (« AAAA-MM ») ; sinon null. */
+  range: ReturnType<typeof paybackRange>;
   /** Première donnée prise en compte (après l'installation), null sans donnée. */
   dataFrom: string | null;
   /** Batterie : mois avec charge sans décharge, ou l'inverse (vide pour le solaire). */
@@ -145,19 +157,52 @@ export async function getRoi(ctx: HouseholdContext, now = new Date()): Promise<R
     batteryGridCharging: s.batteryGridCharging,
   };
 
+  // Saisonnalité : production solaire de chaque mois du calendrier sur les 12 derniers mois
+  // complets (null si l'un manque) ; elle sert à borner l'amortissement d'un équipement mesuré
+  // depuis moins d'un an.
+  const currentMonth = today.slice(0, 7);
+  const solarByMonth = new Map<string, number>();
+  for (const x of slots) {
+    const month = slotDay(x, tz).slice(0, 7);
+    if (month < currentMonth) solarByMonth.set(month, (solarByMonth.get(month) ?? 0) + x.solar);
+  }
+  const seasonKeys: string[] = [];
+  for (let k = addDays(`${currentMonth}-01`, -1).slice(0, 7); seasonKeys.length < 12;) {
+    seasonKeys.push(k);
+    k = addDays(`${k}-01`, -1).slice(0, 7);
+  }
+  const seasonality = seasonKeys.every((k) => (solarByMonth.get(k) ?? 0) > 0)
+    ? Object.fromEntries(seasonKeys.map((k) => [Number(k.slice(5, 7)), solarByMonth.get(k) ?? 0]))
+    : null;
+
   const items: RoiView["items"] = {};
   for (const e of equipmentList) {
     const own = slots.filter((x) => slotDay(x, tz) >= e.installedOn);
     const savings = e.kind === "solar" ? solarSavings(own, options) : batterySavings(own, options);
     const first = own[0];
+    const pb = payback({
+      costEur: e.costEur,
+      byMonth: savings.byMonth,
+      currentMonth,
+      today,
+    });
     items[e.kind] = {
       equipment: e,
       savings,
-      payback: payback({
+      payback: pb,
+      recent: recentSavings(savings.byMonth, currentMonth),
+      milestone: nextMilestone({
         costEur: e.costEur,
-        byMonth: savings.byMonth,
-        currentMonth: today.slice(0, 7),
+        cumulativeCents: pb.cumulativeCents,
+        monthlyCents: pb.monthlyCents,
         today,
+      }),
+      range: paybackRange({
+        costEur: e.costEur,
+        cumulativeCents: pb.cumulativeCents,
+        byMonth: savings.byMonth,
+        seasonality,
+        currentMonth,
       }),
       dataFrom: first ? slotDay(first, tz) : null,
       gaps: e.kind === "battery" ? batteryGaps(byMonth(own, tz)) : [],
