@@ -67,12 +67,34 @@ describe("getContractComparison", () => {
     );
     expect(base?.totalCents).toBe(expected.totalCents);
     expect(r.rows.find((c) => c.isCurrent)?.contract.kind).toBe("base");
+    expect(r.peak).toBeNull();
     // Base souscrit sur toute la période : le coût réel égale sa simulation.
     expect(r.real).toEqual({
       totalCents: expected.totalCents,
       annualCents: base?.annualCents,
       unknownContractDays: 0,
     });
+  });
+
+  it("contrat HP/HC : part des kWh en heures creuses et prix moyens", async () => {
+    const ctx = await createTestHousehold();
+    await hourlyImport(ctx.householdId, 10);
+    await createContract(ctx, {
+      name: "HP/HC test",
+      contract: {
+        kind: "hphc",
+        subscriptionEurYear: 200,
+        prices: { hp: 0.27, hc: 0.2 },
+        hcRanges: [{ from: "22:00", to: "06:00" }],
+      },
+      subscription: { startDate: "2026-01-01", endDate: null },
+    });
+    const r = await getContractComparison(ctx, now);
+    if (r.status !== "ok") throw new Error(r.status);
+    // Huit heures creuses sur vingt-quatre, consommation constante.
+    expect(r.peak?.hcShare).toBeCloseTo(8 / 24, 2);
+    expect(r.peak?.hpRate).toBeCloseTo(0.27, 4);
+    expect(r.peak?.hcRate).toBeCloseTo(0.2, 4);
   });
 
   it("couverture partielle : heures manquantes comptées", async () => {

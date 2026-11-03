@@ -2,6 +2,7 @@ import { and, asc, eq, gte, lt } from "drizzle-orm";
 import { db } from "@/db";
 import { energyInterval } from "@/db/schema";
 import { parseMeterPower } from "@/domain/market/compare";
+import { peakSplit } from "@/domain/overview";
 import { compareContracts, type ComparedContract } from "@/domain/tariff/compare";
 import { analyzePayment, type MonthlyPayment, type PaymentAnalysis } from "@/domain/tariff/payment";
 import {
@@ -43,6 +44,11 @@ export type ContractComparison =
       rows: ComparedContract[];
       /** Coût réellement payé sur la période (contrat et grille en vigueur chaque jour). */
       real: { totalCents: number; annualCents: number; unknownContractDays: number } | null;
+      /**
+       * Part des kWh achetés en heures creuses sur la période, et prix moyen payé du kWh en
+       * heures pleines et creuses (€) ; null sans heures creuses au contrat.
+       */
+      peak: { hcShare: number; hpRate: number | null; hcRate: number | null } | null;
     };
 
 /** Consommation des 12 derniers mois et contexte de calcul, partagés par les comparaisons. */
@@ -172,6 +178,15 @@ export async function getContractComparison(
       }
     : null;
 
+  const split = timeline ? peakSplit(timeline.bySlot) : null;
+  const peak = split
+    ? {
+        hcShare: split.hc.kwh / (split.hc.kwh + split.hp.kwh),
+        hpRate: split.hp.kwh > 0 ? split.hp.energyCents / split.hp.kwh / 100 : null,
+        hcRate: split.hc.kwh > 0 ? split.hc.energyCents / split.hc.kwh / 100 : null,
+      }
+    : null;
+
   // Couverture : heures reçues (mode horaire) ou jours reçus (mode quotidien).
   const hours = intervals.filter((i) => i.granularity === "hour").length;
   const days = new Set(intervals.flatMap((i) => (i.granularity === "day" ? [i.date] : []))).size;
@@ -189,6 +204,7 @@ export async function getContractComparison(
     redDays,
     rows: compared,
     real,
+    peak,
   };
 }
 

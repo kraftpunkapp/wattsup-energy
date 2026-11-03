@@ -1,5 +1,4 @@
 import { MarketSourceNote } from "@/components/market-source-note";
-import { PageHeader } from "@/components/page-header";
 import { tempoSeasonOf } from "@/domain/tempo-calendar";
 import { addDays, eachDay, localParts } from "@/lib/time";
 import { listContracts } from "@/server/contracts";
@@ -9,9 +8,11 @@ import { getMarketOffers } from "@/server/market/compare";
 import { getContractComparison, getPaymentAnalysis } from "@/server/queries/contracts";
 import { sobrietyCalendarView } from "@/server/calendars";
 import { tempoCalendarView } from "@/server/tempo/sync";
-import { ComparisonBanner, ComparisonEmpty, comparedRows, comparisonExtras } from "./comparison";
+import { ComparisonEmpty, comparedRows, comparisonExtras } from "./comparison";
 import { ComparisonCard, type MarketState } from "./comparison-card";
 import { ContractsManager } from "./contracts-manager";
+import { ContractsDiagnostic } from "./diagnostic";
+import { ContractHistory } from "./history";
 import { toContractItems } from "./items";
 import { SobrietyCalendar, type SobrietyDay } from "./sobriety-calendar";
 import { TempoCalendar, type CalendarDay } from "./tempo-calendar";
@@ -69,42 +70,58 @@ export default async function ContractsPage() {
         ? { status: "no-power" }
         : { status: "none" };
 
+  const items = toContractItems(contracts, today);
+  const fmt = (iso: string) =>
+    new Date(`${iso}T12:00:00Z`).toLocaleDateString("fr-FR", {
+      day: "numeric",
+      month: "short",
+      year: "numeric",
+    });
+  const subtitle =
+    comparison.status === "ok"
+      ? `Votre diagnostic, calculé sur votre consommation réelle du ${fmt(comparison.from)} au ${fmt(comparison.to)} (${Math.round(comparison.kwh).toLocaleString("fr-FR")} kWh achetés), aux prix d'aujourd'hui.`
+      : "Coût simulé de chaque offre sur votre consommation réelle";
+
   return (
-    <>
-      <PageHeader
-        title="Contrats"
-        subtitle="Coût simulé de chaque offre sur votre consommation réelle"
-      />
-      {comparison.status === "ok" && rows.length > 0 && (
-        <ComparisonBanner comparison={comparison} rows={rows} />
-      )}
-      <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,360px),1fr))] items-start gap-4">
-        <div className="flex flex-col gap-4">
-          {comparison.status !== "ok" ? (
-            <ComparisonEmpty comparison={comparison} />
-          ) : (
-            (rows.length > 0 || marketState.status === "no-power") && (
-              <ComparisonCard
-                rows={rows}
-                {...comparisonExtras(comparison)}
-                market={marketState}
-                note={
-                  market.status === "ok" ? (
-                    <MarketSourceNote catalogDate={market.catalogDate} />
-                  ) : null
-                }
-              />
-            )
-          )}
+    <ContractsManager
+      today={today}
+      contracts={items}
+      paymentAnalysis={payment?.analysis ?? null}
+      subtitle={subtitle}
+      diagnostic={
+        comparison.status === "ok" && rows.length > 0 ? (
+          <ContractsDiagnostic
+            comparison={comparison}
+            rows={rows}
+            payment={
+              payment
+                ? { amountCents: payment.payment.amountCents, analysis: payment.analysis }
+                : null
+            }
+          />
+        ) : null
+      }
+      beside={
+        comparison.status !== "ok" ? (
+          <ComparisonEmpty comparison={comparison} />
+        ) : rows.length > 0 || marketState.status === "no-power" ? (
+          <ComparisonCard
+            rows={rows}
+            {...comparisonExtras(comparison)}
+            market={marketState}
+            note={
+              market.status === "ok" ? <MarketSourceNote catalogDate={market.catalogDate} /> : null
+            }
+          />
+        ) : null
+      }
+      history={<ContractHistory contracts={items} />}
+      extra={
+        <>
           {hasTempo && <TempoCalendar season={season} days={calendar} />}
           {sobrietyDays.length > 0 && <SobrietyCalendar season={season} days={sobrietyDays} />}
-        </div>
-        <ContractsManager
-          today={today}
-          contracts={toContractItems(contracts, today)}
-          paymentAnalysis={payment?.analysis ?? null}
-        />
-      </div>
-    </>
+        </>
+      }
+    />
   );
 }

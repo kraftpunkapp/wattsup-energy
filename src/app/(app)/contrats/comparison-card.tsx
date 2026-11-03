@@ -55,7 +55,7 @@ export type MarketState =
 
 /** En dessous d'un euro par an, deux offres coûtent la même chose. */
 const SAME_CENTS = 100;
-const TOP_MARKET = 5;
+const NEAR = 3;
 const COMMON_POWERS = [6, 9, 12] as const;
 const eur = (cents: number) => `${Math.round(cents / 100).toLocaleString("fr-FR")} €`;
 const plural = (n: number, one: string, many: string) => `${n} ${n > 1 ? many : one}`;
@@ -87,13 +87,13 @@ function PowerSelect({
   disabled: boolean;
 }) {
   return (
-    <label className="flex items-center gap-2 text-xs text-muted">
+    <label className="flex items-center gap-2 text-sm text-ink-soft">
       Compteur
       <select
         value={value ?? ""}
         disabled={disabled}
         onChange={(e) => onChange(Number(e.target.value))}
-        className="h-8 rounded-[8px] border border-border-strong bg-surface px-2 text-[13px] text-ink tabular-nums outline-none focus:border-ink disabled:opacity-60"
+        className="h-11 rounded-control border border-border-strong bg-surface px-2.5 text-sm text-ink tabular-nums outline-none focus:border-ink disabled:opacity-60"
       >
         {value === null && <option value="">Autre…</option>}
         {METER_POWERS.map((p) => (
@@ -139,50 +139,22 @@ function Delta({ row }: { row: ComparedRow }) {
   const d = row.deltaAnnualCents;
   if (d === null) return null;
   if (Math.abs(d) < SAME_CENTS) {
-    return <span className="text-[11px] font-medium text-subtle">≈ même coût</span>;
+    return <span className="text-xs font-medium text-muted">≈ même coût</span>;
   }
   return (
     <span
-      className={`text-[11px] font-medium tabular-nums ${d < 0 ? "text-positive" : "text-negative"}`}
+      className={`text-xs font-semibold tabular-nums ${d < 0 ? "text-positive" : "text-ink-soft"}`}
     >
       {d < 0 ? "−" : "+"}
-      {eur(Math.abs(d))}
+      {eur(Math.abs(d))} par an
     </span>
   );
 }
 
-function Line({ row, max }: { row: ComparedRow; max: number }) {
-  const cheaper = row.deltaAnnualCents !== null && row.deltaAnnualCents <= -SAME_CENTS;
-  const bar = row.origin === "current" ? "bg-grid" : cheaper ? "bg-battery" : "bg-dash";
-  const origin =
-    row.origin === "market"
-      ? row.provider
-      : row.origin === "current"
-        ? null
-        : [ORIGIN_LABELS[row.origin], row.originDetail].filter(Boolean).join(" · ");
+/** Détails d'une offre : origine du prix, lien officiel, ajout à mes offres, réserves du calcul. */
+function Extras({ row }: { row: ComparedRow }) {
   return (
-    <li className={`flex flex-col gap-1.5 ${row.origin === "past" ? "opacity-70" : ""}`}>
-      <div className="flex items-center justify-between gap-2">
-        <span className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
-          <span className="text-sm font-semibold">{row.name}</span>
-          {origin && <span className="text-xs text-muted">{origin}</span>}
-          <Badge>{row.kind}</Badge>
-          {row.regulated && <Badge tone="soft">Tarif réglementé</Badge>}
-          {row.origin === "current" && <Badge tone="active">En cours</Badge>}
-        </span>
-        <span className="flex flex-none flex-col items-end">
-          <span className="text-[15px] font-semibold whitespace-nowrap tabular-nums">
-            {eur(row.annualCents)}/an
-          </span>
-          <Delta row={row} />
-        </span>
-      </div>
-      <div className="h-1.5 rounded-full bg-track">
-        <div
-          className={`h-1.5 rounded-full ${bar}`}
-          style={{ width: `${(row.annualCents / max) * 100}%` }}
-        />
-      </div>
+    <>
       {row.market && (
         <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-subtle">
           <span className="flex items-center gap-1.5 tabular-nums">
@@ -224,6 +196,73 @@ function Line({ row, max }: { row: ComparedRow; max: number }) {
             `${plural(row.assumedSpotHours, "heure", "heures")} sans prix spot connu, estimée${row.assumedSpotHours > 1 ? "s" : ""} au prix moyen.`}
         </span>
       )}
+    </>
+  );
+}
+
+function Line({ row, max }: { row: ComparedRow; max: number }) {
+  const cheaper = row.deltaAnnualCents !== null && row.deltaAnnualCents <= -SAME_CENTS;
+  const bar = row.origin === "current" ? "bg-ink" : cheaper ? "bg-positive" : "bg-dash";
+  const origin =
+    row.origin === "market"
+      ? row.provider
+      : row.origin === "current"
+        ? null
+        : [ORIGIN_LABELS[row.origin], row.originDetail].filter(Boolean).join(" · ");
+  return (
+    <li className={`flex flex-col gap-1.5 ${row.origin === "past" ? "opacity-70" : ""}`}>
+      <div className="flex items-center justify-between gap-2">
+        <span className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
+          <span className="text-sm font-semibold">{row.name}</span>
+          {origin && <span className="text-xs text-muted">{origin}</span>}
+          <Badge>{row.kind}</Badge>
+          {row.regulated && <Badge tone="soft">Tarif réglementé</Badge>}
+          {row.origin === "current" && <Badge tone="active">En cours</Badge>}
+        </span>
+        <span className="flex flex-none flex-col items-end">
+          <span className="text-[15px] font-semibold whitespace-nowrap tabular-nums">
+            {eur(row.annualCents)}/an
+          </span>
+          <Delta row={row} />
+        </span>
+      </div>
+      <div className="h-1.5 rounded-full bg-track">
+        <div
+          className={`h-1.5 rounded-full ${bar}`}
+          style={{ width: `${(row.annualCents / max) * 100}%` }}
+        />
+      </div>
+      <Extras row={row} />
+    </li>
+  );
+}
+
+/** Une offre proche du contrat actuel : nom, fournisseur, écart annuel et coût. */
+function NearRow({ row }: { row: ComparedRow }) {
+  const sub = [
+    row.origin === "market"
+      ? row.provider
+      : ORIGIN_LABELS[row.origin as keyof typeof ORIGIN_LABELS],
+    row.kind,
+    row.market ? `grille du ${row.market.gridDate}` : row.originDetail,
+  ]
+    .filter(Boolean)
+    .join(" · ");
+  return (
+    <li className="flex flex-col gap-1.5 border-b border-track py-3 last:border-b-0">
+      <div className="flex items-center gap-3">
+        <div className="flex min-w-0 flex-1 flex-col">
+          <strong className="text-base text-pretty">{row.name}</strong>
+          <span className="text-sm text-muted text-pretty">{sub}</span>
+        </div>
+        <div className="flex flex-none flex-col items-end">
+          <Delta row={row} />
+          <span className="text-[13px] whitespace-nowrap text-muted tabular-nums">
+            {eur(row.annualCents)}
+          </span>
+        </div>
+      </div>
+      <Extras row={row} />
     </li>
   );
 }
@@ -281,54 +320,58 @@ export function ComparisonCard({
   note: ReactNode;
 }) {
   const power = usePower();
-  const [allMarket, setAllMarket] = useState(false);
+  const [all, setAll] = useState(false);
   const [showPast, setShowPast] = useState(false);
 
-  const marketRows = rows.filter((r) => r.origin === "market");
-  const topMarket = new Set(marketRows.slice(0, TOP_MARKET).map((r) => r.key));
+  // Les plus proches : l'écart annuel le plus faible avec le contrat en cours (à défaut, les moins chères).
+  const candidates = rows.filter((r) => r.origin !== "current" && r.origin !== "past");
+  const near = [...candidates]
+    .sort(
+      (a, b) =>
+        Math.abs(a.deltaAnnualCents ?? a.annualCents) -
+        Math.abs(b.deltaAnnualCents ?? b.annualCents),
+    )
+    .slice(0, NEAR);
   const past = rows.filter((r) => r.origin === "past").length;
-  const shown = rows.filter(
-    (r) =>
-      (r.origin !== "past" || showPast) &&
-      (r.origin !== "market" || allMarket || topMarket.has(r.key)),
-  );
+  const shown = rows.filter((r) => r.origin !== "past" || showPast);
   const max = Math.max(...shown.map((r) => r.annualCents), 1);
   const hasCurrent = rows.some((r) => r.origin === "current");
+  const rest = candidates.length - near.length;
 
   return (
-    <section className="flex flex-col gap-3 rounded-card border border-border bg-surface p-5">
-      <div className="flex flex-col gap-1">
-        <div className="flex flex-wrap items-baseline justify-between gap-x-2 gap-y-1">
-          <h2 className="text-[15px] font-semibold">Comparez votre contrat</h2>
-          {coverage}
-        </div>
-        <p className="text-xs text-muted text-pretty">
-          {market.status === "ok"
-            ? "Vos offres simulées et celles des fournisseurs"
-            : "Vos offres simulées"}
-          , aux prix d&apos;aujourd&apos;hui, sur votre consommation des 12 derniers mois
+    <section
+      id="offres"
+      aria-labelledby="offres-titre"
+      className="flex flex-col gap-4 rounded-card border border-border bg-surface p-6 sm:p-7"
+    >
+      <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
+        <h2 id="offres-titre" className="text-xl font-bold">
+          {all ? "Toutes les offres comparées" : "Les offres les plus proches"}
+        </h2>
+        {market.status === "ok" && (
+          <PowerSelect value={market.kva} onChange={power.save} disabled={power.pending} />
+        )}
+      </div>
+      {power.error && (
+        <p role="alert" className="text-xs text-negative">
+          {power.error}
+        </p>
+      )}
+      <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
+        <p className="text-[13px] text-muted text-pretty">
+          Aux prix d&apos;aujourd&apos;hui, sur votre consommation des 12 derniers mois
           {hasCurrent ? " ; écart avec votre contrat actuel." : "."}
         </p>
+        {coverage}
       </div>
 
-      {market.status === "ok" && (
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <PowerSelect value={market.kva} onChange={power.save} disabled={power.pending} />
-          {power.error && (
-            <p role="alert" className="text-xs text-negative">
-              {power.error}
-            </p>
-          )}
-        </div>
-      )}
-
       {paid && (
-        <div className="flex items-center justify-between gap-2 rounded-[10px] bg-bg px-3 py-2.5">
+        <div className="flex items-center justify-between gap-2 rounded-control bg-bg px-3.5 py-3">
           <span className="flex flex-col">
-            <span className="text-[13px] font-medium">
+            <span className="text-sm font-semibold">
               Payé sur {paid.partial ? "la période" : "les 12 derniers mois"}
             </span>
-            <span className="text-[11px] text-subtle text-pretty">
+            <span className="text-xs text-muted text-pretty">
               avec chacun de vos contrats et ses prix de l&apos;époque, jour par jour
               {paid.unknownContractDays > 0 &&
                 ` · ${paid.unknownContractDays} j sans contrat, estimés au tarif actuel`}
@@ -340,40 +383,44 @@ export function ComparisonCard({
         </div>
       )}
 
-      <ul className={`flex flex-col gap-3 ${power.pending ? "opacity-50" : ""}`}>
-        {shown.map((r) => (
-          <Line key={r.key} row={r} max={max} />
-        ))}
-      </ul>
-
-      {(marketRows.length > TOP_MARKET || past > 0) && (
-        <div className="flex flex-wrap gap-2">
-          {marketRows.length > TOP_MARKET && (
-            <button
-              type="button"
-              onClick={() => setAllMarket(!allMarket)}
-              aria-expanded={allMarket}
-              className={button.secondary}
-            >
-              {allMarket
-                ? `Les ${TOP_MARKET} offres du marché les moins chères`
-                : `Voir les ${marketRows.length} offres du marché`}
-            </button>
-          )}
-          {past > 0 && (
-            <button
-              type="button"
-              onClick={() => setShowPast(!showPast)}
-              aria-expanded={showPast}
-              className={button.secondary}
-            >
-              {showPast
-                ? "Masquer les anciens contrats"
-                : `Voir ${past > 1 ? `vos ${past} anciens contrats` : "votre ancien contrat"}`}
-            </button>
-          )}
-        </div>
+      {all ? (
+        <ul className={`flex flex-col gap-3 ${power.pending ? "opacity-50" : ""}`}>
+          {shown.map((r) => (
+            <Line key={r.key} row={r} max={max} />
+          ))}
+        </ul>
+      ) : (
+        <ul className={`flex flex-col ${power.pending ? "opacity-50" : ""}`}>
+          {near.map((r) => (
+            <NearRow key={r.key} row={r} />
+          ))}
+        </ul>
       )}
+
+      <div className="flex flex-wrap items-center gap-x-4">
+        {(rest > 0 || all) && (
+          <button
+            type="button"
+            onClick={() => setAll(!all)}
+            aria-expanded={all}
+            className="inline-flex min-h-11 items-center text-[15px] font-semibold"
+          >
+            {all ? "Revenir aux offres les plus proches" : `Voir les ${rest} autres offres`}
+          </button>
+        )}
+        {all && past > 0 && (
+          <button
+            type="button"
+            onClick={() => setShowPast(!showPast)}
+            aria-expanded={showPast}
+            className="inline-flex min-h-11 items-center text-[15px] font-semibold"
+          >
+            {showPast
+              ? "Masquer les anciens contrats"
+              : `Voir ${past > 1 ? `vos ${past} anciens contrats` : "votre ancien contrat"}`}
+          </button>
+        )}
+      </div>
 
       {market.status === "no-power" && <NoPowerNotice />}
 

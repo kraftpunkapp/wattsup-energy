@@ -23,6 +23,8 @@
   --color-wood: #6f4a2e;
   --color-eheat: #7a1f17;
   --color-hc: #9db4d3;
+  /* Texte posé sur le bleu clair des heures creuses (identique dans les deux thèmes). */
+  --color-on-hc: #1a1a1a;
   --color-subscription: #cfc7b8;
   --color-positive: #146b4c;
 

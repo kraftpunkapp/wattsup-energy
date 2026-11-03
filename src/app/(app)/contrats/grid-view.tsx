@@ -37,42 +37,78 @@ const minutes = (t: string) => {
   return h * 60 + m;
 };
 
-/** Frise de 24 h : plages d'heures creuses (une plage peut passer minuit). */
-function HcBar({ ranges }: { ranges: TimeRange[] }) {
-  const segments = ranges.flatMap((r) => {
-    const from = minutes(r.from);
-    const to = minutes(r.to);
-    return to > from
-      ? [[from, to]]
-      : [
-          [from, 1440],
-          [0, to],
-        ];
-  });
+/** Heures de début et de fin d'un segment, lisibles : « 0 h 54 – 6 h 54 ». */
+const span = (from: number, to: number) =>
+  `${fmtTime(`${Math.floor(from / 60)}:${String(from % 60).padStart(2, "0")}`)} – ${fmtTime(
+    `${Math.floor(to / 60) % 24}:${String(to % 60).padStart(2, "0")}`,
+  )}`;
+
+/**
+ * « Votre journée tarifaire » : une frise de 24 h, heures pleines en bleu, plages creuses en
+ * bleu clair, chacune avec son prix. Une plage peut passer minuit (elle est coupée en deux).
+ */
+function HcBar({ ranges, hp, hc }: { ranges: TimeRange[]; hp: number; hc: number }) {
+  const cut = ranges
+    .flatMap((r) => {
+      const from = minutes(r.from);
+      const to = minutes(r.to);
+      return to > from
+        ? [[from, to] as const]
+        : [[from, 1440] as const, ...(to > 0 ? ([[0, to]] as const) : [])];
+    })
+    .sort((a, b) => a[0] - b[0]);
+  // Les heures pleines : tout ce que les plages creuses ne couvrent pas.
+  const full: (readonly [number, number])[] = [];
+  let at = 0;
+  for (const [from, to] of cut) {
+    if (from > at) full.push([at, from]);
+    at = Math.max(at, to);
+  }
+  if (at < 1440) full.push([at, 1440]);
+  const label = ranges.map((r) => `de ${fmtTime(r.from)} à ${fmtTime(r.to)}`).join(" et ");
+  const seg = (from: number, to: number, creuse: boolean) => {
+    const width = ((to - from) / 1440) * 100;
+    return (
+      <div
+        key={`${creuse ? "c" : "p"}${from}`}
+        className={`absolute inset-y-0 flex flex-col items-center justify-center overflow-hidden text-center leading-tight ${
+          creuse ? "bg-hc text-on-hc" : "text-on-grid"
+        }`}
+        style={{ left: `${(from / 1440) * 100}%`, width: `${width}%` }}
+      >
+        {width >= 12 ? (
+          <>
+            <strong className="text-sm">{creuse ? "Heures creuses" : "Heures pleines"}</strong>
+            <span className="text-[13px]">{fmtPrice(creuse ? hc : hp)} €</span>
+          </>
+        ) : width >= 5 ? (
+          <strong className="text-sm">{creuse ? "HC" : "HP"}</strong>
+        ) : null}
+      </div>
+    );
+  };
   return (
-    <div className="flex flex-col gap-1.5">
-      <div className="flex flex-wrap items-baseline gap-x-2 text-xs">
-        <span className="text-muted">Plages creuses</span>
-        <span className="font-medium tabular-nums">
-          {ranges.map((r) => `${fmtTime(r.from)} – ${fmtTime(r.to)}`).join(" · ")}
-        </span>
+    <div className="flex flex-col gap-2">
+      <h3 className="text-[15px] font-bold">Votre journée tarifaire</h3>
+      <div
+        role="img"
+        aria-label={`Heures creuses ${label} ; heures pleines le reste de la journée`}
+        className="relative h-12 overflow-hidden rounded-control bg-grid"
+      >
+        {full.map(([from, to]) => seg(from, to, false))}
+        {cut.map(([from, to]) => seg(from, to, true))}
       </div>
-      <div className="relative h-2 overflow-hidden rounded-full bg-track" aria-hidden>
-        {segments.map(([from = 0, to = 0], i) => (
-          <span
-            key={i}
-            className="absolute inset-y-0 bg-grid"
-            style={{ left: `${(from / 1440) * 100}%`, width: `${((to - from) / 1440) * 100}%` }}
-          />
-        ))}
-      </div>
-      <div className="flex justify-between text-[10px] text-subtle tabular-nums" aria-hidden>
+      <div className="flex justify-between text-[13px] text-muted tabular-nums" aria-hidden>
         <span>0 h</span>
         <span>6 h</span>
         <span>12 h</span>
         <span>18 h</span>
         <span>24 h</span>
       </div>
+      <p className="text-sm text-ink-soft text-pretty">
+        Creuses : {cut.map(([f, t]) => span(f, t)).join(" et ")}. Ce sont ces horaires qui guident
+        vos créneaux dans Prévisions.
+      </p>
     </div>
   );
 }
@@ -89,18 +125,17 @@ export function GridView({ contract }: { contract: Contract }) {
       );
     case "hphc":
       return (
-        <div className="flex flex-col gap-3">
-          <div className={tiles}>
-            <StatTile label="Heures pleines" value={fmtPrice(contract.prices.hp)} unit="€/kWh" />
-            <StatTile
-              label="Heures creuses"
-              value={fmtPrice(contract.prices.hc)}
-              unit="€/kWh"
-              dot="bg-grid"
-            />
-            <SubscriptionTile eurYear={contract.subscriptionEurYear} />
-          </div>
-          <HcBar ranges={contract.hcRanges} />
+        <div className="flex flex-col gap-4">
+          <HcBar ranges={contract.hcRanges} hp={contract.prices.hp} hc={contract.prices.hc} />
+          <p className="text-[15px] text-ink-soft">
+            Abonnement :{" "}
+            <strong className="text-ink tabular-nums">
+              {fmtEur(contract.subscriptionEurYear / 12)} € par mois
+            </strong>{" "}
+            <span className="text-sm text-muted tabular-nums">
+              ({fmtEur(contract.subscriptionEurYear)} €/an)
+            </span>
+          </p>
         </div>
       );
     case "tempo":

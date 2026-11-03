@@ -2,7 +2,7 @@
 
 import { callAction } from "@/lib/action";
 import { useRouter } from "next/navigation";
-import { Fragment, useState, useTransition } from "react";
+import { useState, useTransition, type ReactNode } from "react";
 import type { MonthlyPayment, PaymentAnalysis } from "@/domain/tariff/payment";
 import { CONTRACT_PRESETS, type ContractInput } from "@/domain/tariff/schema";
 import { lapsedContract, periodAt } from "@/domain/tariff/timeline";
@@ -27,6 +27,7 @@ import {
   type SubscriptionValue,
 } from "./contract-editor";
 import { Badge, button, Card, CardFooter, GroupTitle, Icon, Notice } from "@/components/ui";
+import { PageHeader } from "@/components/page-header";
 import { GridView, gridSummary } from "./grid-view";
 import { KIND_LABELS } from "./labels";
 import { PaymentSection } from "./payment-section";
@@ -477,12 +478,27 @@ export function ContractsManager({
   contracts,
   today,
   paymentAnalysis,
+  subtitle,
+  diagnostic,
+  beside,
+  history,
+  extra,
 }: {
   contracts: ContractItem[];
   /** Jour local du foyer (AAAA-MM-JJ). */
   today: string;
   /** Page Contrats : verdict de la mensualité du contrat en cours (null : non calculé). */
   paymentAnalysis?: PaymentAnalysis | null;
+  /** Absent (parcours d'accueil) : pas d'en-tête de page, seulement le bouton d'ajout. */
+  subtitle?: string;
+  /** Diagnostic sous l'en-tête (rendu par le serveur). */
+  diagnostic?: ReactNode;
+  /** Colonne à droite du contrat en cours : les offres les plus proches. */
+  beside?: ReactNode;
+  /** Historique des contrats, sous le contrat en cours. */
+  history?: ReactNode;
+  /** Calendriers Tempo et sobriété, en bas de page. */
+  extra?: ReactNode;
 }) {
   const router = useRouter();
   const [editing, setEditing] = useState<Editing>(null);
@@ -499,34 +515,83 @@ export function ContractsManager({
       router.refresh();
     });
 
+  const addButton =
+    editing === null ? (
+      <button
+        type="button"
+        onClick={() => setEditing({ mode: "presets" })}
+        className="inline-flex min-h-11 items-center gap-2 rounded-control border border-border-strong bg-surface px-4 text-[15px] font-semibold hover:bg-bg"
+      >
+        <Icon name="plus" size={16} />
+        Ajouter un contrat
+      </button>
+    ) : null;
+  const header =
+    subtitle !== undefined ? (
+      <PageHeader title="Contrats" subtitle={subtitle}>
+        {addButton}
+      </PageHeader>
+    ) : (
+      <div className="flex">{addButton}</div>
+    );
+
   if (editing?.mode === "create") {
     return (
-      <CreateForm
-        initial={editing.initial}
-        subscribed={!contracts.some((c) => c.isCurrent)}
-        onDone={done}
-      />
+      <>
+        {header}
+        <CreateForm
+          initial={editing.initial}
+          subscribed={!contracts.some((c) => c.isCurrent)}
+          onDone={done}
+        />
+      </>
     );
   }
-  if (editing?.mode === "identity") return <IdentityForm item={editing.item} onDone={done} />;
+  if (editing?.mode === "identity") {
+    return (
+      <>
+        {header}
+        <IdentityForm item={editing.item} onDone={done} />
+      </>
+    );
+  }
   if (editing?.mode === "period") {
-    return <PeriodForm item={editing.item} period={editing.period} onDone={done} />;
+    return (
+      <>
+        {header}
+        <PeriodForm item={editing.item} period={editing.period} onDone={done} />
+      </>
+    );
   }
 
   const lapsed = lapsedContract(contracts, today);
   const subscribed = contracts.filter((c) => c.status === "subscribed" && !c.isCurrent);
-  const groups = [
-    { title: "Contrat en cours", items: contracts.filter((c) => c.isCurrent) },
+  const current = contracts.filter((c) => c.isCurrent);
+  const others = [
     { title: "À venir", items: subscribed.filter((c) => (c.startDate ?? "") > today) },
     { title: "Contrats passés", items: subscribed.filter((c) => (c.startDate ?? "") <= today) },
     { title: "Offres à comparer", items: contracts.filter((c) => c.status === "simulated") },
   ].filter((g) => g.items.length > 0);
+  const otherCount = others.reduce((a, g) => a + g.items.length, 0);
 
-  // « Ajouter un contrat » sous le contrat en cours (en tête sans contrat en cours), pour
-  // ne pas le chercher sous toutes les offres à comparer.
-  const adder = (
+  const card = (item: ContractItem) => (
+    <ContractCard
+      key={item.id}
+      item={item}
+      today={today}
+      onEdit={setEditing}
+      onAct={act}
+      pending={pending}
+      paymentAnalysis={item.isCurrent ? paymentAnalysis : undefined}
+    />
+  );
+
+  return (
     <>
-      {editing?.mode === "presets" ? (
+      {header}
+      {lapsed && <LapsedNotice item={lapsed} pending={pending} onAct={act} />}
+      <Errors errors={errors} />
+      {editing?.mode === "presets" && (
         <section className="flex flex-col gap-3 rounded-card border border-border bg-surface p-5">
           <h2 className="text-[15px] font-semibold">Partir d&apos;une offre de référence</h2>
           <p className="text-xs text-subtle">
@@ -539,66 +604,60 @@ export function ContractsManager({
                 key={p.name}
                 type="button"
                 onClick={() => setEditing({ mode: "create", initial: structuredClone(p) })}
-                className="flex flex-col items-start gap-1 rounded-[10px] border border-border p-3 text-left hover:bg-bg"
+                className="flex min-h-14 flex-col items-start gap-1 rounded-control border border-border p-3 text-left hover:bg-bg"
               >
                 <span className="text-sm font-medium">{p.name}</span>
-                <span className="text-[11px] text-subtle">{KIND_LABELS[p.contract.kind]}</span>
+                <span className="text-xs text-subtle">{KIND_LABELS[p.contract.kind]}</span>
               </button>
             ))}
           </div>
           <button
             type="button"
             onClick={() => setEditing(null)}
-            className="self-start text-xs text-muted hover:text-ink"
+            className={`${button.link} self-start`}
           >
             Annuler
           </button>
         </section>
-      ) : (
-        <button
-          type="button"
-          onClick={() => setEditing({ mode: "presets" })}
-          className="rounded-[10px] border border-dashed border-dash p-3 text-center text-[13px] text-ink-soft hover:bg-surface"
-        >
-          + Ajouter un contrat
-        </button>
       )}
-    </>
-  );
-  const hasCurrent = groups[0]?.title === "Contrat en cours";
-
-  return (
-    <div className="flex flex-col gap-5">
       {contracts.length === 0 && editing?.mode !== "presets" && (
         <p className="rounded-card border border-dashed border-dash bg-surface p-5 text-sm text-muted">
           Ajoutez votre contrat actuel (avec sa date de début) pour commencer, puis les offres à
           comparer.
         </p>
       )}
-      {lapsed && <LapsedNotice item={lapsed} pending={pending} onAct={act} />}
-      <Errors errors={errors} />
-      {!hasCurrent && adder}
-      {groups.map((g, i) => (
-        <Fragment key={g.title}>
-          <section className="flex flex-col gap-2">
-            <GroupTitle>{g.title}</GroupTitle>
-            <ul className="flex flex-col gap-3">
-              {g.items.map((item) => (
-                <ContractCard
-                  key={item.id}
-                  item={item}
-                  today={today}
-                  onEdit={setEditing}
-                  onAct={act}
-                  pending={pending}
-                  paymentAnalysis={item.isCurrent ? paymentAnalysis : undefined}
-                />
-              ))}
-            </ul>
+      {diagnostic}
+      <div className="flex flex-wrap items-start gap-4">
+        {current.length > 0 && (
+          <section id="contrat-en-cours" className="flex min-w-0 flex-[1.2_1_460px] flex-col gap-2">
+            <GroupTitle>Contrat en cours</GroupTitle>
+            <ul className="flex flex-col gap-3">{current.map(card)}</ul>
           </section>
-          {i === 0 && hasCurrent && adder}
-        </Fragment>
-      ))}
-    </div>
+        )}
+        {beside && <div className="flex min-w-0 flex-[1_1_400px] flex-col gap-4">{beside}</div>}
+      </div>
+      {history}
+      {extra}
+      {otherCount > 0 && (
+        <details className="group">
+          <summary className="inline-flex min-h-11 cursor-pointer list-none items-center gap-2 text-[15px] font-semibold [&::-webkit-details-marker]:hidden">
+            Gérer mes autres contrats et offres à comparer ({otherCount})
+            <span className="transition-transform group-open:rotate-90">
+              <Icon name="chevron" size={14} />
+            </span>
+          </summary>
+          <div className="flex flex-col gap-5 pt-2">
+            {others.map((g) => (
+              <section key={g.title} className="flex flex-col gap-2">
+                <GroupTitle>{g.title}</GroupTitle>
+                <ul className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,420px),1fr))] items-start gap-3">
+                  {g.items.map(card)}
+                </ul>
+              </section>
+            ))}
+          </div>
+        </details>
+      )}
+    </>
   );
 }
