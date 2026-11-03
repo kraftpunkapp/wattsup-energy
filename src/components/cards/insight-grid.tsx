@@ -6,11 +6,15 @@ import { Icon, type IconName } from "@/components/ui";
 
 // « Ce qu'il faut retenir » : quatre tuiles côte à côte (une par sujet), chacune avec son
 // pictogramme teinté, sa phrase et, quand les données le permettent, un petit graphique. Toucher
-// une tuile déplie son détail en pleine largeur sous la rangée.
+// une tuile déplie son détail : en pleine largeur sous la rangée quand les tuiles sont côte à
+// côte, et juste sous la tuile quand elles sont empilées (téléphone), pour ne pas renvoyer le
+// détail tout en bas de la page.
 
-const OpenContext = createContext<{ open: string | null; toggle: (id: string) => void } | null>(
-  null,
-);
+const OpenContext = createContext<{
+  open: string | null;
+  toggle: (id: string) => void;
+  details: Record<string, ReactNode>;
+} | null>(null);
 
 /** Teintes des pastilles de pictogramme (jamais une couleur de sens réutilisée à autre chose). */
 const TONE = {
@@ -41,7 +45,7 @@ export function InsightGrid({
   const [open, setOpen] = useState<string | null>(null);
   const toggle = (id: string) => setOpen(open === id ? null : id);
   return (
-    <OpenContext.Provider value={{ open, toggle }}>
+    <OpenContext.Provider value={{ open, toggle, details }}>
       <div className="flex flex-col gap-4">
         <div className="flex flex-wrap items-end justify-between gap-x-6 gap-y-1">
           <div className="flex flex-col gap-0.5">
@@ -65,10 +69,17 @@ export function InsightGrid({
             </button>
           )}
         </div>
-        <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,250px),1fr))] items-stretch gap-4">
+        {/* Détail mois par mois : sous le lien qui l'ouvre, à toutes les largeurs. */}
+        {open === MONTHS_PANEL && details[MONTHS_PANEL] && (
+          <div id={`insight-${MONTHS_PANEL}`}>{details[MONTHS_PANEL]}</div>
+        )}
+        <div className="grid grid-cols-1 items-stretch gap-4 sm:grid-cols-2 xl:grid-cols-4">
           {children}
         </div>
-        {open && details[open] && <div id={`insight-${open}`}>{details[open]}</div>}
+        {/* Tuiles côte à côte : détail sous la rangée (sur téléphone, il suit sa tuile). */}
+        {open && open !== MONTHS_PANEL && details[open] && (
+          <div className="max-sm:hidden">{details[open]}</div>
+        )}
       </div>
     </OpenContext.Provider>
   );
@@ -99,13 +110,13 @@ export function InsightTile({
   const ctx = useContext(OpenContext);
   const open = ctx?.open === id;
   return (
-    <div className="relative flex">
+    <div className="relative flex flex-col gap-4">
       <button
         type="button"
         aria-expanded={open}
         aria-controls={`insight-${id}`}
         onClick={() => ctx?.toggle(id)}
-        className={`flex w-full cursor-pointer flex-col gap-3 rounded-[18px] border bg-surface p-5 text-left ${
+        className={`flex w-full flex-1 cursor-pointer flex-col gap-3 rounded-[18px] border bg-surface p-5 text-left ${
           open ? "border-accent" : "border-border"
         }`}
       >
@@ -130,6 +141,12 @@ export function InsightTile({
         </span>
       </button>
       {actions && <div className="absolute top-2.5 right-2.5">{actions}</div>}
+      {/* Téléphone : le détail s'ouvre juste sous sa tuile. */}
+      {open && ctx?.details[id] && (
+        <div id={`insight-${id}`} className="sm:hidden">
+          {ctx.details[id]}
+        </div>
+      )}
     </div>
   );
 }
