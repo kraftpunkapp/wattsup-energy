@@ -32,6 +32,16 @@ const ICONS: Record<FuelEventType, IconName> = {
   stock_snapshot: "check",
 };
 
+/** Pastille d'icône : la teinte du combustible pour une consommation, l'encre pleine pour un achat, le gris pour un relevé. */
+const TILE = (item: Pick<LogItem, "type" | "fuel">) =>
+  item.type === "purchase"
+    ? "bg-ink text-bg"
+    : item.type === "stock_snapshot"
+      ? "bg-track text-ink"
+      : item.fuel === "pellet"
+        ? "bg-pellet/20 text-ink"
+        : "bg-wood/20 text-ink";
+
 const inputClass =
   "h-10 w-full rounded-[8px] border border-border-strong bg-surface px-3 text-[14px] outline-none focus:border-ink focus-visible:ring-2 focus-visible:ring-accent/30 tabular-nums";
 const labelClass = "flex flex-col gap-1.5 text-xs text-muted";
@@ -250,7 +260,9 @@ export function FuelLog({
                 key={item.id}
                 className="flex items-center gap-3 border-t border-track py-2.5 first:border-t-0"
               >
-                <span className="flex size-8 flex-none items-center justify-center rounded-[8px] bg-bg text-muted">
+                <span
+                  className={`flex size-8 flex-none items-center justify-center rounded-[9px] ${TILE(item)}`}
+                >
                   <Icon name={ICONS[item.type]} size={15} />
                 </span>
                 <div className="flex min-w-0 flex-1 flex-col gap-0.5">
