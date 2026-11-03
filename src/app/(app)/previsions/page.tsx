@@ -2,9 +2,10 @@ import Link from "next/link";
 import { PageHeader } from "@/components/page-header";
 import { Badge, button, Card, Icon, Notice, StatTile, tiles } from "@/components/ui";
 import type { AccuracyDay } from "@/domain/forecast/accuracy";
-import { hourLabel, windowLabel } from "@/domain/forecast/summary";
+import { describeAppliance } from "@/domain/forecast/appliances";
+import { hourLabel } from "@/domain/forecast/summary";
 import { formatEurFromCents, formatKwh, formatPercent } from "@/lib/format";
-import { addDays } from "@/lib/time";
+import { addDays, localParts } from "@/lib/time";
 import { settingsHref } from "@/lib/settings-tabs";
 import { getForecastAccuracy, getForecastPlan } from "@/server/forecast";
 import { pageContext } from "@/server/page";
@@ -19,6 +20,20 @@ const eur = (v: number) => formatEurFromCents(v * 100, 2);
 const kwh = (v: number) => formatKwh(v, v < 10 ? 1 : 0);
 /** Écart sous lequel lancer tout de suite revient au même. */
 const SAVING_MIN_EUR = 0.05;
+
+const HOUR_MS = 3_600_000;
+const hourStart = (d: Date) => d.getTime() - (d.getTime() % HOUR_MS);
+
+/** « Aujourd'hui », « demain » ou « jeudi 12 » : le jour d'un créneau. */
+function windowDay(start: Date, today: string, timezone: string) {
+  const date = localParts(start, timezone).date;
+  if (date === today) return "Aujourd'hui";
+  if (date === addDays(today, 1)) return "Demain";
+  return new Date(`${date}T12:00:00Z`).toLocaleDateString("fr-FR", {
+    weekday: "long",
+    day: "numeric",
+  });
+}
 
 /** Dernier jour comparé : production et consommation mesurées, et ce qui était prévu. */
 function LastDay({ day, today }: { day: AccuracyDay; today: string }) {
@@ -104,6 +119,175 @@ export default async function ForecastPage() {
       : null,
   ].filter((n): n is string => n !== null);
 
+  const found = plan.windows.flatMap(({ appliance, window }) =>
+    window ? [{ appliance, window }] : [],
+  );
+  const saving = (w: { nowCostEur: number; costEur: number }) =>
+    Math.max(0, w.nowCostEur - w.costEur);
+  const totalSaving = found.reduce((a, f) => a + saving(f.window), 0);
+
+  const windowsSection = (
+    <section aria-labelledby="creneaux" className="flex flex-col gap-3">
+      <div className="flex flex-wrap items-end justify-between gap-x-4 gap-y-1">
+        <div className="flex flex-col gap-0.5">
+          <h2 id="creneaux" className="text-xl font-bold">
+            Meilleurs créneaux pour vos appareils
+          </h2>
+          {totalSaving >= SAVING_MIN_EUR && (
+            <p className="text-sm text-ink-soft">
+              ≈ {eur(totalSaving)} économisés en tout, en respectant les contraintes de chaque
+              appareil.
+            </p>
+          )}
+        </div>
+        <Link href={settingsHref("appareils")} className={button.link}>
+          Gérer mes appareils
+        </Link>
+      </div>
+      {!plan.priced ? (
+        <Notice
+          tone="info"
+          title="Ajoutez votre contrat pour chiffrer les créneaux."
+          action={
+            <Link href="/contrats" className={button.secondary}>
+              Ajouter mon contrat
+            </Link>
+          }
+        />
+      ) : plan.appliances === 0 ? (
+        <Notice
+          tone="info"
+          title="Aucun appareil pour l'instant."
+          action={
+            <Link href={settingsHref("appareils")} className={button.secondary}>
+              Ajouter mes appareils
+            </Link>
+          }
+        >
+          Lave-linge, ballon d&apos;eau chaude, recharge du véhicule… : WattsUp cherchera pour
+          chacun le moment le moins cher.
+        </Notice>
+      ) : (
+        <ul className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,280px),1fr))] gap-4">
+          {plan.windows.map(({ appliance, window }) => (
+            <li
+              key={appliance.id}
+              className="flex flex-col gap-3 rounded-card border border-border bg-surface p-5"
+            >
+              <div className="flex items-start gap-3">
+                <span
+                  aria-hidden
+                  className="flex size-10 flex-none items-center justify-center rounded-control bg-bg text-ink"
+                >
+                  <Icon name={appliance.icon} size={20} />
+                </span>
+                <div className="flex min-w-0 flex-1 flex-col">
+                  <h3 className="text-base font-bold">{appliance.name}</h3>
+                  <p className="text-[13px] text-muted">{describeAppliance(appliance)}</p>
+                </div>
+              </div>
+              {window ? (
+                <>
+                  <p className="flex flex-wrap items-center gap-2">
+                    <span className="text-[28px] leading-none font-bold tracking-tight tabular-nums">
+                      {hourLabel(window.start, tz)} – {hourLabel(window.end, tz)}
+                    </span>
+                    {window.solarShare >= 0.5 && (
+                      <Badge tone="positive">{formatPercent(window.solarShare)} solaire</Badge>
+                    )}
+                  </p>
+                  {saving(window) >= SAVING_MIN_EUR ? (
+                    <>
+                      <p className="text-[15px] font-semibold text-positive tabular-nums">
+                        {eur(saving(window))} économisés
+                      </p>
+                      <p className="text-[13px] text-ink-soft tabular-nums">
+                        {eur(window.costEur)} au lieu de {eur(window.nowCostEur)} en le lançant tout
+                        de suite
+                      </p>
+                    </>
+                  ) : (
+                    <p className="text-[13px] text-ink-soft tabular-nums">
+                      ≈ {eur(window.costEur)} : autant le lancer quand vous voulez
+                    </p>
+                  )}
+                  <p className="text-[13px] text-muted">
+                    {windowDay(window.start, plan.today, tz)}
+                  </p>
+                </>
+              ) : (
+                <p className="text-[13px] text-muted">
+                  Pas de créneau d&apos;ici demain soir : sa plage permise est plus courte que sa
+                  durée ?
+                </p>
+              )}
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
+  );
+
+  // « Pourquoi cette heure plutôt que midi ? » : prix du kWh au meilleur créneau et à midi.
+  const best = [...found].sort((x, y) => saving(y.window) - saving(x.window))[0];
+  const bestIndex = best
+    ? plan.hours.findIndex((h) => h.start.getTime() === hourStart(best.window.start))
+    : -1;
+  const noonIndex = best
+    ? plan.hours.findIndex((h) => {
+        const p = localParts(h.start, tz);
+        return p.date === localParts(best.window.start, tz).date && p.hour === 12;
+      })
+    : -1;
+  const bestHour = bestIndex >= 0 ? costs?.[bestIndex] : undefined;
+  const noonHour = noonIndex >= 0 ? costs?.[noonIndex] : undefined;
+  const sunnyNoon = noonIndex >= 0 && (plan.hours[noonIndex]?.solarKwh ?? 0) > 0.2;
+  const bestLabel = best ? localParts(best.window.start, tz).hour : 0;
+  const whySection =
+    best &&
+    bestHour &&
+    noonHour &&
+    saving(best.window) >= SAVING_MIN_EUR &&
+    noonHour.kwhCostEur > bestHour.kwhCostEur + 0.005 &&
+    bestLabel !== 12 ? (
+      <section
+        aria-labelledby="pourquoi"
+        className="flex flex-col gap-4 rounded-card border border-border bg-surface p-6"
+      >
+        <h2 id="pourquoi" className="text-xl font-bold">
+          Pourquoi {bestLabel < 6 || bestLabel >= 22 ? "la nuit" : `à ${bestLabel} h`} plutôt
+          qu&apos;à midi{sunnyNoon ? ", en plein soleil" : ""} ?
+        </h2>
+        <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,300px),1fr))] gap-4">
+          <div className="flex flex-col gap-1 rounded-control bg-bg p-4">
+            <p className="text-sm font-semibold text-ink-soft">Lancé à {bestLabel} h</p>
+            <p className="text-[28px] leading-none font-bold tabular-nums">
+              {(bestHour.kwhCostEur * 100).toLocaleString("fr-FR", { maximumFractionDigits: 1 })} c€
+              <span className="text-base font-normal text-ink-soft"> par kWh</span>
+            </p>
+            <p className="text-sm text-ink-soft text-pretty">
+              {best.window.solarShare >= 0.5
+                ? "Le surplus solaire fait tourner l'appareil sans rien acheter."
+                : "C'est l'un des prix les plus bas de la journée."}
+              {ctx.profile.battery && sunnyNoon && " La batterie garde son soleil pour la soirée."}
+            </p>
+          </div>
+          <div className="flex flex-col gap-1 rounded-control bg-bg p-4">
+            <p className="text-sm font-semibold text-ink-soft">Lancé à 12 h</p>
+            <p className="text-[28px] leading-none font-bold tabular-nums">
+              {(noonHour.kwhCostEur * 100).toLocaleString("fr-FR", { maximumFractionDigits: 1 })} c€
+              <span className="text-base font-normal text-ink-soft"> par kWh</span>
+            </p>
+            <p className="text-sm text-ink-soft text-pretty">
+              {ctx.profile.battery && sunnyNoon
+                ? "Le soleil de midi irait à l'appareil au lieu de la batterie : vous le rachèteriez plus cher le soir."
+                : "Le kWh coûte plus cher à cette heure."}
+            </p>
+          </div>
+        </div>
+      </section>
+    ) : null;
+
   return (
     <>
       {header}
@@ -112,6 +296,8 @@ export default async function ForecastPage() {
         timezone={tz}
         solar={ctx.profile.solar && plan.solarMethod !== null}
         battery={ctx.profile.battery}
+        windows={windowsSection}
+        why={whySection}
         days={plan.days.map((d) => ({ ...d, fullAt: fullByDate.get(d.date) ?? null }))}
         hours={plan.hours.map((h, i) => ({
           start: h.start.toISOString(),
@@ -120,80 +306,11 @@ export default async function ForecastPage() {
           importKwh: h.importKwh,
           exportKwh: h.exportKwh,
           kwhCostEur: costs?.[i]?.kwhCostEur ?? null,
+          priceEur: costs?.[i]?.priceEurKwh ?? null,
           measured: h.measured,
           estimated: h.estimated,
         }))}
       />
-
-      <Card
-        icon="washer"
-        title="Quand lancer vos appareils"
-        description="Le créneau le moins cher d'ici demain soir pour chacun, surplus solaire compris."
-      >
-        {!plan.priced ? (
-          <Notice
-            tone="info"
-            title="Ajoutez votre contrat pour chiffrer les créneaux."
-            action={
-              <Link href="/contrats" className={button.secondary}>
-                Ajouter mon contrat
-              </Link>
-            }
-          />
-        ) : plan.appliances === 0 ? (
-          <Notice
-            tone="info"
-            title="Aucun appareil pour l'instant."
-            action={
-              <Link href={settingsHref("appareils")} className={button.secondary}>
-                Ajouter mes appareils
-              </Link>
-            }
-          >
-            Lave-linge, ballon d&apos;eau chaude, recharge du véhicule… : WattsUp cherchera pour
-            chacun le moment le moins cher.
-          </Notice>
-        ) : (
-          <ul className="flex flex-col divide-y divide-track">
-            {plan.windows.map(({ appliance, window }) => (
-              <li key={appliance.id} className="flex items-start gap-3 py-3 first:pt-0 last:pb-0">
-                <span className="flex size-9 flex-none items-center justify-center rounded-[10px] bg-bg text-ink-soft">
-                  <Icon name={appliance.icon} size={18} />
-                </span>
-                <span className="flex min-w-0 flex-1 flex-col gap-0.5">
-                  <span className="flex flex-wrap items-center gap-2">
-                    <span className="text-[13px] font-semibold">{appliance.name}</span>
-                    {window && window.solarShare >= 0.5 && (
-                      <Badge tone="positive">{formatPercent(window.solarShare)} solaire</Badge>
-                    )}
-                  </span>
-                  {window ? (
-                    <>
-                      <span className="text-[13px] tabular-nums">
-                        {windowLabel(window.start, window.end, plan.today, tz)}
-                      </span>
-                      <span className="text-[11px] text-muted tabular-nums">
-                        ≈ {eur(window.costEur)}
-                        {window.nowCostEur - window.costEur >= SAVING_MIN_EUR
-                          ? ` au lieu de ${eur(window.nowCostEur)} en le lançant dès que possible`
-                          : " : autant le lancer quand vous voulez"}
-                      </span>
-                    </>
-                  ) : (
-                    <span className="text-[11px] text-muted">
-                      Pas de créneau d&apos;ici demain soir : sa plage permise est plus courte que
-                      sa durée ?
-                    </span>
-                  )}
-                </span>
-              </li>
-            ))}
-          </ul>
-        )}
-        <Link href={settingsHref("appareils")} className={`${button.link} self-start`}>
-          Gérer mes appareils
-        </Link>
-      </Card>
 
       <Card
         icon="check"
