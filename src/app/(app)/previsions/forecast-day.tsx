@@ -171,9 +171,16 @@ export function ForecastDay({
           aria-labelledby="achats"
           className="flex flex-col gap-4 rounded-card border border-border bg-surface p-6 sm:p-7"
         >
-          <h2 id="achats" className="text-sm font-semibold text-muted">
-            Achats au réseau prévus demain
-          </h2>
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <h2 id="achats" className="wu-label">
+              Achats au réseau prévus demain
+            </h2>
+            {batteryNote && (
+              <StatusChip tone="estimate">
+                Estimé · {batteryNote.replace(/^Batterie : /, "batterie ").replace(/\.$/, "")}
+              </StatusChip>
+            )}
+          </div>
           <div className="flex flex-wrap items-baseline gap-x-5 gap-y-1">
             <p className="text-[34px] leading-none font-bold tracking-[-0.03em] tabular-nums">
               {day.costEur !== null ? `≈ ${eur(day.costEur)}` : kwh(day.importKwh)}
@@ -192,7 +199,6 @@ export function ForecastDay({
               day.fullAt &&
               ` · batterie pleine vers ${hourLabel(new Date(day.fullAt), timezone)}`}
           </p>
-          {estimateNote}
           {parts.length > 1 && (
             <>
               <Gauge

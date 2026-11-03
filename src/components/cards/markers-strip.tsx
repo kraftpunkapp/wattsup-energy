@@ -174,6 +174,9 @@ export function MarkersStrip({
             Repère
           </button>
         )}
+        {shown.length === 0 && (
+          <span className="text-sm text-muted">Aucun repère sur cette période</span>
+        )}
         {shown.length > 0 && (
           <button
             type="button"

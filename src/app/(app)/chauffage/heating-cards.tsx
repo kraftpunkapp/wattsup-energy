@@ -85,7 +85,6 @@ export function HeatingKpis({ view }: { view: HeatingView }) {
   return (
     <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,200px),1fr))] gap-4">
       <KpiTile
-        icon="tag"
         label="Coût de la saison"
         value={formatNumber(current.cost.totalCents / 100)}
         unit="€"
@@ -95,7 +94,6 @@ export function HeatingKpis({ view }: { view: HeatingView }) {
       {modules.pellet && <PelletTile view={view} previousLabel={previousLabel} />}
       {modules.wood && (
         <KpiTile
-          icon="log"
           tone="wood"
           label="Bois brûlé"
           value={formatNumber(current.fuels.wood?.qty ?? 0, 1)}
@@ -109,7 +107,6 @@ export function HeatingKpis({ view }: { view: HeatingView }) {
       )}
       {modules.electric && (
         <KpiTile
-          icon="plug"
           tone="eheat"
           label="Radiateurs"
           value={formatNumber(current.electricKwh)}
@@ -120,7 +117,6 @@ export function HeatingKpis({ view }: { view: HeatingView }) {
         />
       )}
       <KpiTile
-        icon="thermometer"
         label="Température moyenne"
         value={current.tMean === null ? "—" : formatNumber(current.tMean, 1)}
         unit="°C"
@@ -139,7 +135,6 @@ function PelletTile({ view, previousLabel }: { view: HeatingView; previousLabel:
   const bags = (kg: number) => kg / bagKg;
   return (
     <KpiTile
-      icon="bag"
       tone="pellet"
       label="Granulés versés"
       value={formatNumber(bags(current.fuels.pellet?.qty ?? 0))}
@@ -274,17 +269,23 @@ export function HeatingCostCard({ view }: { view: HeatingView }) {
                   )}
                   <span className="flex h-full w-[40%] flex-col-reverse">
                     {f &&
-                      sources.map((s, i) => (
-                        <span
-                          key={s.key}
-                          // Filet entre deux segments en ombre : une bordure aurait une hauteur
-                          // minimale de 2 px et décollerait de l'axe un segment de quelques centimes.
-                          className={`wu-grow-y block ${s.color} ${
-                            i === sources.length - 1 ? "rounded-t-[4px]" : ""
-                          } ${i > 0 && centsOf(f, s.key) > 0 ? "shadow-[0_2px_0_var(--color-surface)]" : ""}`}
-                          style={{ height: h(centsOf(f, s.key)) }}
-                        />
-                      ))}
+                      (() => {
+                        const filled = sources.map((s) => centsOf(f, s.key) > 0);
+                        const bottom = filled.indexOf(true);
+                        const top = filled.lastIndexOf(true);
+                        return sources.map((s, i) => (
+                          <span
+                            key={s.key}
+                            // Filet entre deux segments en ombre (pas de bordure : elle ferait 2 px
+                            // de haut sur un segment de quelques centimes). Le segment du bas, posé
+                            // sur l'axe, n'en a pas : il masquerait la ligne des abscisses.
+                            className={`wu-grow-y block ${s.color} ${
+                              i === top ? "rounded-t-[4px]" : ""
+                            } ${filled[i] && i !== bottom ? "shadow-[0_2px_0_var(--color-surface)]" : ""}`}
+                            style={{ height: h(centsOf(f, s.key)) }}
+                          />
+                        ));
+                      })()}
                   </span>
                 </div>
               );
@@ -301,8 +302,8 @@ export function HeatingCostCard({ view }: { view: HeatingView }) {
             }`}
           >
             <span className="text-sm font-semibold capitalize">
-              <span className="sm:hidden">{shortMonth(m.key).replace(".", "").slice(0, 3)}</span>
-              <span className="hidden sm:inline">{shortMonth(m.key)}</span>
+              <span className="capitalize sm:hidden">{shortMonth(m.key).replace(".", "").slice(0, 3)}</span>
+              <span className="hidden capitalize sm:inline">{shortMonth(m.key)}</span>
             </span>
             <span className="text-xs whitespace-nowrap text-ink-soft tabular-nums sm:text-[13px]">
               {m.cents === null ? "—" : eur(m.cents)}

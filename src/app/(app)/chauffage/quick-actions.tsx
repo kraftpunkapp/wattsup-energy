@@ -307,11 +307,11 @@ export function FuelCard({ summary }: { summary: FuelSummary }) {
     >
       <div className="flex min-w-0 flex-[1.2_1_420px] flex-col gap-[18px]">
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <h2 id={`fuel-${fuel}`} className="flex items-center gap-2.5 text-[15px] font-bold">
+          <h2 id={`fuel-${fuel}`} className="wu-label flex items-center gap-2.5">
             <span
               aria-hidden
               className={`flex size-9 flex-none items-center justify-center rounded-[10px] ${
-                pellet ? "bg-pellet/15 text-pellet" : "bg-wood/15 text-wood"
+                pellet ? "bg-pellet text-on-fill" : "bg-wood text-on-fill"
               }`}
             >
               <Icon name={pellet ? "bag" : "log"} size={19} />

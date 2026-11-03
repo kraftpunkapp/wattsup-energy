@@ -29,15 +29,16 @@ export function RoiSummary({ view }: { view: RoiView }) {
       aria-label="Économies cumulées"
       className="flex flex-wrap gap-x-10 gap-y-5 rounded-card border border-border bg-surface p-6 sm:px-7"
     >
-      <div className="flex min-w-0 flex-[2_1_420px] flex-col gap-3">
+      <div className="flex min-w-0 flex-[2_1_420px] flex-col gap-4">
+        <h2 className="wu-label">Économies cumulées</h2>
         <p className="flex flex-wrap items-baseline gap-x-3.5 gap-y-1">
-          <span className="wu-amount text-3xl leading-none">{eur(saved)}</span>
-          <span className="text-[15px] text-ink-soft">
-            d&apos;économies cumulées, sur {eur(invested)} investis
+          <span className="wu-amount text-5xl leading-none">{eur(saved)}</span>
+          <span className="text-ink-soft">
+            sur {eur(invested)} investis · {formatPercent(ratio)}
           </span>
         </p>
         <Gauge
-          height={22}
+          height={12}
           label={`${formatPercent(ratio)} amortis : ${items
             .map(
               (i) =>
@@ -52,42 +53,48 @@ export function RoiSummary({ view }: { view: RoiView }) {
             { value: Math.max(0, invested - saved), color: "bg-track" },
           ]}
         />
-        <p className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[13px] text-ink-soft">
-          <span className="flex items-center gap-1.5">
-            <span aria-hidden className="size-2.5 rounded-[3px] bg-solar" />
-            Solaire
-          </span>
-          <span className="flex items-center gap-1.5">
-            <span aria-hidden className="size-2.5 rounded-[3px] bg-battery" />
-            Batterie
-          </span>
-          <span className="wu-mono ml-auto text-xs">{formatPercent(ratio)} amortis</span>
+        <p className="flex flex-wrap items-center gap-x-5 gap-y-1 text-sm text-ink-soft">
+          {items.map((i) => (
+            <span key={i.equipment.kind} className="flex items-center gap-1.5">
+              <span
+                aria-hidden
+                className={`size-2.5 rounded-[3px] ${i.equipment.kind === "solar" ? "bg-solar" : "bg-battery"}`}
+              />
+              {i.equipment.kind === "solar" ? "Solaire" : "Batterie"}{" "}
+              {eur(i.payback.cumulativeCents)}
+            </span>
+          ))}
+          {invested > saved && (
+            <span className="text-muted">
+              Reste <strong className="text-ink">{eur(invested - saved)}</strong> à récupérer
+            </span>
+          )}
         </p>
-        {invested > saved && (
-          <p className="text-sm text-ink-soft">
-            Reste <strong className="text-ink">{eur(invested - saved)}</strong> à récupérer
-          </p>
-        )}
       </div>
       <div className="flex min-w-0 flex-[1_1_280px] flex-col gap-2.5 text-sm">
         <h2 className="wu-label">Économies actuelles</h2>
         {items.map((i) => (
-          <p key={i.equipment.kind} className="flex items-start justify-between gap-3">
+          <p
+            key={i.equipment.kind}
+            className="flex items-center justify-between gap-3 rounded-control bg-bg px-4 py-3"
+          >
             <span className="flex flex-col">
-              <span className="text-ink-soft">
+              <span className="flex items-center gap-2">
+                <span
+                  aria-hidden
+                  className={`size-2.5 rounded-[3px] ${i.equipment.kind === "solar" ? "bg-solar" : "bg-battery"}`}
+                />
                 {i.equipment.kind === "solar" ? "Solaire" : "Batterie"}
               </span>
               <span className="wu-mono text-xs text-muted">{periodLabel(i.recent)}</span>
             </span>
-            <strong className="whitespace-nowrap tabular-nums">
-              {formatNumber(i.payback.monthlyCents / 100)} € / mois
+            <strong className="text-lg whitespace-nowrap tabular-nums">
+              {formatNumber(i.payback.monthlyCents / 100)} €/mois
             </strong>
           </p>
         ))}
         {periods.size > 1 && (
-          <p className="text-[13px] text-muted">
-            Périodes différentes : à ne pas additionner telles quelles.
-          </p>
+          <p className="text-[13px] text-muted">Périodes différentes : ne pas additionner.</p>
         )}
       </div>
     </section>

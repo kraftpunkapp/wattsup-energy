@@ -409,49 +409,34 @@ export function HourlyDetail({
           )}
 
           {showTariff && (
-            <div className="mt-8 flex gap-2">
-              <span
-                className={`flex-none ${AXIS_WIDTH} self-center text-[13px] leading-tight font-semibold text-ink-soft`}
-              >
-                Si vous lancez un appareil
-              </span>
-              <div className="relative flex min-w-0 flex-1 gap-[3px]">
-                {list.map((h) => (
-                  <span
-                    key={h.start}
-                    aria-hidden
-                    className={`h-7 min-w-0 flex-1 rounded ${
-                      h.measured ? "bg-track" : cheap(h) ? "bg-hc" : "bg-grid"
-                    }`}
-                  />
-                ))}
-                {best && (
-                  <>
+            <>
+              <p className="wu-label mt-6">Si vous lancez un appareil</p>
+              <div className="flex gap-2">
+                <span aria-hidden className={`flex-none ${AXIS_WIDTH}`} />
+                <div className="flex min-w-0 flex-1 gap-[3px]">
+                  {list.map((h, i) => (
                     <span
+                      key={h.start}
                       aria-hidden
-                      className="pointer-events-none absolute -top-[5px] -bottom-[5px] rounded-lg border-[2.5px] border-ink"
-                      style={{
-                        left: `calc(${(best.from / n) * 100}% - 3px)`,
-                        width: `calc(${(best.span / n) * 100}% + 2px)`,
-                      }}
+                      className={`h-7 min-w-0 flex-1 rounded-[5px] ${
+                        h.measured ? "bg-track" : cheap(h) ? "bg-hc" : "bg-grid"
+                      } ${
+                        best && i >= best.from && i < best.from + best.span
+                          ? "outline-2 outline-offset-1 outline-ink"
+                          : ""
+                      }`}
                     />
-                    <span
-                      className="absolute -top-[26px] text-[13px] font-bold whitespace-nowrap"
-                      style={{ left: `${(best.from / n) * 100}%` }}
-                    >
-                      Meilleur créneau
-                    </span>
-                  </>
-                )}
+                  ))}
+                </div>
               </div>
-            </div>
+            </>
           )}
 
           <div className="flex gap-2" aria-hidden>
             <span className={`flex-none ${AXIS_WIDTH}`} />
             <div className="flex flex-1 gap-[3px] text-[13px] text-muted">
               {list.map((h, i) => (
-                <span key={h.start} className="min-w-0 flex-1 text-center">
+                <span key={h.start} className="min-w-0 flex-1 flex justify-center whitespace-nowrap">
                   {i % 3 === 0 ? `${localParts(new Date(h.start), timezone).hour} h` : ""}
                 </span>
               ))}
@@ -463,6 +448,12 @@ export function HourlyDetail({
               <span className={`flex-none ${AXIS_WIDTH}`} />
               <div className="flex flex-1 flex-wrap items-center gap-x-4 gap-y-1.5 text-[13px] text-ink-soft">
                 <span className="text-muted">Chaque kWh qu&apos;il consommera vous coûtera :</span>
+                {best && (
+                  <span className="flex items-center gap-1.5">
+                    <span className="size-2.5 rounded-[3px] outline-2 outline-offset-1 outline-ink" />
+                    meilleur créneau
+                  </span>
+                )}
                 <span className="flex items-center gap-1.5">
                   <span className="h-2.5 w-3.5 rounded-[3px] bg-hc" />
                   {cents(minCost)} · le moins cher
@@ -489,57 +480,53 @@ export function HourlyDetail({
                 )
                 .join(", ")}`}
             >
-              <div className="flex items-baseline gap-2">
-                <span className={`flex-none ${AXIS_WIDTH} text-[13px] font-bold`}>
-                  Vos appareils
-                </span>
-                <span className="text-[13px] text-muted">
-                  Créneaux conseillés {date === today ? "pour aujourd'hui" : "pour demain"}
-                </span>
-              </div>
+              <p className="wu-label">
+                Vos appareils · créneaux conseillés {date === today ? "aujourd'hui" : "demain"}
+              </p>
               {slots.map((s) => (
-                <div key={s.id} className="flex items-center gap-2">
-                  <span className={`flex-none ${AXIS_WIDTH} truncate text-[13px] text-ink-soft`}>
-                    {s.name}
-                  </span>
-                  <div
-                    className="relative h-8 min-w-0 flex-1"
-                    style={{
-                      backgroundImage: `repeating-linear-gradient(90deg, transparent 0 calc(100% / ${n} - 1px), var(--color-track) calc(100% / ${n} - 1px) calc(100% / ${n}))`,
-                    }}
-                  >
-                    {(() => {
-                      const label = `${hourLabel(new Date(s.start), timezone)} – ${hourLabel(new Date(s.end), timezone)}`;
-                      // Créneau étroit : l'heure s'écrit à côté de la barre, du côté où il y a de la place.
-                      const narrow = s.span < 4;
-                      const atEnd = s.from + s.span > n - 5;
-                      return (
-                        <>
-                          <span
-                            className="absolute inset-y-0.5 flex items-center gap-1.5 overflow-hidden rounded-lg bg-accent px-2 text-[13px] font-bold whitespace-nowrap text-on-accent"
-                            style={{
-                              left: `${(s.from / n) * 100}%`,
-                              width: `${(s.span / n) * 100}%`,
-                            }}
-                          >
-                            <Icon name={s.icon} size={15} />
-                            {!narrow && label}
-                          </span>
-                          {narrow && (
+                <div key={s.id} className="flex flex-col gap-0.5">
+                  <span className="pl-12 text-sm text-ink-soft">{s.name}</span>
+                  <div className="flex items-center gap-2">
+                    <span aria-hidden className={`flex-none ${AXIS_WIDTH}`} />
+                    <div
+                      className="relative h-8 min-w-0 flex-1"
+                      style={{
+                        backgroundImage: `repeating-linear-gradient(90deg, transparent 0 calc(100% / ${n} - 1px), var(--color-track) calc(100% / ${n} - 1px) calc(100% / ${n}))`,
+                      }}
+                    >
+                      {(() => {
+                        const label = `${hourLabel(new Date(s.start), timezone)} – ${hourLabel(new Date(s.end), timezone)}`;
+                        // Créneau étroit : l'heure s'écrit à côté de la barre, du côté où il y a de la place.
+                        const narrow = s.span < 4;
+                        const atEnd = s.from + s.span > n - 5;
+                        return (
+                          <>
                             <span
-                              className="absolute top-1/2 -translate-y-1/2 text-[13px] font-bold whitespace-nowrap"
-                              style={
-                                atEnd
-                                  ? { right: `${((n - s.from) / n) * 100 + 1}%` }
-                                  : { left: `${((s.from + s.span) / n) * 100 + 1}%` }
-                              }
+                              className="absolute inset-y-0.5 flex items-center gap-1.5 overflow-hidden rounded-lg bg-accent px-2 text-[13px] font-bold whitespace-nowrap text-on-accent"
+                              style={{
+                                left: `${(s.from / n) * 100}%`,
+                                width: `${(s.span / n) * 100}%`,
+                              }}
                             >
-                              {label}
+                              <Icon name={s.icon} size={15} />
+                              {!narrow && label}
                             </span>
-                          )}
-                        </>
-                      );
-                    })()}
+                            {narrow && (
+                              <span
+                                className="absolute top-1/2 -translate-y-1/2 text-[13px] font-bold whitespace-nowrap"
+                                style={
+                                  atEnd
+                                    ? { right: `${((n - s.from) / n) * 100 + 1}%` }
+                                    : { left: `${((s.from + s.span) / n) * 100 + 1}%` }
+                                }
+                              >
+                                {label}
+                              </span>
+                            )}
+                          </>
+                        );
+                      })()}
+                    </div>
                   </div>
                 </div>
               ))}

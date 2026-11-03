@@ -257,13 +257,14 @@ export function StatTile({
 
 /** Teintes des pastilles de pictogramme (une couleur = un sens, comme les tokens). */
 export const ICON_TONES = {
-  neutral: "bg-bg text-ink-soft",
-  grid: "bg-grid/12 text-grid",
-  solar: "bg-solar/15 text-solar-ink",
-  battery: "bg-battery/15 text-positive",
-  pellet: "bg-pellet/15 text-pellet",
-  wood: "bg-wood/15 text-wood",
-  eheat: "bg-eheat/12 text-eheat",
+  neutral: "bg-bg text-ink",
+  grid: "bg-grid text-on-grid",
+  hc: "bg-hc text-on-hc",
+  solar: "bg-solar text-on-hc",
+  battery: "bg-battery text-on-fill",
+  pellet: "bg-pellet text-on-fill",
+  wood: "bg-wood text-on-fill",
+  eheat: "bg-eheat text-on-fill",
 } as const;
 export type IconTone = keyof typeof ICON_TONES;
 
@@ -289,9 +290,22 @@ export function IconChip({
   );
 }
 
-/** Chiffre d'une saison ou d'une période : pastille, libellé, grand chiffre, comparaison. */
+const TONE_SWATCH: Record<IconTone, string> = {
+  neutral: "bg-neutral-bar",
+  grid: "bg-grid",
+  hc: "bg-hc",
+  solar: "bg-solar",
+  battery: "bg-battery",
+  pellet: "bg-pellet",
+  wood: "bg-wood",
+  eheat: "bg-eheat",
+};
+
+/**
+ * Chiffre d'une saison ou d'une période : libellé mono (avec un carré de la couleur de sa
+ * source, le cas échéant), grand chiffre, comparaison et écart en puce.
+ */
 export function KpiTile({
-  icon,
   tone,
   label,
   value,
@@ -299,7 +313,7 @@ export function KpiTile({
   sub,
   chip,
 }: {
-  icon: IconName;
+  /** Source représentée : un carré de sa couleur devant le libellé. */
   tone?: IconTone;
   label: string;
   value: string;
@@ -309,17 +323,19 @@ export function KpiTile({
   chip?: ReactNode;
 }) {
   return (
-    <div className="flex min-w-0 flex-col gap-1.5 rounded-[18px] border border-border bg-surface p-5">
-      <span className="flex items-center gap-2.5">
-        <IconChip icon={icon} tone={tone} />
-        <span className="wu-label">{label}</span>
+    <div className="flex min-w-0 flex-col gap-2 rounded-[18px] border border-border bg-surface p-5">
+      <span className="wu-label flex items-center gap-2">
+        {tone && (
+          <span aria-hidden className={`size-2.5 flex-none rounded-[3px] ${TONE_SWATCH[tone]}`} />
+        )}
+        {label}
       </span>
       <span className="flex flex-wrap items-baseline gap-x-1.5">
-        <span className="wu-amount text-2xl leading-tight">{value}</span>
+        <span className="wu-amount text-[30px] leading-tight">{value}</span>
         {unit && <span className="text-lg font-semibold text-ink-soft">{unit}</span>}
       </span>
       {(sub || chip) && (
-        <span className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[13px] text-muted tabular-nums">
+        <span className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-muted tabular-nums">
           {sub}
           {chip}
         </span>

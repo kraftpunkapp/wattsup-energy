@@ -309,7 +309,7 @@ function NextSeason({
       <div className="flex items-center gap-3">
         <span
           aria-hidden
-          className="flex size-10 flex-none items-center justify-center rounded-control bg-pellet/15 text-ink"
+          className="flex size-10 flex-none items-center justify-center rounded-control bg-pellet text-on-fill"
         >
           <Icon name={pellet ? "bag" : "plus"} size={20} />
         </span>

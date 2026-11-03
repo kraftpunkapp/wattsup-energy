@@ -321,6 +321,9 @@ export function MonthlyCostCard({
             }`}
             bars={days ? [...dayBars, ...futureBars] : [...monthBars, ...estimateBars]}
           />
+          {futureBars.length > 0 && (
+            <p className="text-[13px] text-muted">Pointillés : jours à venir.</p>
+          )}
           {markedCount > 0 && (
             <p className="flex items-center gap-1.5 text-[11px] text-muted">
               <span className="size-[5px] rounded-full bg-ink" />

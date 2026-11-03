@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { PageHeader } from "@/components/page-header";
-import { ArrowLink, button, Card, DeltaChip, Icon, Notice, StatTile, tiles } from "@/components/ui";
+import { ArrowLink, button, DeltaChip, Icon, IconChip, Notice } from "@/components/ui";
 import type { AccuracyDay } from "@/domain/forecast/accuracy";
 import { describeAppliance } from "@/domain/forecast/appliances";
 import { hourLabel } from "@/domain/forecast/summary";
@@ -46,22 +46,20 @@ function windowDay(start: Date, today: string, timezone: string) {
 function LastDay({ day, today }: { day: AccuracyDay; today: string }) {
   const when =
     day.date === addDays(today, -1) ? "hier" : `le ${day.date.slice(8)}/${day.date.slice(5, 7)}`;
+  const tile = (label: string, dot: string, actual: number, forecast: number) => (
+    <div className="flex flex-col gap-1.5 rounded-control bg-bg px-4 py-3.5">
+      <p className="wu-label flex items-center gap-2">
+        <span aria-hidden className={`size-2.5 flex-none rounded-[3px] ${dot}`} />
+        {label}
+      </p>
+      <p className="text-2xl font-semibold tracking-tight">{kwh(actual)}</p>
+      <p className="wu-mono text-xs text-muted">prévue : {kwh(forecast)}</p>
+    </div>
+  );
   return (
-    <div className={tiles}>
-      {day.solar && (
-        <StatTile
-          label={`Production ${when}`}
-          value={kwh(day.solar.actual)}
-          sub={`prévue : ${kwh(day.solar.forecast)}`}
-          dot="bg-solar"
-        />
-      )}
-      <StatTile
-        label={`Consommation ${when}`}
-        value={kwh(day.load.actual)}
-        sub={`prévue : ${kwh(day.load.forecast)}`}
-        dot="bg-neutral-bar"
-      />
+    <div className="grid grid-cols-2 gap-4 max-sm:grid-cols-1">
+      {day.solar && tile(`Production ${when}`, "bg-solar", day.solar.actual, day.solar.forecast)}
+      {tile(`Consommation ${when}`, "bg-ink", day.load.actual, day.load.forecast)}
     </div>
   );
 }
@@ -144,12 +142,8 @@ export default async function ForecastPage() {
     <section aria-labelledby="creneaux" className="flex flex-col gap-3">
       <div className="flex flex-wrap items-end justify-between gap-x-4 gap-y-1">
         <div className="flex flex-col gap-0.5">
-          <h2 id="creneaux" className="text-[15px] font-bold">
-            Meilleurs créneaux pour vos appareils
-            <span className="font-normal text-muted">
-              {" "}
-              · {tabDate === plan.today ? "aujourd'hui" : "demain"}
-            </span>
+          <h2 id="creneaux" className="text-[22px] font-semibold tracking-tight">
+            Meilleurs créneaux pour {tabDate === plan.today ? "aujourd'hui" : "demain"}
           </h2>
           {totalSaving >= SAVING_MIN_EUR && (
             <p className="text-sm text-ink-soft">
@@ -198,14 +192,14 @@ export default async function ForecastPage() {
                   <Icon name={appliance.icon} size={20} />
                 </span>
                 <div className="flex min-w-0 flex-1 flex-col">
-                  <h3 className="text-[15px] font-bold">{appliance.name}</h3>
+                  <h3 className="text-[17px] font-semibold">{appliance.name}</h3>
                   <p className="wu-mono text-xs text-muted">{describeAppliance(appliance)}</p>
                 </div>
               </div>
               {window ? (
                 <>
                   <p className="flex flex-wrap items-center gap-2">
-                    <span className="wu-mono text-xl leading-none font-semibold">
+                    <span className="wu-mono text-[28px] leading-none font-semibold tracking-tight">
                       {hourLabel(window.start, tz)} – {hourLabel(window.end, tz)}
                     </span>
                     {window.solarShare >= 0.5 && (
@@ -272,31 +266,35 @@ export default async function ForecastPage() {
         aria-labelledby="pourquoi"
         className="flex flex-col gap-4 rounded-card border border-border bg-surface p-6"
       >
-        <h2 id="pourquoi" className="text-[15px] font-bold">
+        <h2 id="pourquoi" className="text-lg font-semibold tracking-tight">
           Pourquoi {bestLabel < 6 || bestLabel >= 22 ? "la nuit" : `à ${bestLabel} h`} plutôt
           qu&apos;à midi{sunnyNoon ? ", en plein soleil" : ""} ?
         </h2>
         <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,300px),1fr))] gap-4">
-          <div className="flex flex-col gap-1 rounded-control bg-bg p-4">
-            <p className="text-sm font-semibold text-ink-soft">Lancé à {bestLabel} h</p>
-            <p className="text-xl leading-none font-bold tabular-nums">
-              {(bestHour.kwhCostEur * 100).toLocaleString("fr-FR", { maximumFractionDigits: 1 })} c€
-              <span className="text-[15px] font-normal text-ink-soft"> par kWh</span>
+          <div className="flex flex-col gap-1.5 rounded-control bg-bg p-4">
+            <p className="wu-label">Lancé à {bestLabel} h</p>
+            <p>
+              <span className="text-2xl font-semibold tracking-tight">
+                {(bestHour.kwhCostEur * 100).toLocaleString("fr-FR", { maximumFractionDigits: 1 })}
+              </span>{" "}
+              <span className="wu-mono text-[13px]">c€/kWh</span>
             </p>
-            <p className="text-sm text-ink-soft text-pretty">
+            <p className="text-sm text-muted text-pretty">
               {best.window.solarShare >= 0.5
                 ? "Le surplus solaire fait tourner l'appareil sans rien acheter."
-                : "C'est l'un des prix les plus bas de la journée."}
+                : "L'un des prix les plus bas de la journée."}
               {ctx.profile.battery && sunnyNoon && " La batterie garde son soleil pour la soirée."}
             </p>
           </div>
-          <div className="flex flex-col gap-1 rounded-control bg-bg p-4">
-            <p className="text-sm font-semibold text-ink-soft">Lancé à 12 h</p>
-            <p className="text-xl leading-none font-bold tabular-nums">
-              {(noonHour.kwhCostEur * 100).toLocaleString("fr-FR", { maximumFractionDigits: 1 })} c€
-              <span className="text-[15px] font-normal text-ink-soft"> par kWh</span>
+          <div className="flex flex-col gap-1.5 rounded-control bg-bg p-4">
+            <p className="wu-label">Lancé à 12 h</p>
+            <p>
+              <span className="text-2xl font-semibold tracking-tight">
+                {(noonHour.kwhCostEur * 100).toLocaleString("fr-FR", { maximumFractionDigits: 1 })}
+              </span>{" "}
+              <span className="wu-mono text-[13px]">c€/kWh</span>
             </p>
-            <p className="text-sm text-ink-soft text-pretty">
+            <p className="text-sm text-muted text-pretty">
               {ctx.profile.battery && sunnyNoon
                 ? "Le soleil de midi irait à l'appareil au lieu de la batterie : vous le rachèteriez plus cher le soir."
                 : "Le kWh coûte plus cher à cette heure."}
@@ -338,11 +336,21 @@ export default async function ForecastPage() {
         }))}
       />
 
-      <Card
-        icon="check"
-        title="Fiabilité des prévisions"
-        description="Chaque soir, WattsUp garde sa prévision du lendemain, puis la compare à vos mesures."
+      <section
+        aria-labelledby="fiabilite"
+        className="flex flex-col gap-4 rounded-card border border-border bg-surface p-6 sm:p-7"
       >
+        <div className="flex items-center gap-3">
+          <IconChip icon="check" size="lg" />
+          <div className="flex flex-col gap-0.5">
+            <h2 id="fiabilite" className="text-lg font-semibold tracking-tight">
+              Fiabilité des prévisions
+            </h2>
+            <p className="text-sm text-muted">
+              Chaque soir, WattsUp garde sa prévision du lendemain, puis la compare à vos mesures.
+            </p>
+          </div>
+        </div>
         {accuracy.days.length === 0 ? (
           <p className="text-[13px] text-muted">
             La première comparaison apparaîtra après-demain : la prévision de demain est enregistrée
@@ -351,7 +359,7 @@ export default async function ForecastPage() {
         ) : (
           <>
             {accuracy.days[0] && <LastDay day={accuracy.days[0]} today={plan.today} />}
-            <p className="text-[13px] text-ink-soft">
+            <p className="text-sm text-muted">
               Écart moyen sur {accuracy.days.length} jour{accuracy.days.length > 1 ? "s" : ""} :{" "}
               {[
                 accuracy.solarError !== null && `production ${formatPercent(accuracy.solarError)}`,
@@ -363,7 +371,7 @@ export default async function ForecastPage() {
             </p>
           </>
         )}
-      </Card>
+      </section>
 
       {notes.length > 0 && (
         <ul className="flex flex-col gap-1 px-1 text-[11px] text-muted">

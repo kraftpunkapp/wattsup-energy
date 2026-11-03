@@ -80,14 +80,12 @@ export function AdviceCard({
           <div className="flex min-w-0 flex-[1_1_320px] items-center gap-3">
             <span
               aria-hidden
-              className="flex size-10 flex-none items-center justify-center rounded-xl bg-bg text-ink"
+              className="flex size-10 flex-none items-center justify-center rounded-xl bg-hc text-on-hc"
             >
               <Icon name="moon" size={20} />
             </span>
             <div className="flex flex-col gap-0.5">
-              <h2 className="text-[15px] font-bold">
-                Demain : les bons créneaux pour vos appareils
-              </h2>
+              <h2 className="text-[15px] font-bold">Demain : les bons créneaux</h2>
               {saving >= SAVING_MIN_EUR && (
                 <p className="text-sm text-ink-soft">
                   ≈ {eur(saving)} de moins qu&apos;en les lançant tout de suite

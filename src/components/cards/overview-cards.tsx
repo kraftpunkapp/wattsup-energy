@@ -4,7 +4,6 @@ import { SolarChart } from "@/components/cards/solar-chart";
 
 import { PeriodLink } from "@/components/period-transition";
 import {
-  ArrowLink,
   Badge,
   Banner,
   button,
@@ -31,6 +30,8 @@ import { settingsHref } from "@/lib/settings-tabs";
 type Ok = Extract<Overview, { status: "ok" }>;
 
 const eur = (cents: number) => formatEurFromCents(cents, 0);
+/** Prix de l'énergie en lecture : « 12,9 c€/kWh » (jamais « € € »). */
+const centsPerKwh = (cents: number) => `${formatNumber(cents, 1)} c€/kWh`;
 
 const chevron = (d: string) => (
   <svg
@@ -437,7 +438,7 @@ export function OriginCard({
   if (peak) {
     const sum = peak.hp.kwh + peak.hc.kwh;
     const rate = (p: { kwh: number; energyCents: number }) =>
-      p.kwh > 0 ? formatEurFromCents(p.energyCents / p.kwh, 3) : null;
+      p.kwh > 0 ? centsPerKwh(p.energyCents / p.kwh) : null;
     const hpRate = peak.hp.kwh > 0 ? peak.hp.energyCents / peak.hp.kwh : null;
     const hcRate = peak.hc.kwh > 0 ? peak.hc.energyCents / peak.hc.kwh : null;
     const shifted =
@@ -457,12 +458,12 @@ export function OriginCard({
           items={[
             {
               color: "bg-hc",
-              label: `Heures creuses${rate(peak.hc) ? ` · ${rate(peak.hc)} €` : ""}`,
+              label: `Heures creuses${rate(peak.hc) ? ` · ${rate(peak.hc)}` : ""}`,
               value: `${formatKwh(peak.hc.kwh)} · ${eur(peak.hc.energyCents)}`,
             },
             {
               color: "bg-grid",
-              label: `Heures pleines${rate(peak.hp) ? ` · ${rate(peak.hp)} €` : ""}`,
+              label: `Heures pleines${rate(peak.hp) ? ` · ${rate(peak.hp)}` : ""}`,
               value: `${formatKwh(peak.hp.kwh)} · ${eur(peak.hp.energyCents)}`,
             },
           ]}
@@ -471,7 +472,7 @@ export function OriginCard({
           {pricePerKwh !== null && (
             <Note>
               Prix moyen payé :{" "}
-              <strong className="text-ink">{formatEurFromCents(pricePerKwh, 3)} €/kWh</strong>
+              <strong className="wu-mono text-ink">{centsPerKwh(pricePerKwh)}</strong>
             </Note>
           )}
           {shifted !== null && shifted >= 50 && (
@@ -486,10 +487,7 @@ export function OriginCard({
   }
 
   return (
-    <OriginShell
-      title="Votre consommation"
-      aside={<span>{period.label}</span>}
-    >
+    <OriginShell title="Votre consommation" aside={<span>{period.label}</span>}>
       <Big
         value={formatKwh(total)}
         label={`soit ${formatNumber(total / days(period.from, period.to), 1)} kWh par jour`}
@@ -501,7 +499,7 @@ export function OriginCard({
             {
               color: "bg-grid",
               label: "Prix du kWh",
-              value: `${formatEurFromCents(pricePerKwh, 3)} €`,
+              value: centsPerKwh(pricePerKwh),
             },
           ]}
         />
@@ -797,7 +795,9 @@ export function PaymentBanner({
     <Banner
       actions={
         <>
-          <ArrowLink href="/contrats">Voir le contrat</ArrowLink>
+          <Link href="/contrats" className={`${button.primary} no-underline`}>
+            Voir le contrat
+          </Link>
           {hide}
         </>
       }

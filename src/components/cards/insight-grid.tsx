@@ -14,10 +14,11 @@ const OpenContext = createContext<{ open: string | null; toggle: (id: string) =>
 
 /** Teintes des pastilles de pictogramme (jamais une couleur de sens réutilisée à autre chose). */
 const TONE = {
-  grid: "bg-grid/12 text-grid",
-  pellet: "bg-pellet/15 text-pellet",
-  solar: "bg-solar/15 text-solar-ink",
-  neutral: "bg-track text-ink-soft",
+  grid: "bg-grid text-on-grid",
+  pellet: "bg-pellet text-on-fill",
+  solar: "bg-solar text-on-hc",
+  hc: "bg-hc text-on-hc",
+  neutral: "bg-bg text-ink",
 } as const;
 
 export type InsightTone = keyof typeof TONE;
@@ -80,6 +81,7 @@ export function InsightTile({
   title,
   headline,
   detail,
+  chip,
   visual,
   actions,
 }: {
@@ -89,6 +91,8 @@ export function InsightTile({
   title: string;
   headline: ReactNode;
   detail?: ReactNode;
+  /** Écart ou statut en puce, sous le titre. */
+  chip?: ReactNode;
   visual?: ReactNode;
   actions?: ReactNode;
 }) {
@@ -115,6 +119,7 @@ export function InsightTile({
           <span className="wu-label min-w-0 text-pretty">{title}</span>
         </span>
         <span className="text-base leading-snug font-bold text-pretty">{headline}</span>
+        {chip && <span className="flex">{chip}</span>}
         {detail && <span className="text-sm text-muted text-pretty">{detail}</span>}
         {visual}
         <span className="mt-auto inline-flex items-center gap-1 pt-1 text-[13px] font-semibold">

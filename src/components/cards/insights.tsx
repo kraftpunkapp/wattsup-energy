@@ -29,7 +29,7 @@ export function PeakInsight({ overview, actions }: { overview: Ok; actions?: Rea
     <InsightTile
       id="peak"
       icon="moon"
-      tone="neutral"
+      tone="hc"
       title="Heures creuses"
       actions={actions}
       headline={
@@ -39,7 +39,7 @@ export function PeakInsight({ overview, actions }: { overview: Ok; actions?: Rea
       }
       detail={
         saving !== null && saving >= 100 && hpRate !== null && hcRate !== null
-          ? `${formatKwh(peak.hc.kwh)} à ${formatEurFromCents(hcRate, 3)} € au lieu de ${formatEurFromCents(hpRate, 3)} €`
+          ? `${formatKwh(peak.hc.kwh)} à ${formatNumber(hcRate, 1)} c€/kWh au lieu de ${formatNumber(hpRate, 1)} c€/kWh`
           : undefined
       }
       visual={
@@ -189,10 +189,16 @@ export function SolarInsight({ overview }: { overview: Ok }) {
       title="Solaire"
       headline={
         solar.kwh > 0
-          ? delta !== null && Math.abs(delta) >= 0.005
-            ? `${formatKwh(solar.kwh)} produits, rendement ${delta > 0 ? "+" : "−"}${formatPercent(Math.abs(delta))} par rapport à l'an dernier`
-            : `${formatKwh(solar.kwh)} produits`
+          ? `${formatKwh(solar.kwh)} produits`
           : "Aucune production reçue sur cette période"
+      }
+      chip={
+        solar.kwh > 0 && delta !== null && Math.abs(delta) >= 0.005 ? (
+          <DeltaChip tone={delta > 0 ? "gain" : "cost"}>
+            Rendement {delta > 0 ? "+" : "−"}
+            {formatPercent(Math.abs(delta))} par rapport à l&apos;an dernier
+          </DeltaChip>
+        ) : undefined
       }
       detail={
         solar.kwh > 0 && sunshine > 0

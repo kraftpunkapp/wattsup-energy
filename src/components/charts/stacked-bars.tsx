@@ -118,10 +118,10 @@ export function StackedBars({
                 title={b.title}
                 className={`relative h-full min-w-0 flex-1 ${column}`}
               >
-                {/* Jour à venir : trait en pointillés posé sur l'axe. */}
+                {/* Jour à venir : colonne en pointillés (légende « Pointillés : jours à venir »). */}
                 <span
                   aria-hidden
-                  className="absolute inset-x-[1.5px] bottom-0 border-t-2 border-dashed border-dash"
+                  className="absolute inset-x-[1.5px] inset-y-0 rounded-t-[4px] border border-b-0 border-dashed border-border-strong"
                 />
               </div>
             );
