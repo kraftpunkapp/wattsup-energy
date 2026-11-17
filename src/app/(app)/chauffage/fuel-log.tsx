@@ -76,8 +76,8 @@ function EditRow({
           qty: toNumber(qty),
           unit: item.unit,
           priceEur: item.type === "purchase" && price.trim() !== "" ? toNumber(price) : null,
-          // Une consommation ou un relevé gardent leur heure ; un achat se date au jour.
-          date: item.type === "purchase" && date !== localDay ? date : null,
+          // Sans changement de jour, l'événement garde son heure ; sinon il se date à midi.
+          date: date !== localDay ? date : null,
         }),
       );
       if (res.ok) onDone();
@@ -96,27 +96,26 @@ function EditRow({
           />
         </label>
         {item.type === "purchase" && (
-          <>
-            <label className={labelClass}>
-              Prix total (€)
-              <input
-                inputMode="decimal"
-                value={price}
-                onChange={(e) => setPrice(e.target.value)}
-                className={inputClass}
-              />
-            </label>
-            <label className={labelClass}>
-              Date
-              <input
-                type="date"
-                value={date}
-                onChange={(e) => setDate(e.target.value)}
-                className={inputClass}
-              />
-            </label>
-          </>
+          <label className={labelClass}>
+            Prix total (€)
+            <input
+              inputMode="decimal"
+              value={price}
+              onChange={(e) => setPrice(e.target.value)}
+              placeholder="0 si gratuit"
+              className={inputClass}
+            />
+          </label>
         )}
+        <label className={labelClass}>
+          Date
+          <input
+            type="date"
+            value={date}
+            onChange={(e) => setDate(e.target.value)}
+            className={inputClass}
+          />
+        </label>
       </div>
       {errors.length > 0 && (
         <p role="alert" className="text-sm text-negative">

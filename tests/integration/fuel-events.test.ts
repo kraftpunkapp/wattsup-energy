@@ -94,6 +94,33 @@ describe("combustibles", () => {
     expect(await deleteFuelEvent(ctx, c?.id ?? "")).toBe(true);
     expect(await listFuelEvents(ctx)).toHaveLength(1);
   });
+
+  it("modifier le jour d'une consommation ou d'un relevé le date à midi local", async () => {
+    const ctx = await createTestHousehold();
+    const c = await addQuickConsumption(ctx, "pellet", new Date("2025-10-20T19:00:00Z"));
+    const s = await setStock(
+      ctx,
+      { fuel: "pellet", qty: 5, unit: "bag" },
+      new Date("2025-11-01T09:00:00Z"),
+    );
+    await updateFuelEvent(ctx, c?.id ?? "", {
+      qty: 1,
+      unit: "bag",
+      priceEur: null,
+      date: "2025-10-18",
+    });
+    await updateFuelEvent(ctx, s?.id ?? "", {
+      qty: 5,
+      unit: "bag",
+      priceEur: null,
+      date: "2025-10-30",
+    });
+    const events = await listFuelEvents(ctx);
+    expect(events.map((e) => [e.type, e.at.toISOString()])).toEqual([
+      ["consumption", "2025-10-18T10:00:00.000Z"],
+      ["stock_snapshot", "2025-10-30T11:00:00.000Z"],
+    ]);
+  });
 });
 
 const ownedByB = async (b: HouseholdContext) =>

@@ -158,12 +158,18 @@ export function referencePrice(
     : null;
 }
 
-/** Prix unitaire du dernier achat au prix connu (base de la prévision, SPEC §7.5). */
+/**
+ * Prix unitaire du dernier achat payant (base de la prévision, SPEC §7.5). Un lot gratuit
+ * (bois coupé sur place, don) compte dans le coût réel de la saison mais ne dit rien du
+ * prix de la prochaine commande : il est ignoré ici.
+ */
 export function lastPurchasePrice(
   events: readonly FuelEvent[],
   fuel: Fuel,
   s: FuelSettings,
 ): number | null {
-  const last = pricedPurchases(events, fuel).at(-1);
+  const last = pricedPurchases(events, fuel)
+    .filter((e) => (e.priceEur ?? 0) > 0)
+    .at(-1);
   return last ? unitPrice(last, s) : null;
 }

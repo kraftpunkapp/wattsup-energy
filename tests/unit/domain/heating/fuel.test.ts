@@ -158,4 +158,16 @@ describe("prix", () => {
     expect(lastPurchasePrice(purchases, "pellet", settings)).toBeCloseTo(75 / 150, 9);
     expect(lastPurchasePrice([], "pellet", settings)).toBeNull();
   });
+
+  it("un lot gratuit (0 €) ne sert pas de base à la prévision", () => {
+    const wood = (at: string, qty: number, priceEur: number) =>
+      ev(at, "purchase", qty, "stere", priceEur, "wood");
+    const events = [wood("2025-09-01T10:00:00Z", 4, 320), wood("2025-11-01T10:00:00Z", 3, 0)];
+    expect(lastPurchasePrice(events, "wood", settings)).toBeCloseTo(80, 9);
+    expect(lastPurchasePrice(events.slice(1), "wood", settings)).toBeNull();
+    // mais il compte dans le coût réel de la saison : (320 + 0) / 7 stères
+    expect(
+      referencePrice(events, "wood", settings, new Date("2025-12-01T00:00:00Z"))?.perUnit,
+    ).toBeCloseTo(320 / 7, 9);
+  });
 });

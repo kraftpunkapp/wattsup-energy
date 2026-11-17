@@ -128,7 +128,7 @@ function PurchaseForm({ fuel, onDone }: { fuel: Fuel; onDone: () => void }) {
             inputMode="decimal"
             value={price}
             onChange={(e) => setPrice(e.target.value)}
-            placeholder="facultatif"
+            placeholder="facultatif, 0 si gratuit"
             className={inputClass}
           />
         </label>
