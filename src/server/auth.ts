@@ -18,6 +18,11 @@ const mailOn = mailConfigured();
 
 export const auth = betterAuth({
   database: drizzleAdapter(db, { provider: "pg", schema }),
+  // Session de 90 jours, prolongée à chaque visite (au plus une fois par jour).
+  session: {
+    expiresIn: 60 * 60 * 24 * 90,
+    updateAge: 60 * 60 * 24,
+  },
   emailAndPassword: {
     enabled: true,
     minPasswordLength: 10,
