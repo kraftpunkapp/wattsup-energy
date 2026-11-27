@@ -1,3 +1,4 @@
+import { FetchWake } from "@/components/fetch-wake";
 import { AppNav } from "@/components/nav/app-nav";
 import { ConfirmProvider } from "@/components/ui/confirm";
 import { visibleModules } from "@/domain/profile";
@@ -25,6 +26,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
 
   return (
     <div className="flex min-h-dvh flex-col lg:flex-row">
+      <FetchWake />
       <AppNav
         items={nav}
         userName={ctx.userName || "Moi"}
