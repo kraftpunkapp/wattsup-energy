@@ -406,7 +406,7 @@ function ContractCard(props: CardProps) {
             {fmtDate(shown.validFrom)}
           </span>
         )}
-        <GridView contract={shown.contract} />
+        <GridView contract={shown.contract} date={refDate} />
         {upcoming && (
           <p className="rounded-control border border-dashed border-border-strong px-3 py-2 text-xs text-muted tabular-nums">
             Nouveaux prix à partir du{" "}

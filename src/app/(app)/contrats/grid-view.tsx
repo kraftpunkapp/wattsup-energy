@@ -1,7 +1,8 @@
 import { SpotSourceNote } from "@/components/market-source-note";
-import { StatTile, tiles } from "@/components/ui";
+import { Badge, StatTile, tiles } from "@/components/ui";
 import { monthsLabel } from "@/domain/tariff/seasons";
-import type { Contract, TempoColor, TimeRange } from "@/domain/tariff/types";
+import { offPeakRangesAt } from "@/domain/tariff/off-peak";
+import type { Contract, TempoColor, TimeRange, HphcContract } from "@/domain/tariff/types";
 
 // Lecture d'une grille de prix : chiffres en Instrument Sans tabulaire (lisibles en petit
 // corps), libellé au-dessus, unité à côté.
@@ -47,7 +48,21 @@ const span = (from: number, to: number) =>
  * « Votre journée tarifaire » : une frise de 24 h, heures pleines en bleu, plages creuses en
  * bleu clair, chacune avec son prix. Une plage peut passer minuit (elle est coupée en deux).
  */
-function HcBar({ ranges, hp, hc }: { ranges: TimeRange[]; hp: number; hc: number }) {
+function HcBar({
+  ranges,
+  hp,
+  hc,
+  season,
+  current = true,
+}: {
+  ranges: TimeRange[];
+  hp: number;
+  hc: number;
+  /** Titre de la saison quand l'été a ses horaires ; absent : toute l'année. */
+  season?: { title: string; name: string };
+  /** Saison du jour : légende et rappel des Prévisions. */
+  current?: boolean;
+}) {
   const cut = ranges
     .flatMap((r) => {
       const from = minutes(r.from);
@@ -94,10 +109,13 @@ function HcBar({ ranges, hp, hc }: { ranges: TimeRange[]; hp: number; hc: number
   };
   return (
     <div className="flex flex-col gap-2">
-      <h3 className="text-sm font-bold">Votre journée tarifaire</h3>
+      <div className="flex items-center gap-2">
+        <h3 className="text-sm font-bold">{season?.title ?? "Votre journée tarifaire"}</h3>
+        {season && current && <Badge>En cours</Badge>}
+      </div>
       <div
         role="img"
-        aria-label={`Heures creuses ${label} ; heures pleines le reste de la journée`}
+        aria-label={`${season ? `${season.name} : heures` : "Heures"} creuses ${label} ; heures pleines le reste de la journée`}
         className="relative h-12 overflow-hidden rounded-control bg-grid"
       >
         {full.map(([from, to]) => seg(from, to, false))}
@@ -110,7 +128,9 @@ function HcBar({ ranges, hp, hc }: { ranges: TimeRange[]; hp: number; hc: number
         <span>18 h</span>
         <span>24 h</span>
       </div>
-      <ul className="flex flex-wrap gap-x-5 gap-y-1 text-[13px] sm:hidden">
+      <ul
+        className={`flex-wrap gap-x-5 gap-y-1 text-[13px] sm:hidden ${current ? "flex" : "hidden"}`}
+      >
         <li className="flex items-center gap-1.5">
           <span aria-hidden className="size-2.5 rounded-[3px] bg-grid" />
           Heures pleines (HP) <span className="wu-mono text-xs">{fmtPrice(hp)} €/kWh</span>
@@ -121,15 +141,40 @@ function HcBar({ ranges, hp, hc }: { ranges: TimeRange[]; hp: number; hc: number
         </li>
       </ul>
       <p className="text-sm text-ink-soft text-pretty">
-        Creuses : {cut.map(([f, t]) => span(f, t)).join(" et ")}. Ce sont ces horaires qui guident
-        vos créneaux dans Prévisions.
+        Creuses : {cut.map(([f, t]) => span(f, t)).join(" et ")}.
+        {current && " Ce sont ces horaires qui guident vos créneaux dans Prévisions."}
       </p>
     </div>
   );
 }
 
-/** Prix d'une grille, mis en forme selon le type de contrat. */
-export function GridView({ contract }: { contract: Contract }) {
+/** Une frise, ou deux (hiver, été) quand l'été a ses horaires : la saison du jour signalée. */
+function HcDay({ contract, date }: { contract: HphcContract; date: string }) {
+  const { prices, hcRanges, summerHcRanges } = contract;
+  if (!summerHcRanges) return <HcBar ranges={hcRanges} hp={prices.hp} hc={prices.hc} />;
+  const summerNow = offPeakRangesAt(contract, date) === summerHcRanges;
+  return (
+    <>
+      <HcBar
+        ranges={hcRanges}
+        hp={prices.hp}
+        hc={prices.hc}
+        season={{ title: "Hiver (nov. – mars)", name: "Hiver" }}
+        current={!summerNow}
+      />
+      <HcBar
+        ranges={summerHcRanges}
+        hp={prices.hp}
+        hc={prices.hc}
+        season={{ title: "Été (avr. – oct.)", name: "Été" }}
+        current={summerNow}
+      />
+    </>
+  );
+}
+
+/** Prix d'une grille, mis en forme selon le type de contrat ; `date` : jour des prix. */
+export function GridView({ contract, date }: { contract: Contract; date: string }) {
   switch (contract.kind) {
     case "base":
       return (
@@ -141,7 +186,7 @@ export function GridView({ contract }: { contract: Contract }) {
     case "hphc":
       return (
         <div className="flex flex-col gap-4">
-          <HcBar ranges={contract.hcRanges} hp={contract.prices.hp} hc={contract.prices.hc} />
+          <HcDay contract={contract} date={date} />
           <p className="text-sm text-ink-soft">
             Abonnement :{" "}
             <strong className="text-ink tabular-nums">

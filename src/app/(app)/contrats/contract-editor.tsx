@@ -121,6 +121,24 @@ function RangesField({
   );
 }
 
+/** Plages creuses titrées : un groupe par saison quand l'été en a d'autres (T81). */
+function HoursField({
+  label,
+  ranges,
+  onChange,
+}: {
+  label: string;
+  ranges: TimeRange[];
+  onChange: (r: TimeRange[]) => void;
+}) {
+  return (
+    <div role="group" aria-label={label} className="flex flex-col gap-1.5">
+      <span className="text-xs text-muted">{label}</span>
+      <RangesField ranges={ranges} onChange={onChange} />
+    </div>
+  );
+}
+
 const MONTH_CHOICES: { id: MonthsPreset; label: string }[] = [
   { id: "all", label: "Toujours" },
   { id: "winter", label: "Hiver" },
@@ -435,13 +453,36 @@ export function GridFields({
                 onChange={(hc) => onChange({ ...contract, prices: { ...contract.prices, hc } })}
               />
             </div>
-            <div className="flex flex-col gap-1.5">
-              <span className="text-xs text-muted">Plages d&apos;heures creuses</span>
-              <RangesField
-                ranges={contract.hcRanges}
-                onChange={(hcRanges) => onChange({ ...contract, hcRanges })}
+            <label className="flex items-center gap-2 text-[13px]">
+              <input
+                type="checkbox"
+                checked={contract.summerHcRanges !== undefined}
+                onChange={(e) => {
+                  const next = { ...contract, summerHcRanges: structuredClone(contract.hcRanges) };
+                  if (e.target.checked) return onChange(next);
+                  delete (next as { summerHcRanges?: TimeRange[] }).summerHcRanges;
+                  onChange(next);
+                }}
+                className="size-4 accent-accent"
               />
-            </div>
+              Horaires différents en été
+            </label>
+            <HoursField
+              label={
+                contract.summerHcRanges
+                  ? "Heures creuses d'hiver (nov. – mars)"
+                  : "Plages d'heures creuses"
+              }
+              ranges={contract.hcRanges}
+              onChange={(hcRanges) => onChange({ ...contract, hcRanges })}
+            />
+            {contract.summerHcRanges && (
+              <HoursField
+                label="Heures creuses d'été (avr. – oct.)"
+                ranges={contract.summerHcRanges}
+                onChange={(summerHcRanges) => onChange({ ...contract, summerHcRanges })}
+              />
+            )}
           </>
         )}
 

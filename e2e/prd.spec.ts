@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { ALL_ON, open, setDemoProfile } from "./helpers";
+import { ALL_ON, expectNoHorizontalScroll, open, setDemoProfile } from "./helpers";
 
 // Parcours du PRD (§ « Parcours utilisateurs ») sur le foyer de démo.
 test.describe.configure({ mode: "serial" });
@@ -67,4 +67,38 @@ test("parcours 3 : rentabilité solaire et batterie, mise à jour du coût", asy
   const battery = page.locator("section", { has: page.getByRole("heading", { name: /Batterie/ }) });
   await battery.getByText("D'où viennent ces économies").click();
   await expect(battery.getByText(/Électricité évitée \(décharge\)/)).toBeVisible();
+});
+
+test("heures creuses d'été : saisie, deux frises, puis retour à une seule", async ({
+  page,
+}, info) => {
+  const name = `Été ${info.project.name}`;
+  await open(page, "/contrats");
+  await page.getByRole("button", { name: "Ajouter un contrat" }).click();
+  await page.getByRole("button", { name: /^Heures creuses/ }).click();
+  await page.getByLabel("Nom", { exact: true }).fill(name);
+  await page.getByRole("checkbox", { name: "Horaires différents en été" }).check();
+  await expect(page.getByText("Heures creuses d'hiver (nov. – mars)")).toBeVisible();
+  await expect(page.getByText("Heures creuses d'été (avr. – oct.)")).toBeVisible();
+  await page.getByRole("button", { name: "Enregistrer" }).click();
+
+  const others = page.getByText(/Gérer mes autres contrats/);
+  const card = page.locator("li", { has: page.getByRole("heading", { name }) });
+  await others.click();
+  await expect(card.getByRole("heading", { name: "Hiver (nov. – mars)" })).toBeVisible();
+  await expect(card.getByRole("heading", { name: "Été (avr. – oct.)" })).toBeVisible();
+  await expectNoHorizontalScroll(page);
+
+  await card.getByRole("button", { name: "Modifier les prix" }).click();
+  await page.getByRole("checkbox", { name: "Horaires différents en été" }).uncheck();
+  await page.getByRole("button", { name: "Enregistrer" }).click();
+  await expect(others).toBeVisible();
+  if (!(await card.isVisible())) await others.click();
+  await expect(card.getByRole("img", { name: /^Heures creuses de/ })).toHaveCount(1);
+  await expect(card.getByRole("heading", { name: "Été (avr. – oct.)" })).toHaveCount(0);
+
+  // Le foyer de démo retrouve ses seuls contrats.
+  await card.getByRole("button", { name: `Supprimer « ${name} »` }).click();
+  await page.getByRole("button", { name: "Supprimer", exact: true }).click();
+  await expect(card).toHaveCount(0);
 });
