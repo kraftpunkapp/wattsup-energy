@@ -32,6 +32,11 @@ const hphc = z.object({
   subscriptionEurYear: subscription,
   prices: z.object({ hp: price, hc: price }),
   hcRanges: z.array(range).min(1, "au moins une plage d'heures creuses").superRefine(checkRanges),
+  summerHcRanges: z
+    .array(range)
+    .min(1, "au moins une plage d'heures creuses en été")
+    .superRefine(checkRanges)
+    .optional(),
 });
 
 const slotPrices = z.object({ hp: price, hc: price });

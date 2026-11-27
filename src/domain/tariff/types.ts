@@ -15,11 +15,18 @@ export interface BaseContract {
   priceEurKwh: number;
 }
 
-export interface HphcContract {
+/** Heures creuses d'un compteur (T81). */
+export interface OffPeakHours {
+  /** Plages creuses : toute l'année, ou de novembre à mars si l'été en a d'autres. */
+  hcRanges: TimeRange[];
+  /** Plages d'avril à octobre, quand elles diffèrent. */
+  summerHcRanges?: TimeRange[];
+}
+
+export interface HphcContract extends OffPeakHours {
   kind: "hphc";
   subscriptionEurYear: number;
   prices: Record<Slot, number>;
-  hcRanges: TimeRange[];
 }
 
 export type TempoColor = "bleu" | "blanc" | "rouge";

@@ -1,6 +1,6 @@
 import { toSegments } from "./base-hphc";
 import { priceIntervals } from "./engine";
-import type { Contract, PriceableInterval, PricingContext } from "./types";
+import type { Contract, PriceableInterval, PricingContext, TimeRange } from "./types";
 
 // Comparaison de contrats sur une même consommation (T18). Fonction pure : la requête
 // qui charge les intervalles vit dans src/server/queries/contracts.ts.
@@ -28,10 +28,13 @@ export interface ComparedContract extends ContractToCompare {
 
 const TEMPO_HC = [{ from: "22:00", to: "06:00" }];
 
-/** Plages creuses d'un contrat, normalisées (null si le contrat n'a pas de notion HP/HC). */
+const segmentsOf = (ranges: TimeRange[]) => toSegments(ranges).sort((a, b) => a[0] - b[0]);
+
+/** Plages creuses d'hiver et d'été, normalisées (null sans notion HP/HC). */
 function offPeakSignature(c: Contract): string | null {
-  const ranges = c.kind === "hphc" ? c.hcRanges : c.kind === "tempo" ? TEMPO_HC : null;
-  return ranges ? JSON.stringify(toSegments(ranges).sort((a, b) => a[0] - b[0])) : null;
+  if (c.kind === "tempo") return JSON.stringify([segmentsOf(TEMPO_HC), segmentsOf(TEMPO_HC)]);
+  if (c.kind !== "hphc") return null;
+  return JSON.stringify([segmentsOf(c.hcRanges), segmentsOf(c.summerHcRanges ?? c.hcRanges)]);
 }
 
 /**

@@ -1,5 +1,6 @@
 import { parseHm } from "@/lib/time";
 import type { BaseContract, HphcContract, Slot, TimeRange } from "./types";
+import { offPeakRangesAt } from "./off-peak";
 import type { Pricer, Share } from "./pricer";
 
 const DAY_MIN = 1440;
@@ -38,7 +39,11 @@ export function basePricer(contract: BaseContract): Pricer {
 }
 
 export function hphcPricer(contract: HphcContract): Pricer {
-  const segments = toSegments(contract.hcRanges);
+  // Deux saisons au plus, préparées une fois.
+  const winter = toSegments(contract.hcRanges);
+  const summer = contract.summerHcRanges ? toSegments(contract.summerHcRanges) : winter;
+  const segmentsAt = (date: string) =>
+    offPeakRangesAt(contract, date) === contract.hcRanges ? winter : summer;
   const split = (hc: number): Share[] =>
     [
       { key: "hc", price: contract.prices.hc, fraction: hc },
@@ -47,14 +52,13 @@ export function hphcPricer(contract: HphcContract): Pricer {
   const slotShare = (slot: Slot): Share[] => [
     { key: slot, price: contract.prices[slot], fraction: 1 },
   ];
-  // Sans créneau, on suppose une consommation uniforme sur la journée.
-  const hcShareOfDay = coveredFraction(segments, 0, DAY_MIN);
-
   return {
-    hour: (local) => split(coveredFraction(segments, local.hour * 60 + local.minute, 60)),
-    day: (_date, slot) =>
+    hour: (local) =>
+      split(coveredFraction(segmentsAt(local.date), local.hour * 60 + local.minute, 60)),
+    day: (date, slot) =>
       slot
         ? { shares: slotShare(slot), approximated: false }
-        : { shares: split(hcShareOfDay), approximated: true },
+        : // Sans créneau, on suppose une consommation uniforme sur la journée.
+          { shares: split(coveredFraction(segmentsAt(date), 0, DAY_MIN)), approximated: true },
   };
 }
