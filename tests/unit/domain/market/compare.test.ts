@@ -62,7 +62,17 @@ describe("plages creuses du foyer", () => {
         prices: { hp: 1, hc: 1 },
         hcRanges: hc,
       }),
-    ).toEqual(hc);
+    ).toEqual({ hcRanges: hc });
+    const summerHcRanges = [{ from: "12:00", to: "15:00" }];
+    expect(
+      householdOffPeak({
+        kind: "hphc",
+        subscriptionEurYear: 1,
+        prices: { hp: 1, hc: 1 },
+        hcRanges: hc,
+        summerHcRanges,
+      }),
+    ).toEqual({ hcRanges: hc, summerHcRanges });
     expect(
       householdOffPeak({
         kind: "tempo",
@@ -73,7 +83,7 @@ describe("plages creuses du foyer", () => {
           rouge: { hp: 1, hc: 1 },
         },
       }),
-    ).toEqual([{ from: "22:00", to: "06:00" }]);
+    ).toEqual({ hcRanges: [{ from: "22:00", to: "06:00" }] });
     expect(householdOffPeak(current)).toBeNull();
     expect(householdOffPeak(null)).toBeNull();
   });

@@ -1,5 +1,5 @@
 import { compareContracts } from "../tariff/compare";
-import type { Contract, PriceableInterval, PricingContext, TimeRange } from "../tariff/types";
+import type { Contract, OffPeakHours, PriceableInterval, PricingContext } from "../tariff/types";
 import {
   CHOOSABLE_DAYS,
   DEFAULT_OFF_PEAK,
@@ -26,9 +26,12 @@ export function parseMeterPower(value: unknown): MeterPower | null {
  * Plages creuses du compteur, déduites du contrat actuel : celles d'un contrat HP/HC, celles
  * de Tempo (22 h – 6 h) ; null sinon (une offre à plages libres les suppose alors).
  */
-export function householdOffPeak(current: Contract | null): TimeRange[] | null {
-  if (current?.kind === "hphc") return current.hcRanges;
-  if (current?.kind === "tempo") return DEFAULT_OFF_PEAK;
+export function householdOffPeak(current: Contract | null): OffPeakHours | null {
+  if (current?.kind === "hphc") {
+    const { hcRanges, summerHcRanges } = current;
+    return { hcRanges, ...(summerHcRanges && { summerHcRanges }) };
+  }
+  if (current?.kind === "tempo") return { hcRanges: DEFAULT_OFF_PEAK };
   return null;
 }
 

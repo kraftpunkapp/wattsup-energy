@@ -48,6 +48,7 @@ const tempo: TempoContract = {
 describe("consumptionAdvice", () => {
   it("surplus solaire puis heures creuses d'un contrat HP/HC", () => {
     const advice = consumptionAdvice({
+      date: "2026-10-07",
       surplus: { from: 11, to: 15, kwhPerHour: 0.85 },
       contract: hphc,
       tomorrow: null,
@@ -61,6 +62,7 @@ describe("consumptionAdvice", () => {
 
   it("Tempo : demain rouge en premier, avec son prix", () => {
     const advice = consumptionAdvice({
+      date: "2026-10-07",
       surplus: null,
       contract: tempo,
       tomorrow: { color: "rouge" },
@@ -76,23 +78,57 @@ describe("consumptionAdvice", () => {
 
   it("Tempo : couleur de demain pas encore connue ; jour bleu", () => {
     expect(
-      consumptionAdvice({ surplus: null, contract: tempo, tomorrow: { color: null } })[0]?.title,
+      consumptionAdvice({
+        date: "2026-10-07",
+        surplus: null,
+        contract: tempo,
+        tomorrow: { color: null },
+      })[0]?.title,
     ).toBe("Couleur de demain pas encore publiée");
     expect(
-      consumptionAdvice({ surplus: null, contract: tempo, tomorrow: { color: "bleu" } })[0],
+      consumptionAdvice({
+        date: "2026-10-07",
+        surplus: null,
+        contract: tempo,
+        tomorrow: { color: "bleu" },
+      })[0],
     ).toMatchObject({ tone: "positive", title: "Demain, jour bleu" });
     expect(
-      consumptionAdvice({ surplus: null, contract: tempo, tomorrow: { color: "blanc" } })[0]?.text,
+      consumptionAdvice({
+        date: "2026-10-07",
+        surplus: null,
+        contract: tempo,
+        tomorrow: { color: "blanc" },
+      })[0]?.text,
     ).toBe("Heures pleines à 0,187 € le kWh, un peu plus qu'un jour bleu (0,161 €).");
   });
 
   it("contrat Base sans surplus : aucun conseil", () => {
     expect(
       consumptionAdvice({
+        date: "2026-10-07",
         surplus: null,
         contract: { kind: "base", subscriptionEurYear: 200, priceEurKwh: 0.25 },
         tomorrow: null,
       }),
     ).toEqual([]);
+  });
+});
+
+describe("heures creuses d'été (T81)", () => {
+  const seasonal: HphcContract = {
+    ...hphc,
+    hcRanges: [{ from: "23:00", to: "07:00" }],
+    summerHcRanges: [
+      { from: "02:00", to: "07:00" },
+      { from: "12:00", to: "15:00" },
+    ],
+  };
+  const title = (date: string) =>
+    consumptionAdvice({ date, surplus: null, contract: seasonal, tomorrow: null })[0]?.title;
+
+  it("les plages annoncées sont celles de la saison du jour", () => {
+    expect(title("2027-06-01")).toBe("Heures creuses : 2 h – 7 h et 12 h – 15 h");
+    expect(title("2027-01-15")).toBe("Heures creuses : 23 h – 7 h");
   });
 });

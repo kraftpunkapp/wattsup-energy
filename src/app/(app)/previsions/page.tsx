@@ -5,6 +5,8 @@ import type { AccuracyDay } from "@/domain/forecast/accuracy";
 import { describeAppliance } from "@/domain/forecast/appliances";
 import { hourLabel } from "@/domain/forecast/summary";
 import { coveredFraction, toSegments } from "@/domain/tariff/base-hphc";
+import { offPeakRangesAt } from "@/domain/tariff/off-peak";
+import type { OffPeakHours } from "@/domain/tariff/types";
 import { formatEurFromCents, formatKwh, formatPercent } from "@/lib/format";
 import { addDays, localParts } from "@/lib/time";
 import { settingsHref } from "@/lib/settings-tabs";
@@ -24,9 +26,10 @@ const SAVING_MIN_EUR = 0.05;
 
 const HOUR_MS = 3_600_000;
 
-/** Part (0–1) de l'heure qui tombe en heures creuses, dans l'heure locale du foyer. */
-function offPeakShareOf(start: Date, segments: [number, number][], timezone: string) {
+/** Part (0–1) de l'heure en heures creuses, dans l'heure locale et la saison du foyer. */
+function offPeakShareOf(start: Date, hours: OffPeakHours, timezone: string) {
   const p = localParts(start, timezone);
+  const segments = toSegments(offPeakRangesAt(hours, p.date));
   return coveredFraction(segments, p.hour * 60 + p.minute, 60);
 }
 const hourStart = (d: Date) => d.getTime() - (d.getTime() % HOUR_MS);
@@ -108,7 +111,7 @@ export default async function ForecastPage() {
   const tz = ctx.timezone;
   const fullByDate = new Map(plan.fullAt.map((f) => [f.date, f.start.toISOString()]));
   const costs = plan.priced?.hours;
-  const offPeak = plan.priced?.offPeak ? toSegments(plan.priced.offPeak) : null;
+  const offPeak = plan.priced?.offPeak ?? null;
   const notes = [
     ctx.profile.solar && plan.solarMethod === null
       ? "Indiquez votre commune (Réglages › Localisation) pour prévoir la production solaire."

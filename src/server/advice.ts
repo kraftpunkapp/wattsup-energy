@@ -51,6 +51,7 @@ export async function getAdvice(ctx: HouseholdContext, now = new Date()): Promis
         null)
       : null;
   return consumptionAdvice({
+    date: today,
     surplus: surplusWindow(profile),
     contract,
     tomorrow: contract?.kind === "tempo" ? { color } : null,

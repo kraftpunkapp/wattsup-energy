@@ -1,7 +1,14 @@
 import { z } from "zod";
 import { toSegments } from "../tariff/base-hphc";
 import { parseContractInput } from "../tariff/schema";
-import type { Contract, CustomContract, CustomRule, TimeRange } from "../tariff/types";
+import { SUMMER_MONTHS, WINTER_MONTHS } from "../tariff/seasons";
+import type {
+  Contract,
+  CustomContract,
+  CustomRule,
+  OffPeakHours,
+  TimeRange,
+} from "../tariff/types";
 import { findCallArguments, literalAfter, type Literal } from "./literal";
 
 // Offres du marché (SPEC §7.12) : définitions de la source comparateur-abonnements-
@@ -168,7 +175,7 @@ const hasChosenDay = (t: SourceTariff) =>
 export function toContract(
   t: SourceTariff,
   kva: number,
-  householdOffPeak: TimeRange[] | null,
+  householdOffPeak: OffPeakHours | null,
   chosenDay?: number,
 ): MarketContract | null {
   if (!(String(kva) in t.subscriptions)) return null;
@@ -245,7 +252,7 @@ const byDayTypeRanges = (v: unknown): TimeRange[] | null => {
 function build(
   t: SourceTariff,
   kva: number,
-  household: TimeRange[] | null,
+  household: OffPeakHours | null,
   chosenDay?: number,
 ): Built {
   const rule = t.dayRule;
@@ -281,15 +288,15 @@ function build(
   // Plages creuses : fixes (liste), libres (« custom » : celles du foyer) ou absentes.
   let householdOffPeak = false;
   let assumedOffPeak = false;
-  const offPeak = (): TimeRange[] | null => {
+  const offPeak = (): OffPeakHours | null => {
     if (t.hcRanges === "custom") {
       householdOffPeak = true;
-      if (household && household.length > 0) return household;
+      if (household && household.hcRanges.length > 0) return household;
       assumedOffPeak = true;
-      return DEFAULT_OFF_PEAK;
+      return { hcRanges: DEFAULT_OFF_PEAK };
     }
     const r = rangesSchema.safeParse(t.hcRanges);
-    return r.success ? r.data : null;
+    return r.success ? { hcRanges: r.data } : null;
   };
 
   const subscriptionEurYear = Math.round((t.subscriptions[String(kva)] as number) * 1200) / 100;
@@ -304,13 +311,13 @@ function build(
         const single = "price" in main ? main.price : main.HP;
         contract = { kind: "base", subscriptionEurYear, priceEurKwh: eur(single) };
       } else {
-        const hcRanges = offPeak();
-        if (!hcRanges) return { reason: "unknown" };
+        const hours = offPeak();
+        if (!hours) return { reason: "unknown" };
         contract = {
           kind: "hphc",
           subscriptionEurYear,
           prices: { hp: eur(main.HP), hc: eur(main.HC) },
-          hcRanges,
+          ...hours,
         };
       }
     } else {
@@ -424,31 +431,48 @@ function build(
 
   /**
    * Règles d'un type de jour sur `days` (et `months`) : prix unique, ou heures creuses puis
-   * pleines. Sans plage creuse (liste vide), tout est au prix des heures pleines.
+   * pleines. Sans plage creuse (liste vide), tout est au prix des heures pleines. Un foyer aux
+   * horaires d'été différents a ses règles par saison, restreintes aux mois demandés.
    */
   function withOffPeak(
     s: DayTypeSpec,
     days: number[],
-    ranges: () => TimeRange[] | null,
+    ranges: () => OffPeakHours | null,
     labels: { hp: string; hc: string; single: string },
     months?: number[],
   ): CustomRule[] | null {
-    const m = months ? { months } : {};
     if (days.length === 0) return [];
-    const single = (price: number) => [
-      { label: labels.single, days, ranges: ALL_DAY, price: eur(price), ...m },
+    const single = (price: number, m?: number[]) => [
+      { label: labels.single, days, ranges: ALL_DAY, price: eur(price), ...(m && { months: m }) },
     ];
-    if ("price" in s) return single(s.price);
-    if (s.HP === s.HC) return single(s.HP);
-    const hc = ranges();
-    if (!hc) return null;
-    if (hc.length === 0) return single(s.HP);
-    // Heures creuses toute la journée (week-end Enercoop) : un seul prix.
-    if (toSegments(hc).reduce((a, [from, to]) => a + to - from, 0) >= 1440) return single(s.HC);
-    return [
-      { label: labels.hc, days, ranges: hc, price: eur(s.HC), ...m },
-      { label: labels.hp, days, ranges: ALL_DAY, price: eur(s.HP), ...m },
+    if ("price" in s) return single(s.price, months);
+    if (s.HP === s.HC) return single(s.HP, months);
+    const hours = ranges();
+    if (!hours) return null;
+    const split = (hc: TimeRange[], suffix: string, m?: number[]): CustomRule[] => {
+      const rule = (label: string, list: TimeRange[], price: number) => ({
+        label: `${label}${suffix}`,
+        days,
+        ranges: list,
+        price: eur(price),
+        ...(m && { months: m }),
+      });
+      if (hc.length === 0) return [rule(labels.single, ALL_DAY, s.HP)];
+      // Heures creuses toute la journée (week-end Enercoop) : un seul prix.
+      if (toSegments(hc).reduce((a, [from, to]) => a + to - from, 0) >= 1440) {
+        return [rule(labels.single, ALL_DAY, s.HC)];
+      }
+      return [rule(labels.hc, hc, s.HC), rule(labels.hp, ALL_DAY, s.HP)];
+    };
+    if (!hours.summerHcRanges) return split(hours.hcRanges, "", months);
+    const seasons: [number[], TimeRange[], string][] = [
+      [WINTER_MONTHS, hours.hcRanges, " (hiver)"],
+      [SUMMER_MONTHS, hours.summerHcRanges, " (été)"],
     ];
+    return seasons.flatMap(([season, hc, suffix]) => {
+      const m = months ? months.filter((x) => season.includes(x)) : season;
+      return m.length > 0 ? split(hc, suffix, m) : [];
+    });
   }
 
   /**
@@ -469,8 +493,11 @@ function build(
     const weekend = r.weekendDays === undefined ? null : dayList(r.weekendDays);
     if (r.weekendDays !== undefined && !weekend) return { reason: "unknown" };
     const hc = t.hcRanges;
-    const rangesOf = (type: string) => () =>
-      isObject(hc) && isObject(hc.byDayType) ? byDayTypeRanges(hc.byDayType[type]) : offPeak();
+    const rangesOf = (type: string) => () => {
+      if (!isObject(hc) || !isObject(hc.byDayType)) return offPeak();
+      const fixed = byDayTypeRanges(hc.byDayType[type]);
+      return fixed && { hcRanges: fixed };
+    };
 
     const rules: CustomRule[] = [];
     const push = (more: CustomRule[] | null) => {

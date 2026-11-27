@@ -1,3 +1,4 @@
+import { offPeakRangesAt } from "./tariff/off-peak";
 import { formatNumber } from "@/lib/format";
 import type { Contract, TempoColor, TimeRange } from "./tariff/types";
 
@@ -55,6 +56,8 @@ export interface Advice {
 }
 
 export function consumptionAdvice(input: {
+  /** Jour local du foyer (AAAA-MM-JJ) : la saison des heures creuses. */
+  date: string;
   surplus: ReturnType<typeof surplusWindow>;
   contract: Contract | null;
   /** Contrat Tempo seulement : couleur du lendemain, null si pas encore publiée. */
@@ -108,7 +111,7 @@ export function consumptionAdvice(input: {
     out.push({
       id: "off_peak",
       tone: "info",
-      title: `Heures creuses : ${ranges(c.hcRanges)}`,
+      title: `Heures creuses : ${ranges(offPeakRangesAt(c, input.date))}`,
       text: `Programmez ce qui peut attendre (lave-vaisselle, chauffe-eau, recharge) sur ces plages : le kWh y coûte ${price(c.prices.hc)} au lieu de ${price(c.prices.hp)}.`,
     });
   } else if (c?.kind === "tempo") {

@@ -47,3 +47,22 @@ describe("hourlyKwhPrices", () => {
     expect(r.assumedTempoDays).toBe(1);
   });
 });
+
+describe("hourlyKwhPrices et saisons (T81)", () => {
+  it("une fenêtre à cheval sur le 1er avril prend les plages de chaque jour", () => {
+    const seasonal = {
+      kind: "hphc" as const,
+      subscriptionEurYear: 236,
+      prices: { hp: 0.27, hc: 0.2 },
+      hcRanges: [{ from: "23:00", to: "07:00" }],
+      summerHcRanges: [{ from: "12:00", to: "15:00" }],
+    };
+    // 13 h locales (UTC+2) le 31 mars puis le 1er avril 2027.
+    const r = hourlyKwhPrices(
+      [new Date("2027-03-31T11:00:00Z"), new Date("2027-04-01T11:00:00Z")],
+      seasonal,
+      { timezone: "Europe/Paris", period: { from: "2027-03-31", to: "2027-04-02" } },
+    );
+    expect(r.prices).toEqual([0.27, 0.2]);
+  });
+});

@@ -45,7 +45,13 @@ const get = (name: string) => {
   if (!t) throw new Error(`offre absente des fixtures : ${name}`);
   return t;
 };
-const HOUSE_HC = [{ from: "23:00", to: "07:00" }];
+const HOUSE_RANGES = [{ from: "23:00", to: "07:00" }];
+const HOUSE_HC = { hcRanges: HOUSE_RANGES };
+const SUMMER_RANGES = [
+  { from: "02:00", to: "07:00" },
+  { from: "12:00", to: "15:00" },
+];
+const SEASONAL = { hcRanges: HOUSE_RANGES, summerHcRanges: SUMMER_RANGES };
 
 describe("manifeste", () => {
   it("liste les fichiers de tarifs, au format de chemin contrôlé", () => {
@@ -110,7 +116,7 @@ describe("conversion", () => {
         kind: "hphc",
         subscriptionEurYear: 238.56,
         prices: { hp: 0.2142, hc: 0.1589 },
-        hcRanges: HOUSE_HC,
+        hcRanges: HOUSE_RANGES,
       },
       householdOffPeak: true,
       assumedOffPeak: false,
@@ -164,7 +170,7 @@ describe("conversion", () => {
     expect(c?.householdOffPeak).toBe(true);
     expect((c?.contract as CustomContract).rules).toEqual([
       { label: "Week-end", days: [6, 7], ranges: [{ from: "00:00", to: "24:00" }], price: 0.1762 },
-      { label: "Semaine HC", days: [1, 2, 3, 4, 5], ranges: HOUSE_HC, price: 0.1762 },
+      { label: "Semaine HC", days: [1, 2, 3, 4, 5], ranges: HOUSE_RANGES, price: 0.1762 },
       {
         label: "Semaine HP",
         days: [1, 2, 3, 4, 5],
@@ -353,5 +359,62 @@ describe("fraîcheur", () => {
     expect(
       isNewOffer(new Date("2026-10-10T02:00:00Z"), start, new Date("2026-11-10T02:00:00Z")),
     ).toBe(false);
+  });
+});
+
+describe("plages creuses du foyer différentes l'été (T81)", () => {
+  const winter = [11, 12, 1, 2, 3];
+  const summer = [4, 5, 6, 7, 8, 9, 10];
+  const rulesOf = (c: ReturnType<typeof toContract>) => (c?.contract as CustomContract).rules;
+
+  it("offre HP/HC à plages libres : les deux jeux ; plages fixes : celles de l'offre", () => {
+    expect(toContract(get("EDF - Bleu Heures Creuses"), 9, SEASONAL)?.contract).toMatchObject(
+      SEASONAL,
+    );
+    const fixed = toContract(
+      { ...get("EDF - Bleu Heures Creuses"), hcRanges: [{ from: "01:00", to: "09:00" }] },
+      9,
+      SEASONAL,
+    )?.contract;
+    expect(fixed).toMatchObject({ hcRanges: [{ from: "01:00", to: "09:00" }] });
+    expect(fixed).not.toHaveProperty("summerHcRanges");
+  });
+
+  it("offre sur mesure : règles par saison ; un prix unique n'est pas découpé", () => {
+    const rules = rulesOf(toContract(get("EDF - Zen Week-End HC"), 9, SEASONAL));
+    expect(rules.map((r) => [r.label, r.months, r.ranges.length])).toEqual([
+      ["Week-end", undefined, 1],
+      ["Semaine HC (hiver)", winter, 1],
+      ["Semaine HP (hiver)", winter, 1],
+      ["Semaine HC (été)", summer, 2],
+      ["Semaine HP (été)", summer, 1],
+    ]);
+    expect(rules[3]?.ranges).toEqual(SUMMER_RANGES);
+  });
+
+  it("offre à saisons propres : intersection des saisons, aucun mois vide", () => {
+    const t = {
+      ...get("EDF - Zen Estival"),
+      hcRanges: "custom",
+      dayRule: {
+        type: "season",
+        seasons: {
+          ete: { months: [6, 7, 8, 9] },
+          hiver: { months: [10, 11, 12, 1, 2, 3, 4, 5] },
+        },
+      },
+      dayTypes: { ete: { HP: 20, HC: 10 }, hiver: { HP: 30, HC: 15 } },
+      priceOverrides: undefined,
+    };
+    const rules = rulesOf(toContract(t, 9, SEASONAL));
+    const months = rules
+      .filter((r) => r.label.includes("HC"))
+      .map((r) => [...(r.months ?? [])].sort((a, b) => a - b));
+    expect(months).toEqual([
+      [6, 7, 8, 9],
+      [1, 2, 3, 11, 12],
+      [4, 5, 10],
+    ]);
+    expect(rules.every((r) => (r.months?.length ?? 0) > 0)).toBe(true);
   });
 });
