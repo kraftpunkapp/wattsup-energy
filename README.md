@@ -105,6 +105,16 @@ WattsUp vous rend service ? Vous pouvez soutenir son développement :
 
 ## Notes de version
 
+### 1.13.0 — 27 novembre 2026
+
+- **Heures creuses d'été et d'hiver** : un contrat en heures creuses accepte des plages
+  différentes d'avril à octobre. Le calcul, la comparaison, les offres du marché et les
+  créneaux conseillés suivent la saison.
+- Un encart invite les foyers en heures creuses à vérifier leurs horaires (réforme à partir
+  du 1er décembre 2026).
+- Une grille de prix saisie à l'avance ne s'applique plus avant sa date.
+- L'écran suit aussitôt un enregistrement, au lieu de parfois attendre une minute.
+
 ### 1.12.0 — 3 novembre 2026
 
 - **Nouveau design** : nouveau logo, nouvelles couleurs (une couleur = un sens), chiffres plus
