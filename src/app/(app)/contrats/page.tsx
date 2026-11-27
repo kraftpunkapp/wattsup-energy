@@ -3,6 +3,7 @@ import { MarketSourceNote } from "@/components/market-source-note";
 import { tempoSeasonOf } from "@/domain/tempo-calendar";
 import { addDays, eachDay, localParts } from "@/lib/time";
 import { listContracts } from "@/server/contracts";
+import { showOffPeakNotice } from "@/server/off-peak-notice";
 import { shareInFlight } from "@/server/inflight";
 import { pageContext } from "@/server/page";
 import { getMarketOffers } from "@/server/market/compare";
@@ -20,8 +21,13 @@ import { TempoCalendar, type CalendarDay } from "./tempo-calendar";
 
 export const metadata = { title: "Contrats · WattsUp Energy" };
 
-export default async function ContractsPage() {
+export default async function ContractsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ horaires?: string | string[] }>;
+}) {
   const ctx = await pageContext("/contrats");
+  const [{ horaires }, offPeakNotice] = await Promise.all([searchParams, showOffPeakNotice(ctx)]);
   const [contracts, comparison, market, payment] = await Promise.all([
     listContracts(ctx),
     shareInFlight(`comparison:${ctx.householdId}`, () => getContractComparison(ctx)),
@@ -88,6 +94,8 @@ export default async function ContractsPage() {
       today={today}
       contracts={items}
       paymentAnalysis={payment?.analysis ?? null}
+      offPeakNotice={offPeakNotice}
+      editHours={horaires === "1"}
       subtitle={subtitle}
       meta={
         comparison.status === "ok" ? (

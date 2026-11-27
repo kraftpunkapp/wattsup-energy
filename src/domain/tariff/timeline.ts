@@ -45,7 +45,6 @@ export function periodAt<P extends PricePeriod>(
 /** Grille en vigueur à une date. */
 export const gridAt = (c: DatedContract, date: string): Contract => periodAt(c, date).contract;
 
-
 const activeOn = (c: DatedContract, date: string) =>
   c.status === "subscribed" &&
   c.startDate !== null &&

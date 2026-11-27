@@ -67,9 +67,7 @@ describe("quand consommer", () => {
     });
     const titles = async (now: Date) => (await getAdvice(ctx, now)).map((a) => a.title);
     expect(await titles(NOW)).toContain("Heures creuses : 22 h – 6 h");
-    expect(await titles(new Date("2026-12-02T10:00:00Z"))).toContain(
-      "Heures creuses : 23 h – 7 h",
-    );
+    expect(await titles(new Date("2026-12-02T10:00:00Z"))).toContain("Heures creuses : 23 h – 7 h");
   });
 });
 

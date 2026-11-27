@@ -43,6 +43,8 @@ import { pageContext } from "@/server/page";
 import { getForecastPlan } from "@/server/forecast";
 import { getContractComparison, getPaymentAnalysis } from "@/server/queries/contracts";
 import { getOverview } from "@/server/queries/overview";
+import { showOffPeakNotice } from "@/server/off-peak-notice";
+import { OffPeakNotice } from "@/components/off-peak-notice";
 
 /** Cadre du détail déplié d'une tuile « Ce qu'il faut retenir ». */
 function InsightPanel({ children }: { children: React.ReactNode }) {
@@ -60,18 +62,20 @@ export default async function OverviewPage({
   // Blocs masqués par l'utilisateur (Réglages › Vue d'ensemble) : ni calculés ni affichés.
   const hidden = overviewHidden(ctx);
   const shown = (b: OverviewBlock) => !hidden.includes(b);
-  const [overview, alerts, comparison, advice, payment, plan, lastPushAt] = await Promise.all([
-    // Calculs partagés entre requêtes simultanées (clics rapides Mois / Année).
-    shareInFlight(`overview:${ctx.householdId}:${period ?? ""}`, () => getOverview(ctx, period)),
-    getAlerts(ctx),
-    shown("contract")
-      ? shareInFlight(`comparison:${ctx.householdId}`, () => getContractComparison(ctx))
-      : null,
-    shown("advice") ? getAdvice(ctx) : [],
-    shown("payment") ? getPaymentAnalysis(ctx) : null,
-    shown("advice") ? getForecastPlan(ctx) : null,
-    getLastPushAt(ctx),
-  ]);
+  const [overview, alerts, comparison, advice, payment, plan, lastPushAt, offPeakNotice] =
+    await Promise.all([
+      // Calculs partagés entre requêtes simultanées (clics rapides Mois / Année).
+      shareInFlight(`overview:${ctx.householdId}:${period ?? ""}`, () => getOverview(ctx, period)),
+      getAlerts(ctx),
+      shown("contract")
+        ? shareInFlight(`comparison:${ctx.householdId}`, () => getContractComparison(ctx))
+        : null,
+      shown("advice") ? getAdvice(ctx) : [],
+      shown("payment") ? getPaymentAnalysis(ctx) : null,
+      shown("advice") ? getForecastPlan(ctx) : null,
+      getLastPushAt(ctx),
+      showOffPeakNotice(ctx),
+    ]);
   const label = (b: OverviewBlock) => OVERVIEW_BLOCKS.find((x) => x.id === b)?.label ?? b;
   const block = (b: OverviewBlock, render: (hide: React.ReactNode) => React.ReactNode) =>
     shown(b) ? (
@@ -115,6 +119,7 @@ export default async function OverviewPage({
         />
       )}
       <AlertsCard alerts={alerts} />
+      {offPeakNotice && <OffPeakNotice />}
       {overview.status === "no-data" ? (
         <EmptyState title="Aucune donnée pour l'instant.">
           Le tableau de bord se remplit dès le premier envoi de Home Assistant, ou avec

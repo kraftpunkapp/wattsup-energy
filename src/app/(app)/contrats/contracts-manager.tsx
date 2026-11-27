@@ -3,6 +3,7 @@
 import { callAction } from "@/lib/action";
 import { useRouter } from "next/navigation";
 import { useState, useTransition, type ReactNode } from "react";
+import { OffPeakNotice } from "@/components/off-peak-notice";
 import type { MonthlyPayment, PaymentAnalysis } from "@/domain/tariff/payment";
 import { CONTRACT_PRESETS, type ContractInput } from "@/domain/tariff/schema";
 import { lapsedContract, periodAt } from "@/domain/tariff/timeline";
@@ -88,6 +89,16 @@ type Editing =
   | { mode: "identity"; item: ContractItem }
   | { mode: "period"; item: ContractItem; period: Period }
   | null;
+
+/** Un contrat HP/HC change aussi d'horaires avec une nouvelle grille. */
+const newGridLabel = (item: ContractItem) =>
+  item.kind === "hphc" ? "Nouveaux prix ou horaires" : "Nouveaux prix";
+
+/** Saisie d'une nouvelle grille du contrat en cours, préremplie avec celle du jour. */
+function newGridFor(item: ContractItem, today: string): Editing {
+  const contract = periodAt(item, today).contract;
+  return { mode: "period", item, period: { id: null, validFrom: today, contract } };
+}
 
 function useSubmit(onDone: () => void) {
   const [errors, setErrors] = useState<string[]>([]);
@@ -178,11 +189,15 @@ function PeriodForm({
   return (
     <section className={card}>
       <h2 className="text-sm font-semibold">
-        {period.id ? "Modifier les prix" : "Nouveaux prix"} · {item.name}
+        {period.id ? "Modifier les prix" : newGridLabel(item)} · {item.name}
       </h2>
       {item.status === "subscribed" && (
         <label className={labelClass}>
-          {period.id ? "En vigueur à partir du" : "Nouveaux prix à partir du"}
+          {period.id
+            ? "En vigueur à partir du"
+            : item.kind === "hphc"
+              ? "Prix et horaires à partir du"
+              : "Nouveaux prix à partir du"}
           <input
             type="date"
             value={validFrom}
@@ -439,7 +454,7 @@ function ContractCard(props: CardProps) {
                 }
               >
                 <Icon name="plus" size={14} />
-                Nouveaux prix
+                {newGridLabel(item)}
               </button>
             </>
           ) : (
@@ -500,6 +515,8 @@ export function ContractsManager({
   contracts,
   today,
   paymentAnalysis,
+  offPeakNotice = false,
+  editHours = false,
   subtitle,
   meta,
   diagnostic,
@@ -512,6 +529,10 @@ export function ContractsManager({
   today: string;
   /** Page Contrats : verdict de la mensualité du contrat en cours (null : non calculé). */
   paymentAnalysis?: PaymentAnalysis | null;
+  /** Encart « Vérifiez vos horaires » du contrat HP/HC en cours (T80). */
+  offPeakNotice?: boolean;
+  /** Ouvrir la saisie des nouveaux horaires dès l'arrivée (lien de la Vue d'ensemble). */
+  editHours?: boolean;
   /** Absent (parcours d'accueil) : pas d'en-tête de page, seulement le bouton d'ajout. */
   subtitle?: string;
   /** À côté du sous-titre : puce « Données horaires » (page serveur). */
@@ -526,7 +547,10 @@ export function ContractsManager({
   extra?: ReactNode;
 }) {
   const router = useRouter();
-  const [editing, setEditing] = useState<Editing>(null);
+  const hphc = contracts.find((c) => c.isCurrent && c.kind === "hphc");
+  const [editing, setEditing] = useState<Editing>(() =>
+    editHours && hphc ? newGridFor(hphc, today) : null,
+  );
   const [errors, setErrors] = useState<string[]>([]);
   const [pending, startTransition] = useTransition();
   const done = () => {
@@ -614,6 +638,9 @@ export function ContractsManager({
   return (
     <>
       {header}
+      {offPeakNotice && hphc && (
+        <OffPeakNotice onEdit={() => setEditing(newGridFor(hphc, today))} />
+      )}
       {lapsed && <LapsedNotice item={lapsed} pending={pending} onAct={act} />}
       <Errors errors={errors} />
       {editing?.mode === "presets" && (

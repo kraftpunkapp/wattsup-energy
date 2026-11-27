@@ -5,12 +5,7 @@ import { parseMeterPower } from "@/domain/market/compare";
 import { peakSplit } from "@/domain/overview";
 import { compareContracts, type ComparedContract } from "@/domain/tariff/compare";
 import { analyzePayment, type MonthlyPayment, type PaymentAnalysis } from "@/domain/tariff/payment";
-import {
-  buildTimeline,
-  currentContract,
-  gridAt,
-  priceTimeline,
-} from "@/domain/tariff/timeline";
+import { buildTimeline, currentContract, gridAt, priceTimeline } from "@/domain/tariff/timeline";
 import type {
   Contract,
   PriceableInterval,
