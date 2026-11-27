@@ -138,6 +138,17 @@ describe("buildTimeline", () => {
   });
 });
 
+describe("buildTimeline et grille à venir", () => {
+  it("les jours sans contrat prennent la grille d'aujourd'hui, pas une grille à venir", () => {
+    const hausse: DatedContract = {
+      ...B,
+      periods: [...B.periods, { validFrom: "2026-12-01", contract: base(0.4) }],
+    };
+    const [avant] = buildTimeline([hausse], "2025-12-01", "2026-02-01", "2026-10-03");
+    expect(avant).toMatchObject({ contractId: null, contract: base(0.3, 240) });
+  });
+});
+
 describe("priceTimeline", () => {
   // 1 kWh par heure du 1er juillet au 1er septembre 2025 (heure de Paris)
   const hours: PriceableInterval[] = [];

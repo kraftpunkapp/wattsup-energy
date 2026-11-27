@@ -7,7 +7,7 @@ import {
   withBlockHidden,
   type OverviewBlock,
 } from "@/domain/overview-blocks";
-import { currentContract, latestGrid } from "@/domain/tariff/timeline";
+import { currentContract, gridAt } from "@/domain/tariff/timeline";
 import { localParts } from "@/lib/time";
 import type { HouseholdContext } from "./context";
 import { listContracts } from "./contracts";
@@ -42,12 +42,13 @@ export async function setOverviewBlockHidden(
 /** Blocs proposés dans Réglages › Vue d'ensemble pour ce foyer. */
 export async function overviewBlocksFor(ctx: HouseholdContext, now = new Date()) {
   const contracts = await listContracts(ctx);
-  const currentId = currentContract(contracts, localParts(now, ctx.timezone).date)?.id;
+  const today = localParts(now, ctx.timezone).date;
+  const currentId = currentContract(contracts, today)?.id;
   const current = contracts.find((c) => c.id === currentId);
   return applicableBlocks({
     solar: ctx.profile.solar,
     granularity: ctx.granularity,
-    contractKind: current ? latestGrid(current).kind : null,
+    contractKind: current ? gridAt(current, today).kind : null,
     contracts: contracts.length,
     payment: Boolean(current?.payment),
   });

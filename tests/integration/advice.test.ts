@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { db } from "@/db";
 import { energyInterval } from "@/db/schema";
 import { getAdvice } from "@/server/advice";
-import { createContract } from "@/server/contracts";
+import { addPricePeriod, createContract, listContracts } from "@/server/contracts";
 import { householdContextFor, type HouseholdContext } from "@/server/context";
 import { updateProfile } from "@/server/profile";
 import { addDays, zonedInstant } from "@/lib/time";
@@ -51,6 +51,25 @@ describe("quand consommer", () => {
       "Entre 12 h et 14 h : votre surplus solaire",
       "Heures creuses : 22 h – 6 h",
     ]);
+  });
+
+  it("une grille à venir ne s'applique pas avant sa date", async () => {
+    const ctx = await solarHphc();
+    const [contract] = await listContracts(ctx);
+    await addPricePeriod(ctx, contract?.id ?? "", {
+      validFrom: "2026-12-01",
+      contract: {
+        kind: "hphc",
+        subscriptionEurYear: 236,
+        prices: { hp: 0.27, hc: 0.2068 },
+        hcRanges: [{ from: "23:00", to: "07:00" }],
+      },
+    });
+    const titles = async (now: Date) => (await getAdvice(ctx, now)).map((a) => a.title);
+    expect(await titles(NOW)).toContain("Heures creuses : 22 h – 6 h");
+    expect(await titles(new Date("2026-12-02T10:00:00Z"))).toContain(
+      "Heures creuses : 23 h – 7 h",
+    );
   });
 });
 

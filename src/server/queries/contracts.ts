@@ -8,7 +8,7 @@ import { analyzePayment, type MonthlyPayment, type PaymentAnalysis } from "@/dom
 import {
   buildTimeline,
   currentContract,
-  latestGrid,
+  gridAt,
   priceTimeline,
 } from "@/domain/tariff/timeline";
 import type {
@@ -133,7 +133,7 @@ async function loadInputs(ctx: HouseholdContext, now: Date): Promise<ComparisonI
     spotHours,
     pricing: { timezone: tz, period: { from, to: today }, ...calendars },
     contracts,
-    current: current ? { id: current.id, contract: latestGrid(current) } : null,
+    current: current ? { id: current.id, contract: gridAt(current, today) } : null,
   };
 }
 
@@ -158,7 +158,7 @@ export async function getContractComparison(
       id: c.id,
       name: c.name,
       isCurrent: c.id === current?.id,
-      contract: latestGrid(c),
+      contract: gridAt(c, today),
     })),
     intervals,
     inputs.pricing,
@@ -236,7 +236,7 @@ export async function getPaymentAnalysis(
       periodDays: ok?.periodDays ?? (inputs.status === "insufficient" ? inputs.days : 0),
       intervals: ok?.intervals ?? [],
       contracts,
-      current: { contract: latestGrid(current), startDate: current.startDate },
+      current: { contract: gridAt(current, today), startDate: current.startDate },
       pricing: ok?.pricing ?? { timezone: ctx.timezone },
     }),
   };

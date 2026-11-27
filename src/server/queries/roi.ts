@@ -11,7 +11,7 @@ import {
 } from "@/domain/roi/payback";
 import { batterySavings, solarSavings, type EnergySlot, type Savings } from "@/domain/roi/savings";
 import { monthlyYields, yieldDeviation } from "@/domain/roi/yield";
-import { currentContract, latestGrid } from "@/domain/tariff/timeline";
+import { currentContract, gridAt } from "@/domain/tariff/timeline";
 import { cellOf, radiationKwhM2 } from "@/domain/weather";
 import { addDays, localParts, zonedInstant } from "@/lib/time";
 import type { HouseholdContext } from "../context";
@@ -137,7 +137,7 @@ export async function getRoi(ctx: HouseholdContext, now = new Date()): Promise<R
       .where(eq(household.id, ctx.householdId)),
   ]);
   const current = currentContract(contracts, today);
-  const contract = current ? latestGrid(current) : null;
+  const contract = current ? gridAt(current, today) : null;
   const s = ctx.settings;
 
   // Une seule lecture depuis l'installation la plus ancienne (et au moins 13 mois pour

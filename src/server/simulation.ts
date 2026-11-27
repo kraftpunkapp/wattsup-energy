@@ -2,7 +2,7 @@ import { and, asc, eq, gte, inArray, lt } from "drizzle-orm";
 import { db } from "@/db";
 import { energyInterval } from "@/db/schema";
 import { simulate, simulationSavings, type HourFlow } from "@/domain/roi/simulate";
-import { currentContract, latestGrid } from "@/domain/tariff/timeline";
+import { currentContract, gridAt } from "@/domain/tariff/timeline";
 import { addDays, localParts, zonedInstant } from "@/lib/time";
 import type { HouseholdContext } from "./context";
 import { listContracts } from "./contracts";
@@ -97,7 +97,7 @@ export async function runSimulation(
     timezone: ctx.timezone,
   });
   const savings = simulationSavings(hours, result.hours, {
-    contract: latestGrid(current),
+    contract: gridAt(current, today),
     timezone: tz,
     ...calendars,
     exportPriceEurKwh: ctx.settings.exportEnabled ? ctx.settings.exportPriceEurKwh : null,

@@ -45,8 +45,6 @@ export function periodAt<P extends PricePeriod>(
 /** Grille en vigueur à une date. */
 export const gridAt = (c: DatedContract, date: string): Contract => periodAt(c, date).contract;
 
-/** Grille la plus récente (celle qu'on simule pour comparer les offres aujourd'hui). */
-export const latestGrid = (c: DatedContract): Contract => gridAt(c, "9999-12-31");
 
 const activeOn = (c: DatedContract, date: string) =>
   c.status === "subscribed" &&
@@ -125,7 +123,7 @@ export function buildTimeline(
   today = addDays(to, -1),
 ): Segment[] {
   const current = currentContract(contracts, today);
-  const fallback = current ? latestGrid(current) : null;
+  const fallback = current ? gridAt(current, today) : null;
 
   const cuts = new Set([from, to]);
   for (const c of contracts) {

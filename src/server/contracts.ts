@@ -4,7 +4,7 @@ import { contract, contractPeriod } from "@/db/schema";
 import {
   currentContract,
   findOverlaps,
-  latestGrid,
+  gridAt,
   type DatedContract,
 } from "@/domain/tariff/timeline";
 import type { MonthlyPayment, PaymentsPerYear } from "@/domain/tariff/payment";
@@ -248,7 +248,7 @@ export async function duplicateContract(ctx: HouseholdContext, id: string) {
   if (!source) return null;
   return createContract(ctx, {
     name: `${source.name} (copie)`.slice(0, 60),
-    contract: latestGrid(source),
+    contract: gridAt(source, today(ctx)),
     subscription: null,
   });
 }

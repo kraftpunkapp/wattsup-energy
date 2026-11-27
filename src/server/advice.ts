@@ -2,7 +2,7 @@ import { and, eq, gte, lt, sql } from "drizzle-orm";
 import { db } from "@/db";
 import { energyInterval } from "@/db/schema";
 import { consumptionAdvice, surplusWindow, type Advice } from "@/domain/advice";
-import { currentContract, latestGrid } from "@/domain/tariff/timeline";
+import { currentContract, gridAt } from "@/domain/tariff/timeline";
 import { addDays, localParts, zonedInstant } from "@/lib/time";
 import type { HouseholdContext } from "./context";
 import { listContracts } from "./contracts";
@@ -44,7 +44,7 @@ export async function getAdvice(ctx: HouseholdContext, now = new Date()): Promis
     listContracts(ctx),
   ]);
   const current = currentContract(contracts, today);
-  const contract = current ? latestGrid(current) : null;
+  const contract = current ? gridAt(current, today) : null;
   const color =
     contract?.kind === "tempo"
       ? ((await tempoColorsFor(ctx.householdId, tomorrow, addDays(tomorrow, 1))).get(tomorrow) ??
