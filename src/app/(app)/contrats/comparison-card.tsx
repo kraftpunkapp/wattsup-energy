@@ -57,7 +57,7 @@ export type MarketState =
 
 /** En dessous d'un euro par an, deux offres coûtent la même chose. */
 const SAME_CENTS = 100;
-const NEAR = 3;
+const SHOWN = 3;
 const COMMON_POWERS = [6, 9, 12] as const;
 const eur = (cents: number) => `${Math.round(cents / 100).toLocaleString("fr-FR")} €`;
 const plural = (n: number, one: string, many: string) => `${n} ${n > 1 ? many : one}`;
@@ -238,7 +238,7 @@ function Line({ row, max }: { row: ComparedRow; max: number }) {
 }
 
 /** Une offre proche du contrat actuel : nom, fournisseur, écart annuel et coût. */
-function NearRow({ row }: { row: ComparedRow }) {
+function OfferRow({ row }: { row: ComparedRow }) {
   const sub = [
     row.origin === "market"
       ? row.provider
@@ -320,21 +320,15 @@ export function ComparisonCard({
   const [all, setAll] = useState(false);
   const [showPast, setShowPast] = useState(false);
 
-  // Les plus proches : l'écart annuel le plus faible avec le contrat en cours (à défaut, les moins chères).
+  // Les moins chères (`rows` est déjà classé) : celle que cite le diagnostic est la première.
   const candidates = rows.filter((r) => r.origin !== "current" && r.origin !== "past");
-  const near = [...candidates]
-    .sort(
-      (a, b) =>
-        Math.abs(a.deltaAnnualCents ?? a.annualCents) -
-        Math.abs(b.deltaAnnualCents ?? b.annualCents),
-    )
-    .slice(0, NEAR);
+  const cheapest = candidates.slice(0, SHOWN);
   const past = rows.filter((r) => r.origin === "past").length;
   const shown = rows.filter((r) => r.origin !== "past" || showPast);
   const max = Math.max(...shown.map((r) => r.annualCents), 1);
   const current = rows.find((r) => r.origin === "current");
   const hasCurrent = current !== undefined;
-  const rest = candidates.length - near.length;
+  const rest = candidates.length - cheapest.length;
 
   return (
     <section
@@ -344,7 +338,7 @@ export function ComparisonCard({
     >
       <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
         <h2 id="offres-titre" className="text-[15px] font-bold">
-          {all ? "Toutes les offres comparées" : "Les offres les plus proches"}
+          {all ? "Toutes les offres comparées" : "Les offres les moins chères"}
         </h2>
         {market.status === "ok" && (
           <PowerSelect value={market.kva} onChange={power.save} disabled={power.pending} />
@@ -395,8 +389,8 @@ export function ComparisonCard({
         </ul>
       ) : (
         <ul className={`flex flex-col ${power.pending ? "opacity-50" : ""}`}>
-          {near.map((r) => (
-            <NearRow key={r.key} row={r} />
+          {cheapest.map((r) => (
+            <OfferRow key={r.key} row={r} />
           ))}
         </ul>
       )}
@@ -409,7 +403,7 @@ export function ComparisonCard({
             aria-expanded={all}
             className="inline-flex min-h-11 items-center text-sm font-semibold"
           >
-            {all ? "Revenir aux offres les plus proches" : `Voir les ${rest} autres offres`}
+            {all ? "Revenir aux offres les moins chères" : `Voir les ${rest} autres offres`}
             <span aria-hidden className="ml-1.5">
               →
             </span>

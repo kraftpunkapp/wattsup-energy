@@ -539,7 +539,7 @@ export function ContractsManager({
   meta?: ReactNode;
   /** Diagnostic sous l'en-tête (rendu par le serveur). */
   diagnostic?: ReactNode;
-  /** Colonne à droite du contrat en cours : les offres les plus proches. */
+  /** Colonne à droite du contrat en cours : les offres les moins chères. */
   beside?: ReactNode;
   /** Historique des contrats, sous le contrat en cours. */
   history?: ReactNode;
