@@ -45,6 +45,7 @@ const get = (name: string) => {
   if (!t) throw new Error(`offre absente des fixtures : ${name}`);
   return t;
 };
+const TODAY = "2026-11-28";
 const HOUSE_RANGES = [{ from: "23:00", to: "07:00" }];
 const HOUSE_HC = { hcRanges: HOUSE_RANGES };
 const SUMMER_RANGES = [
@@ -66,6 +67,66 @@ describe("manifeste", () => {
     const src = `export const TARIF_SCRIPTS = ["scripts/tarifs/a/b.js", "../secret.js", "scripts/tarifs/../x.js"];`;
     expect(parseManifest(src)).toEqual(["scripts/tarifs/a/b.js"]);
   });
+
+  it("accepte une liste composée de renvois à d'autres listes (source du 2026-11-23)", () => {
+    const src = `export const TARIF_LIBRARIES = [\n  "scripts/tarifs-registry.js",\n];
+export const TARIF_SCRIPTS = [
+    ...TARIF_LIBRARIES,
+    ...TARIF_CALENDARS,
+    "scripts/tarifs/alpiq/base.js",
+
+    "scripts/tarifs/edf/bleu.js",
+];`;
+    expect(parseManifest(src)).toEqual([
+      "scripts/tarifs/alpiq/base.js",
+      "scripts/tarifs/edf/bleu.js",
+    ]);
+  });
+});
+
+describe("offres non comparées", () => {
+  const bleu = () => get("EDF - Bleu");
+  const support = (extra: Record<string, unknown>, day = TODAY) =>
+    describeOffer({ ...bleu(), ...extra }, day).support;
+  const closed = { status: "never", reason: "closed" };
+
+  it("grille fermée à la souscription", () => {
+    expect(support({ subscriptionRule: { kind: "closed", reason: "x" } })).toEqual(closed);
+  });
+
+  it.each([
+    [false, "2026-11-16", "compared"],
+    [false, "2026-11-17", "never"],
+    [true, "2026-11-17", "compared"],
+    [true, "2026-11-18", "never"],
+  ])("fin de souscription (incluse : %s) vue le %s : %s", (endInclusive, day, status) => {
+    const rule = { kind: "expired", reason: "x", endDate: "2026-11-17", endInclusive };
+    expect(support({ subscriptionRule: rule }, day).status).toBe(status);
+  });
+
+  it("règle de souscription illisible : écartée par prudence", () => {
+    expect(support({ subscriptionRule: { kind: "bientot" } })).toEqual(closed);
+  });
+
+  it("offre sous conditions d'éligibilité", () => {
+    expect(support({ eligibility: "Réservé aux foyers équipés de panneaux." })).toEqual({
+      status: "never",
+      reason: "restricted",
+    });
+  });
+
+  it("prix indexé sur le marché ou jours de pointe : format non reconnu", () => {
+    const unknown = { status: "pending", reason: "unknown" };
+    expect(support({ marketIndex: { source: "epex-fr", vat: 1.2 } })).toEqual(unknown);
+    const season = {
+      type: "season",
+      peakCalendar: "enercoop-pointe",
+      seasons: { hiver: { months: [11, 12, 1, 2, 3] } },
+    };
+    expect(
+      support({ dayTypes: { hiver: { price: 20 } }, dayRule: season, hcRanges: undefined }),
+    ).toEqual(unknown);
+  });
 });
 
 describe("définition", () => {
@@ -86,7 +147,7 @@ describe("définition", () => {
 describe("conversion", () => {
   it("EDF Bleu : prix unique, prix du kWh propre aux petites puissances", () => {
     const t = get("EDF - Bleu");
-    expect(describeOffer(t)).toMatchObject({
+    expect(describeOffer(t, TODAY)).toMatchObject({
       provider: "EDF",
       offer: "Bleu",
       regulated: true,
@@ -105,7 +166,7 @@ describe("conversion", () => {
 
   it("EDF Bleu HC : plages creuses du foyer, sinon 22 h – 6 h supposées", () => {
     const t = get("EDF - Bleu Heures Creuses");
-    expect(describeOffer(t).support).toEqual({
+    expect(describeOffer(t, TODAY).support).toEqual({
       status: "compared",
       kind: "hphc",
       householdOffPeak: true,
@@ -133,7 +194,10 @@ describe("conversion", () => {
       ...get("EDF - Bleu Heures Creuses"),
       dayTypes: { bleu: { HP: 19.7695, HC: 19.7695 } },
     };
-    expect(describeOffer(t).support).toMatchObject({ kind: "base", householdOffPeak: false });
+    expect(describeOffer(t, TODAY).support).toMatchObject({
+      kind: "base",
+      householdOffPeak: false,
+    });
     expect(toContract(t, 9, null)?.contract).toMatchObject({ priceEurKwh: 0.197695 });
   });
 
@@ -182,7 +246,7 @@ describe("conversion", () => {
 
   it("Charge'Heures : heures super creuses prioritaires sur les heures creuses", () => {
     const t = get("TotalEnergie - Charge'Heures");
-    expect(describeOffer(t).powers).toContain(7);
+    expect(describeOffer(t, TODAY).powers).toContain(7);
     const c = toContract(t, 9, null);
     expect(c?.householdOffPeak).toBe(false);
     expect((c?.contract as CustomContract).rules.map((r) => [r.label, r.price])).toEqual([
@@ -207,14 +271,14 @@ describe("conversion", () => {
   it.each([["EDF - EJP", { status: "never", reason: "closed" }]])(
     "%s : pas encore comparée, avec sa raison",
     (name, support) => {
-      expect(describeOffer(get(name)).support).toEqual(support);
+      expect(describeOffer(get(name), TODAY).support).toEqual(support);
       expect(toContract(get(name), 9, null)).toBeNull();
     },
   );
 
   it("Zen Estival : saisons, heures super creuses prioritaires, journée de 6 h à 6 h", () => {
     const t = get("EDF - Zen Estival");
-    expect(describeOffer(t).support).toMatchObject({ status: "compared", kind: "custom" });
+    expect(describeOffer(t, TODAY).support).toMatchObject({ status: "compared", kind: "custom" });
     const c = toContract(t, 9, null)?.contract as CustomContract;
     expect(c.dayStartHour).toBe(6);
     const WINTER = [11, 12, 1, 2, 3];
@@ -247,7 +311,7 @@ describe("conversion", () => {
 
   it("Sobry SoCap : prix spot, composantes HT converties en €/kWh", () => {
     const t = get("Sobry - SoCap");
-    expect(describeOffer(t).support).toMatchObject({ status: "compared", kind: "spot" });
+    expect(describeOffer(t, TODAY).support).toMatchObject({ status: "compared", kind: "spot" });
     expect(toContract(t, 9, null)?.contract).toEqual({
       kind: "spot",
       subscriptionEurYear: 331.53,
@@ -263,7 +327,7 @@ describe("conversion", () => {
 
   it("Zen Week-End Option Flex : prix propres aux jours de sobriété", () => {
     const t = get("EDF - Zen Week-End Option Flex");
-    expect(describeOffer(t).support).toMatchObject({ status: "compared", kind: "custom" });
+    expect(describeOffer(t, TODAY).support).toMatchObject({ status: "compared", kind: "custom" });
     const c = toContract(t, 9, null)?.contract as CustomContract;
     expect(c.rules.map((r) => [r.label, r.price, r.onlySobrietyDays ?? false])).toEqual([
       ["Jours de sobriété HC", 0.2142, true],
@@ -288,7 +352,7 @@ describe("conversion", () => {
 
   it("Zen Week-End Plus : le jour choisi s'ajoute au week-end", () => {
     const t = get("EDF - Zen Week-End Plus");
-    expect(describeOffer(t).support).toMatchObject({ status: "compared", chosenDay: true });
+    expect(describeOffer(t, TODAY).support).toMatchObject({ status: "compared", chosenDay: true });
     expect(toContract(t, 9, null)).toBeNull(); // jour requis
     expect(toContract(t, 9, null, 6)).toBeNull(); // samedi : déjà du week-end
     const c = toContract(t, 9, null, 3)?.contract as CustomContract;
@@ -300,25 +364,25 @@ describe("conversion", () => {
 
   it("toutes les offres des fixtures se lisent ; les comparées passent la validation", () => {
     for (const t of tariffs.values()) {
-      const info = describeOffer(t);
+      const info = describeOffer(t, TODAY);
       if (info.support.status !== "compared") continue;
       const day = info.support.chosenDay ? 1 : undefined;
       for (const kva of info.powers) expect(toContract(t, kva, HOUSE_HC, day)).not.toBeNull();
     }
     const compared = [...tariffs.values()].filter(
-      (t) => describeOffer(t).support.status === "compared",
+      (t) => describeOffer(t, TODAY).support.status === "compared",
     );
     expect(compared.length).toBeGreaterThanOrEqual(10);
   });
 
   it("une règle inconnue est signalée, sans erreur", () => {
     const t = { ...get("EDF - Bleu"), dayRule: { type: "lunaire" } };
-    expect(describeOffer(t).support).toEqual({ status: "pending", reason: "unknown" });
+    expect(describeOffer(t, TODAY).support).toEqual({ status: "pending", reason: "unknown" });
     const season = {
       ...get("EDF - Zen Estival"),
       dayRule: { type: "season", seasons: {}, previousDayBefore: 5 },
     };
-    expect(describeOffer(season).support).toEqual({ status: "pending", reason: "unknown" });
+    expect(describeOffer(season, TODAY).support).toEqual({ status: "pending", reason: "unknown" });
   });
 });
 

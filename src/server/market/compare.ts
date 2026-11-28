@@ -7,7 +7,8 @@ import {
   parseMeterPower,
   type MarketComparison,
 } from "@/domain/market/compare";
-import { fingerprint, marketContractName, toContract } from "@/domain/market/offer";
+import { fingerprint, marketContractName, toContract, unavailability } from "@/domain/market/offer";
+import { localParts } from "@/lib/time";
 import type { HouseholdContext } from "../context";
 import { householdContextFor } from "../context";
 import { ContractError, createContract, listContracts } from "../contracts";
@@ -65,7 +66,15 @@ export async function getMarketOffers(
     status: "ok" as const,
     kva,
     catalogDate: state?.sourceCommittedAt ?? state?.importedAt ?? null,
-    ...compareMarket(offers, kva, current, inputs.intervals, inputs.pricing, inputs.periodDays),
+    ...compareMarket(
+      offers,
+      kva,
+      current,
+      inputs.intervals,
+      inputs.pricing,
+      inputs.periodDays,
+      inputs.today,
+    ),
   };
   memo.set(ctx.householdId, { key, value });
   return value;
@@ -119,6 +128,9 @@ export async function addMarketOffer(
   if (kva === null) throw new ContractError(["indiquez d'abord la puissance du compteur"]);
   const [row] = await db.select().from(marketOffer).where(eq(marketOffer.name, name));
   if (!row) throw new ContractError(["offre introuvable"]);
+  if (unavailability(row.definition, localParts(new Date(), ctx.timezone).date)) {
+    throw new ContractError(["cette offre n'est plus proposée à la souscription"]);
+  }
   const inputs = await comparisonInputs(ctx);
   const current = inputs.status === "ok" ? (inputs.current?.contract ?? null) : null;
   const built = toContract(row.definition, kva, householdOffPeak(current), chosenDay ?? undefined);

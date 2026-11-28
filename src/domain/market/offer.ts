@@ -20,7 +20,9 @@ import { findCallArguments, literalAfter, type Literal } from "./literal";
 const TARIFF_PATH = /^scripts\/tarifs\/[a-z0-9_-]+\/[A-Za-z0-9_-]+\.js$/;
 
 export function parseManifest(src: string): string[] {
-  const list = literalAfter(src, "TARIF_SCRIPTS");
+  // La liste reprend d'autres listes (`...TARIF_CALENDARS`) : bibliothèques, calendriers et
+  // prix spot, jamais des tarifs. Ces renvois sont retirés avant la lecture des littéraux.
+  const list = literalAfter(src.replace(/\.\.\.[A-Za-z_$][\w$]*\s*,?/g, ""), "TARIF_SCRIPTS");
   if (!Array.isArray(list)) throw new Error("manifeste : liste de fichiers attendue");
   return [
     ...new Set(list.filter((p): p is string => typeof p === "string" && TARIFF_PATH.test(p))),
@@ -57,6 +59,9 @@ const tariffSchema = z.looseObject({
   dayRule: z.unknown().optional(),
   spotFormula: z.unknown().optional(),
   hcRanges: z.unknown().optional(),
+  subscriptionRule: z.unknown().optional(),
+  eligibility: z.unknown().optional(),
+  marketIndex: z.unknown().optional(),
 });
 
 export type SourceTariff = z.infer<typeof tariffSchema>;
@@ -80,11 +85,15 @@ export function parseSourceTariff(
 /** Raison pour laquelle une offre n'est pas (encore) comparée. */
 export type PendingReason = "hourly-data" | "no-spot-prices" | "unknown";
 
-export const REASON_LABELS: Record<PendingReason | "closed", string> = {
+/** Raison pour laquelle une offre n'est jamais comparée. */
+export type NeverReason = "closed" | "restricted";
+
+export const REASON_LABELS: Record<PendingReason | NeverReason, string> = {
   "hourly-data": "prix spot : envoi horaire nécessaire",
   "no-spot-prices": "prix spot pas encore disponibles",
   unknown: "format non reconnu",
   closed: "offre fermée aux nouveaux abonnés",
+  restricted: "offre réservée à certains clients",
 };
 
 export type OfferSupport =
@@ -96,7 +105,7 @@ export type OfferSupport =
       chosenDay: boolean;
     }
   | { status: "pending"; reason: PendingReason }
-  | { status: "never"; reason: "closed" };
+  | { status: "never"; reason: NeverReason };
 
 export interface OfferInfo {
   provider: string;
@@ -117,15 +126,37 @@ export function splitName(name: string): { provider: string; offer: string } {
     : { provider: name.slice(0, at).trim(), offer: name.slice(at + 3).trim() };
 }
 
-export function describeOffer(t: SourceTariff): OfferInfo {
+const subscriptionRuleSchema = z.discriminatedUnion("kind", [
+  z.object({ kind: z.literal("closed") }),
+  z.object({ kind: z.literal("expired"), endDate: z.iso.date(), endInclusive: z.boolean() }),
+]);
+
+/**
+ * Offre qu'un foyer ne peut pas souscrire au jour `today` (AAAA-MM-JJ) : grille fermée ou
+ * échue (`subscriptionRule` ; illisible, l'offre est écartée), ou réservée à certains clients
+ * (`eligibility`, écartée aussi par le comparateur de la source). null si rien ne s'y oppose.
+ */
+export function unavailability(t: SourceTariff, today: string): NeverReason | null {
+  if (t.subscriptionRule !== undefined) {
+    const rule = subscriptionRuleSchema.safeParse(t.subscriptionRule);
+    if (!rule.success || rule.data.kind === "closed") return "closed";
+    const { endDate, endInclusive } = rule.data;
+    if (endInclusive ? today > endDate : today >= endDate) return "closed";
+  }
+  return t.eligibility ? "restricted" : null;
+}
+
+export function describeOffer(t: SourceTariff, today: string): OfferInfo {
   const powers = Object.keys(t.subscriptions)
     .map(Number)
     .sort((a, b) => a - b);
   const first = powers[0] as number;
   const chosenDay = hasChosenDay(t);
   const built = build(t, first, null, chosenDay ? CHOOSABLE_DAYS[0] : undefined);
-  const support: OfferSupport =
-    "contract" in built
+  const never = unavailability(t, today);
+  const support: OfferSupport = never
+    ? { status: "never", reason: never }
+    : "contract" in built
       ? {
           status: "compared",
           kind: built.contract.kind,
@@ -257,6 +288,8 @@ function build(
 ): Built {
   const rule = t.dayRule;
   if (!isObject(rule) || typeof rule.type !== "string") return { reason: "unknown" };
+  // Part indexée sur le marché ajoutée au prix (Frank Dynamique) : le prix fixe seul serait faux.
+  if (t.marketIndex !== undefined) return { reason: "unknown" };
   if (rule.type === "spot") {
     // Prix spot (Sobry, T58) : composantes en centimes HT de la source, TVA en multiplicateur.
     const f = t.spotFormula;
@@ -485,6 +518,8 @@ function build(
   ): Pick<CustomContract, "rules" | "dayStartHour"> | { reason: "unknown" } {
     // Saison et jours d'un calendrier (OctoTempo) : aucune offre de la source ne l'utilise.
     if (r.calendarOverride !== undefined) return { reason: "unknown" };
+    // Jours de pointe d'un calendrier (Enercoop), que le moteur ne connaît pas.
+    if (r.peakCalendar !== undefined) return { reason: "unknown" };
     if (!isObject(r.seasons)) return { reason: "unknown" };
     const shift = r.previousDayBefore;
     if (shift !== undefined && shift !== 6) return { reason: "unknown" };

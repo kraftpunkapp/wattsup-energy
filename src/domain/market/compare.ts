@@ -75,6 +75,7 @@ export function compareMarket(
   intervals: readonly PriceableInterval[],
   ctx: PricingContext,
   periodDays: number,
+  today: string,
 ): MarketComparison {
   const offPeak = householdOffPeak(current);
   const pending: MarketComparison["pending"] = [];
@@ -97,7 +98,7 @@ export function compareMarket(
       : null;
 
   for (const o of offers) {
-    const info = describeOffer(o.definition);
+    const info = describeOffer(o.definition, today);
     if (spotReason && info.support.status === "compared" && info.support.kind === "spot") {
       pending.push({ name: o.name, reason: REASON_LABELS[spotReason] });
       continue;
@@ -149,7 +150,7 @@ export function compareMarket(
     const c = byId.get(r.id);
     if (!c || seen.has(c.name)) return [];
     seen.add(c.name);
-    const info = describeOffer(c.definition);
+    const info = describeOffer(c.definition, today);
     return [
       {
         name: c.name,

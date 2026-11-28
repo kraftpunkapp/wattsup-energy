@@ -12,6 +12,7 @@ import {
   type CatalogDiff,
   type SourceTariff,
 } from "@/domain/market/offer";
+import { localParts } from "@/lib/time";
 import { shareInFlight } from "../inflight";
 import { MANIFEST_PATH, type OfferSource } from "./source";
 
@@ -96,8 +97,9 @@ async function run(source: OfferSource, force: boolean, now: Date): Promise<Mark
 
     const { offers, unreadable, sobriety } = await readCatalog(source, commit.sha);
     if (offers.length === 0) throw new Error("aucune offre lisible dans le catalogue");
+    const today = localParts(now, "Europe/Paris").date;
     const compared = offers.filter(
-      (o) => describeOffer(o.definition).support.status === "compared",
+      (o) => describeOffer(o.definition, today).support.status === "compared",
     ).length;
 
     const diff = await db.transaction(async (tx) => {

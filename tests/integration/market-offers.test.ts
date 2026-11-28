@@ -1,5 +1,6 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
+import { eq } from "drizzle-orm";
 import { beforeAll, describe, expect, it } from "vitest";
 import { db } from "@/db";
 import { energyInterval, marketImport, marketOffer, marketSync, spotPrice } from "@/db/schema";
@@ -158,6 +159,16 @@ describe("offres du marché", () => {
     expect(added?.periods[0]?.contract).toMatchObject({ subscriptionEurYear: 236.4 });
     await expect(addMarketOffer(ctx, "EDF - Tempo")).rejects.toThrow(ContractError);
     await expect(addMarketOffer(ctx, "Inconnue")).rejects.toThrow(/introuvable/);
+  });
+
+  it("offre qu'on ne peut plus souscrire : refus d'ajout", async () => {
+    const ctx = await householdWithData("offres-fermees");
+    const [row] = await db.select().from(marketOffer).where(eq(marketOffer.name, "EDF - Tempo"));
+    if (!row) throw new Error("offre absente");
+    const definition = { ...row.definition, subscriptionRule: { kind: "closed", reason: "x" } };
+    await db.insert(marketOffer).values({ ...row, name: "EDF - Close", definition });
+    await expect(addMarketOffer(ctx, "EDF - Close")).rejects.toThrow(/plus proposée/);
+    await db.delete(marketOffer).where(eq(marketOffer.name, "EDF - Close"));
   });
 });
 

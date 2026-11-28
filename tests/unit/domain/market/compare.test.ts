@@ -90,7 +90,7 @@ describe("plages creuses du foyer", () => {
 });
 
 describe("compareMarket", () => {
-  const r = compareMarket(catalog, 9, current, WEEK, ctx, 7);
+  const r = compareMarket(catalog, 9, current, WEEK, ctx, 7, "2026-11-28");
 
   it("classe les offres comparables, de la moins chère à la plus chère", () => {
     expect(r.rows.map((row) => row.name)).toEqual(
@@ -118,7 +118,7 @@ describe("compareMarket", () => {
         ? { ...i, kwh: 3 }
         : i,
     );
-    const plus = compareMarket(catalog, 9, current, thursdayHeavy, ctx, 7).rows.find(
+    const plus = compareMarket(catalog, 9, current, thursdayHeavy, ctx, 7, "2026-11-28").rows.find(
       (row) => row.name === "EDF - Zen Week-End Plus",
     );
     expect(plus?.chosenDay).toBe(4);
@@ -144,7 +144,7 @@ describe("compareMarket", () => {
 
   it("compte les offres pas encore comparables et celles absentes à cette puissance", () => {
     expect(r.unavailable).toBe(0);
-    const small = compareMarket(catalog, 3, current, WEEK, ctx, 7);
+    const small = compareMarket(catalog, 3, current, WEEK, ctx, 7, "2026-11-28");
     expect(small.rows.map((row) => row.name).sort()).toEqual([
       "EDF - Bleu",
       "EDF - Zen Estival",
@@ -165,6 +165,7 @@ describe("compareMarket", () => {
       WEEK,
       { ...ctx, spotPrice: () => 80, spotFallback: 80 },
       7,
+      "2026-11-28",
     );
     expect(withSpot.rows.map((row) => row.name)).toContain("Sobry - SoCap");
     const daily = compareMarket(
@@ -174,6 +175,7 @@ describe("compareMarket", () => {
       [{ granularity: "day", date: "2026-10-05", slot: null, kwh: 24 }],
       { ...ctx, spotPrice: () => 80, spotFallback: 80 },
       1,
+      "2026-11-28",
     );
     expect(daily.pending).toContainEqual({
       name: "Sobry - SoCap",
@@ -182,7 +184,7 @@ describe("compareMarket", () => {
   });
 
   it("sans contrat actuel : pas d'écart", () => {
-    const none = compareMarket(catalog, 9, null, WEEK, ctx, 7);
+    const none = compareMarket(catalog, 9, null, WEEK, ctx, 7, "2026-11-28");
     expect(none.rows.every((row) => row.deltaAnnualCents === null)).toBe(true);
     expect(none.currentAnnualCents).toBeNull();
   });

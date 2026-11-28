@@ -2,6 +2,7 @@ import { asc, count, desc, max } from "drizzle-orm";
 import { db } from "@/db";
 import { marketImport, marketOffer, marketSync, sobrietyDay } from "@/db/schema";
 import { describeOffer, type OfferInfo } from "@/domain/market/offer";
+import { localParts } from "@/lib/time";
 import { requireAdmin } from "../admin";
 import type { HouseholdContext } from "../context";
 
@@ -23,9 +24,10 @@ export async function getMarketCatalog(ctx: HouseholdContext) {
     db.select().from(marketImport).orderBy(desc(marketImport.at)),
     db.select({ days: count(), last: max(sobrietyDay.date) }).from(sobrietyDay),
   ]);
+  const today = localParts(new Date(), "Europe/Paris").date;
   const offers: CatalogOffer[] = rows.map((r) => ({
     name: r.name,
-    ...describeOffer(r.definition),
+    ...describeOffer(r.definition, today),
     priceUrl: r.definition.price_url || null,
     subscriptionUrl: r.definition.subscription_url || null,
     firstSeenAt: r.firstSeenAt,
